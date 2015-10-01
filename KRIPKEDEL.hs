@@ -35,13 +35,13 @@ eval (m@(KrM _ rel _),w) (Ck ags form) = all (\w' -> eval (m,w') form) vs where
 eval (m@(KrM _ rel _),w) (Ckw ags form) = alleq (\w' -> eval (m,w') form) vs where
   vs    = concat $ filter (elem w) ckrel
   ckrel = fusion $ concat [ apply rel i | i <- ags ]
-eval pm (PubAnnounce form1 form2) = 
+eval pm (PubAnnounce form1 form2) =
   not (eval pm form1) || eval (pubAnnounce pm form1) form2
 eval pm (PubAnnounceW form1 form2) =
   if eval pm form1
     then eval (pubAnnounce pm form1) form2
     else eval (pubAnnounce pm (Neg form1)) form2
-eval pm (Announce ags form1 form2) = 
+eval pm (Announce ags form1 form2) =
   not (eval pm form1) || eval (announce pm ags form1) form2
 eval pm (AnnounceW ags form1 form2) =
   if eval pm form1
@@ -51,7 +51,7 @@ eval pm (AnnounceW ags form1 form2) =
 pubAnnounce :: PointedModel -> Form -> PointedModel
 pubAnnounce pm@(m@(KrM sts rel val), cur) form =
   if eval pm form then (KrM newsts newrel newval, cur)
-		  else error "pubAnnounce failed: Liar!"
+                  else error "pubAnnounce failed: Liar!"
   where
     newsts = filter (\s -> eval (m,s) form) sts
     nrel i = filter ([]/=) $ map (filter (`elem` newsts)) (apply rel i)
@@ -61,7 +61,7 @@ pubAnnounce pm@(m@(KrM sts rel val), cur) form =
 announce :: PointedModel -> [Agent] -> Form -> PointedModel
 announce pm@(m@(KrM sts rel val), cur) ags form =
   if eval pm form then (KrM newsts newrel newval, newcur)
-		  else error "announce failed: Liar!"
+                  else error "announce failed: Liar!"
   where
     tocopy = filter (\s -> eval (m,s) form) sts
     addsts = map (maximum sts +) [1..(length tocopy)]
@@ -69,7 +69,7 @@ announce pm@(m@(KrM sts rel val), cur) ags form =
     copyof = zip addsts tocopy
     mapif  = concatMap (\s -> [apply copyto s | s `elem` tocopy])
     nrel i | i `elem` ags = apply rel i ++ filter ([]/=) (map mapif (apply rel i))
-	   | otherwise = map (\ec -> ec ++ mapif ec) (apply rel i)
+           | otherwise = map (\ec -> ec ++ mapif ec) (apply rel i)
     newsts = sts ++ addsts
     newrel = [ (i, nrel i) | i <- map fst rel ]
     newval = val ++ [ (s,apply val $ apply copyof s)  | s <- addsts ]
@@ -81,10 +81,10 @@ showVal ass = case filter snd ass of
   ps -> "$" ++ intercalate "," (map (texProp.fst) ps) ++ "$"
 
 myDispModel :: PointedModel -> IO ()
-myDispModel (KrM w r v, cur) = dispModel show showAgent showVal "" (VisModel w r v cur)
+myDispModel (KrM w r v, cur) = dispModel show id showVal "" (VisModel w r v cur)
 
 myTexModel :: PointedModel -> String -> IO String
-myTexModel (KrM w r v, cur) = texModel show showAgent showVal "" (VisModel w r v cur)
+myTexModel (KrM w r v, cur) = texModel show id showVal "" (VisModel w r v cur)
 
 data ActionModel = ActM [State] [(State,Form)] [(Agent,Partition)] deriving (Show)
 type PointedActionModel = (ActionModel,State)

@@ -3,7 +3,7 @@ module KNSCAC where
 import Data.HasCacBDD hiding (Top,Bot)
 import Data.HasCacBDD.Visuals
 import Data.List (sort,intercalate,(\\))
-import System.IO (hPutStr, hGetContents)
+import System.IO (hPutStr, hGetContents, hClose)
 import System.Process (runInteractiveCommand)
 import HELP (alleq,apply,rtc)
 import DELLANG
@@ -14,13 +14,12 @@ boolBddOf Bot           = bot
 boolBddOf (PrpF (P n))  = var n
 boolBddOf (Neg form)    = neg$ boolBddOf form
 boolBddOf (Conj forms)  = conSet $ map boolBddOf forms
-boolBddOf (Disj forms)  = disSet  $ map boolBddOf forms
+boolBddOf (Disj forms)  = disSet $ map boolBddOf forms
+boolBddOf (Xor forms)   = xorSet $ map boolBddOf forms
 boolBddOf (Impl f g)    = imp (boolBddOf f) (boolBddOf g)
 boolBddOf (Equi f g)    = equ (boolBddOf f) (boolBddOf g)
-boolBddOf (Forall ps f) = boolBddOf (foldl singleForall f ps) where
-  singleForall g p = Conj [ substit p Top g, substit p Bot g ]
-boolBddOf (Exists ps f) = boolBddOf (foldl singleExists f ps) where
-  singleExists g p = Disj [ substit p Top g, substit p Bot g ]
+boolBddOf (Forall ps f) = forallSet (map fromEnum ps) (boolBddOf f)
+boolBddOf (Exists ps f) = existsSet (map fromEnum ps) (boolBddOf f)
 boolBddOf _             = error "boolBddOf failed: Not a boolean formula."
 
 boolEval :: [Prp] -> Form -> Bool
@@ -28,8 +27,8 @@ boolEval truths form = result where
   values = map (\(P n) -> (n, P n `elem` truths)) (propsInForm form)
   bdd    = restrictSet (boolBddOf form) values
   result | bdd==top  = True
-	 | bdd==bot  = False
-	 | otherwise = error "boolEval failed: BDD leftover."
+         | bdd==bot  = False
+         | otherwise = error "boolEval failed: BDD leftover."
 
 data KnowStruct = KnS [Prp] Bdd [(Agent,[Prp])] deriving (Eq,Show)
 type KnState = [Prp]
@@ -100,8 +99,8 @@ pubAnnounce kns@(KnS props lawbdd obs) psi = KnS props newlawbdd obs where
 
 pubAnnounceOnScn :: Scenario -> Form -> Scenario
 pubAnnounceOnScn (kns,s) psi = if eval (kns,s) psi
-				 then (pubAnnounce kns psi,s)
-				 else error "Liar!"
+                                 then (pubAnnounce kns psi,s)
+                                 else error "Liar!"
 
 announce :: KnowStruct -> [Agent] -> Form -> KnowStruct
 announce kns@(KnS props lawbdd obs) ags psi = KnS newprops newlawbdd newobs where
@@ -154,10 +153,13 @@ evalViaBdd (kns@(KnS allprops _ _),s) f = bool where
        | b==bot = False
        | otherwise = error ("evalViaBdd failed: BDD leftover:\n" ++ show b)
   b    = restrictSet (bddOf kns f) list
-  list = [ (n, (P n) `elem` s) | (P n) <- allprops ]
+  list = [ (n, P n `elem` s) | (P n) <- allprops ]
 
 validViaBdd :: KnowStruct -> Form -> Bool
 validViaBdd kns@(KnS _ lawbdd _) f = top == lawbdd `imp` bddOf kns f
+
+whereViaBdd :: KnowStruct -> Form -> [KnState]
+whereViaBdd kns f = statesOf (pubAnnounce kns f) -- FIXME we can do better than updating... How do we ask the BDD package. when the BDD of law and f together is satisfied?!
 
 data KnowTransf = KnT [Prp] Form [(Agent,[Prp])] deriving (Eq,Show)
 type Event = (KnowTransf,KnState)
@@ -174,18 +176,23 @@ knowTransform (kns@(KnS props lawbdd obs),s) (KnT addprops addlaw eventobs, even
 texBDD :: Bdd -> IO String
 texBDD b = do
   (i,o,_,_) <- runInteractiveCommand "dot2tex --figpreamble=\"\\huge\" --figonly -traw"
-  hPutStr i (genGraph b)
+  hPutStr i (genGraph b ++ "\n")
+  hClose i
   hGetContents o
 
-texStructure :: Scenario -> String -> IO String
-texStructure (KnS props lawbdd obs, state) filename = do
+getTexStructure :: Scenario -> IO String
+getTexStructure (KnS props lawbdd obs, state) = do
   lawbddtex <- texBDD lawbdd
-  let fullstring = " \\left( \n"
-	++ texPropSet props ++ ", "
-	++ " \\begin{array}{l} \\scalebox{0.4}{"++lawbddtex++"} \\end{array}\n "
-	++ ", \\begin{array}{l}\n"
-	++ intercalate " \\\\\n " (map (\(_,os) -> (texPropSet os)) obs)
-	++ "\\end{array}\n"
-	++ " \\right) , " ++ texPropSet state
+  return $ " \\left( \n"
+    ++ texPropSet props ++ ", "
+    ++ " \\begin{array}{l} \\scalebox{0.4}{"++lawbddtex++"} \\end{array}\n "
+    ++ ", \\begin{array}{l}\n"
+    ++ intercalate " \\\\\n " (map (\(_,os) -> (texPropSet os)) obs)
+    ++ "\\end{array}\n"
+    ++ " \\right) , " ++ texPropSet state
+
+texStructure :: Scenario -> String -> IO String
+texStructure scn filename = do
+  fullstring <- getTexStructure scn
   _ <- writeFile ("tmp/" ++ filename ++ ".tex") fullstring
   return ("Structure was TeX'd to"++filename)

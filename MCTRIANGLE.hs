@@ -26,10 +26,10 @@ some :: Quantifier
 some (_,b) = b > 0
 
 data McFormula = Neg McFormula    -- negations
-	       | Conj [McFormula] -- conjunctions
-	       | Qf Quantifier    -- quantifiers
-	       | KnowSelf Bool    -- all b agents DO    know their status
-	       | NotKnowSelf Bool -- all b agents DON'T know their status
+               | Conj [McFormula] -- conjunctions
+               | Qf Quantifier    -- quantifiers
+               | KnowSelf Bool    -- all b agents DO    know their status
+               | NotKnowSelf Bool -- all b agents DON'T know their status
 
 nobodyknows,everyoneKnows :: McFormula
 nobodyknows   = Conj [ NotKnowSelf False, NotKnowSelf True ]

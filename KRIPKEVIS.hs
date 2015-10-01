@@ -27,15 +27,15 @@ stringModel showState showAgents showVal information model =
     ++ concat [ ndlinefor s | s <- otherstates ]
     ++ "  rankdir=LR; \n size=\"6,5!\" \n"
     ++ concat [ "  w" ++ show x ++" -- w"++ show y
-	      ++"[ label = \""++ showAgents a ++"\" ]; \n"
-	    | (a,x,y) <- edges  ]
+              ++"[ label = \""++ showAgents a ++"\" ]; \n"
+            | (a,x,y) <- edges  ]
     ++ "  label = \""++information++"\"; \n "
     ++ "} \n"
   where
     (VisModel states rel val cur) = model
     labelof s = begintab ++ "\\\\textbf{" ++ showState s ++ "}" ++ newline ++ showVal (fromJust $ lookup s val) ++ endtab
     ndlinefor s = "  node [shape=circle,label=\""
-		++ labelof s ++ "\"] w" ++ show s ++ ";\n"
+                ++ labelof s ++ "\"] w" ++ show s ++ ";\n"
     otherstates = delete cur states
     edges = nub $ concat $ concat $ concat [ [ [ [(a,x,y) | x<y] | x <- part, y <- part ] | part <- fromJust $ lookup a rel ] | a <- map fst rel ]
 
@@ -50,14 +50,14 @@ stringGenModel showState showAgents showVal information (GenVisModel states rel 
     ++ concat [ ndlinefor s | s <- otherstates ]
     ++ "  rankdir=LR; \n size=\"6,5!\" \n"
     ++ concat [ "  w" ++ show x ++" -- w"++ show y
-	      ++"[ label = \""++ showAgents a ++"\" ]; \n"
-	    | (a,x,y) <- edges  ]
+              ++"[ label = \""++ showAgents a ++"\" ]; \n"
+            | (a,x,y) <- edges  ]
     ++ "  label = \""++information++"\"; \n "
     ++ "} \n"
   where
     labelof s = begintab ++ "\\\\textbf{" ++ showState s ++ "}" ++ newline ++ showVal (fromJust $ lookup s val) ++ endtab
     ndlinefor s = "  node [shape=circle,label=\""
-		++ labelof s ++ "\"] w" ++ show s ++ ";\n"
+                ++ labelof s ++ "\"] w" ++ show s ++ ";\n"
     otherstates = delete cur states
     edges = concat [ [ (a,x,y) | (x,y) <- fromJust $ lookup a rel ] | a <- map fst rel ]
 
@@ -117,7 +117,7 @@ pdfModel showState showAgents showVal info model filename =
     putStrLn forget
     _ <- system ("cd tmp/; dot2tex -ftikz -traw -p --autosize -w --usepdflatex "++filename++".dot > "++filename++".tex; pdflatex -interaction=nonstopmode "++filename++".tex > "++filename++".pdflatex.log;" )
     return ("Model was PDF'd to tmp/" ++ filename ++ ".pdf")
-    
+
 svgModel :: Ord a => Eq a => Eq b => Show a => Show b =>
   (a -> String) -> (b -> String) -> (c -> String) -> String
     -> VisModel a b c

@@ -1,0 +1,30 @@
+-- Three Dining Cryptographers in SMCDEL
+
+VARS
+  0, -- the NSA paid
+  1,2,3, -- cryptographers i paid
+  4,5,6 -- shared bits
+
+LAW
+  XOR (0,1,2,3)
+
+OBS
+  alice: 1, 4,5
+  bob  : 2, 4,6
+  carol: 3, 5,6
+
+VALID?
+  (alice,bob,carol) comknow that (OR (0,1,2,3))
+
+VALID?
+  alice knows that 1
+
+VALID?
+  alice knows whether 1
+
+VALID?
+  alice knows whether (bob knows whether 1)
+
+
+-- genDcCheckForm n = Impl (Neg (PrpF $ P 1)) $
+--   PubAnnounceW (Xor [genDcReveal n i | i<-[1..n] ]) $

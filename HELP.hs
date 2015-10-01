@@ -1,8 +1,7 @@
-module HELP (alleq,apply,powerset,restrict,rtc,Erel,bl,fusion) where
+module HELP (alleq,apply,choose,powerset,restrict,rtc,Erel,bl,fusion) where
 import Data.List (nub,union,foldl',(\\))
 
 type Rel a b = [(a,b)]
-
 type Erel a = [[a]]
 
 alleq :: Eq a => (a -> Bool) -> [a] -> Bool
@@ -23,7 +22,7 @@ concatRel r s = nub [ (x,z) | (x,y) <- r, (w,z) <- s, y == w ]
 
 lfp :: Eq a => (a -> a) -> a -> a
 lfp f x | x == f x  = x
-	| otherwise = lfp f (f x)
+        | otherwise = lfp f (f x)
 
 dom :: Eq a => Rel a a -> [a]
 dom r = nub (foldr (\ (x,y) -> ([x,y]++)) [] r)
@@ -59,10 +58,12 @@ bl r x = head (filter (elem x) r)
 fusion :: Ord a => [[a]] -> Erel a
 fusion [] = []
 fusion (b:bs) = let
-   cs = filter (overlap b) bs
-   xs = mergeL (b:cs)
-   ds = filter (overlap xs) bs
- in
-   if cs == ds
-     then xs : fusion (bs \\ cs)
-     else fusion (xs : bs)
+    cs = filter (overlap b) bs
+    xs = mergeL (b:cs)
+    ds = filter (overlap xs) bs
+  in if cs == ds then xs : fusion (bs \\ cs) else fusion (xs : bs)
+
+choose :: Integral a => a -> a -> a
+choose _ 0 = 1
+choose 0 _ = 0
+choose n k = choose (n-1) (k-1) * n `div` k

@@ -14,5 +14,10 @@ cabal.sandbox.config
 *.prof
 *.aux
 *.hp
+Parse.hs
+Lex.hs
 BENCHDC
 BENCHMC
+BENCHSAP
+SAPTRANS
+SMCDEL

@@ -19,25 +19,25 @@ getRandomInt n = getStdRandom (randomR (0,n))
 getRandomGroup :: IO [Agent]
 getRandomGroup = do
   n <- getRandomInt 2
-  case n of 0 -> return [alice]
-	    1 -> return [bob]
-	    _ -> return [alice,bob]
+  case n of 0 -> return ["0"]
+            1 -> return ["1"]
+            _ -> return ["0","1"]
 
 getRandomF :: IO Form
 getRandomF = do d <- getRandomInt mycomplexity
                 getRandomForm d
 
-getRandomForm :: Int -> IO Form 
+getRandomForm :: Int -> IO Form
 getRandomForm 0 = do
   n <- getRandomInt 4
   case n of 0 -> return Top
-	    1 -> return Bot
-	    _ -> do m <- getRandomInt mypropsindex
-		    return (PrpF (P m))
+            1 -> return Bot
+            _ -> do m <- getRandomInt mypropsindex
+                    return (PrpF (P m))
 
-getRandomForm d = do 
+getRandomForm d = do
   n <- getRandomInt 9
-  case n of 
+  case n of
     0 -> do m <- getRandomInt mypropsindex
             return (PrpF (P m))
     1 -> do f <- getRandomForm (d-1)
@@ -53,10 +53,10 @@ getRandomForm d = do
             return (Disj fs)
     5 -> do i <- getRandomInt myagsindex
             f <- getRandomForm (d-1)
-            return (K i f)
+            return (K (show i) f)
     6 -> do i <- getRandomInt myagsindex
             f <- getRandomForm (d-1)
-            return (Kw i f)
+            return (Kw (show i) f)
     7 -> do ags <- getRandomGroup
             f <- getRandomForm (d-1)
             return (Ck ags f)
@@ -71,18 +71,18 @@ getRandomForm d = do
 getRandomForms :: Int -> Int -> IO [Form]
 getRandomForms _ 0 = return []
 getRandomForms d n = do f <- getRandomForm d
-			fs <- getRandomForms d (n-1)
-			return (f:fs)
+                        fs <- getRandomForms d (n-1)
+                        return (f:fs)
 
 mymodel :: PointedModel
 mymodel = (KrM ws rel (zip ws table), 0) where
   ws    = [0..(2^(mypropsindex+1)-1)]
-  rel   = (alice, map (:[]) ws) : [ (i,[ws]) | i <- [1..myagsindex] ]
+  rel   = ("0", map (:[]) ws) : [ (show i,[ws]) | i <- [1..myagsindex] ]
   table = foldl buildTable [[]] [P k | k<- [0..mypropsindex]]
   buildTable partrows p = [ (p,v):pr | v <-[True,False], pr<-partrows ]
 
 myscn :: Scenario
-myscn = (KnS ps (boolBddOf Top) ((alice,ps):[(i,[]) | i<-[1..myagsindex]]) , ps)
+myscn = (KnS ps (boolBddOf Top) (("0",ps):[(show i,[]) | i<-[1..myagsindex]]) , ps)
   where ps = [P 0 .. P mypropsindex]
 
 singleTest :: IO (Bool, Bool)
@@ -100,17 +100,17 @@ singleTestWith f = do
   let e = KNSCAC.eval  (kripkeToKns mymodel) f -- evaluate on corresponding KNS
   if or [a/=b,b/=c,c/=d,d/=e]
     then do putStr $ "Problem: " ++ show f ++ "\n         " ++ show (a,b,c,d,e) ++"\n\n"
-	    return (True,a)
+            return (True,a)
     else    return (False,a)
 
 test :: Int -> IO ()
 test n = do (problems,truths) <- testLoop 0 0 n
-	    putStrLn $ show problems ++ " problems among " ++ show n ++ " formulas out of which " ++ show truths ++" were true."
+            putStrLn $ show problems ++ " problems among " ++ show n ++ " formulas out of which " ++ show truths ++" were true."
 
 testLoop :: Int -> Int -> Int -> IO (Int,Int)
 testLoop p t 0 = return (p,t)
 testLoop p t n = do (prob,res) <- singleTest
-		    testLoop (if prob then p + 1 else p) (if res then t + 1 else t) (n-1)
+                    testLoop (if prob then p + 1 else p) (if res then t + 1 else t) (n-1)
 
 pubAnnounceTest :: IO Bool
 pubAnnounceTest = do
@@ -122,18 +122,18 @@ pubAnnounceTest = do
   putStr $ show a
   let b = KNSCAC.eval (kripkeToKns mymodel) (PubAnnounce f g)
   putStr $ show b
-  let c = KNSCAC.eval (knowTransform (kripkeToKns mymodel) (actionToEvent (pubAnnounceAction [0,1] f))) g
+  let c = KNSCAC.eval (knowTransform (kripkeToKns mymodel) (actionToEvent (pubAnnounceAction ["0","1","2"] f))) g
   print c
   if a/=b || b/=c
     then do putStr $ "Problem: " ++ show g ++ "\n         "++ show (a,b,c) ++"\n\n"
-	    return False
+            return False
     else    return True
 
 getRandomAction :: IO PointedActionModel
 getRandomAction = do
   [f,g,h] <- getRandomForms 2 3
   return (ActM [0..3] [(0,Top),(1,f),(2,g),(3,h)]
-    ( (0,[[0],[1],[2],[3]]):[(k,[[0..3]]) | k<-[1..myagsindex] ]), 0)
+    ( ("0",[[0],[1],[2],[3]]):[(show k,[[0..3]]) | k<-[1..myagsindex] ]), 0)
 
 singleActionTest :: IO Bool
 singleActionTest = do
@@ -143,10 +143,10 @@ singleActionTest = do
   let b = KNSCAC.evalViaBdd (knowTransform (kripkeToKns mymodel) (actionToEvent myact)) f
   if a /= b
     then do putStr $ "Problem: " ++ show myact
-		  ++ "\n action: " ++ show (actionToEvent myact)
-		  ++ "\n   form: " ++ show f
-		  ++ "\n    res: " ++ show (a,b) ++ "\n\n"
-	    return True
+                  ++ "\n action: " ++ show (actionToEvent myact)
+                  ++ "\n   form: " ++ show f
+                  ++ "\n    res: " ++ show (a,b) ++ "\n\n"
+            return True
     else return False
 
 actionTest :: Int -> IO ()

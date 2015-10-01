@@ -1,0 +1,12 @@
+-- examples/MuddyShort.smcdel
+-- Three Muddy Children in SMCDEL
+VARS
+  1,2,3
+LAW
+  Top
+OBS
+  alice: 2,3
+  bob: 1,3
+  carol: 1,2
+VALID?
+  (not (alice knows whether 1) & not (bob knows whether 2) & not (carol knows whether 3))

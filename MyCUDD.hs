@@ -6,15 +6,16 @@ module MyCUDD (
   -- * Combination and Manipulation of BDDs
   neg, con, dis, imp, equ, xor, conSet, disSet, xorSet,
   exists, forall, forallSet, existsSet,
-  restrict, restrictSet,
-  ifthenelse, gfp,
+  restrict, restrictSet, restrictLaw,
+  ifthenelse, gfp, relabel,
   -- * Get satisfying assignments
   allSats, allSatsWith, satCountWith, anySat,
   -- * Show and convert to trees
-  showGraph, genGraph
+  showGraph, genGraph, maxVarOf
 ) where
 
 import Data.List
+import Data.Maybe (fromJust)
 import System.Process
 import System.IO
 import qualified Data.Boolean.CUDD
@@ -61,22 +62,14 @@ dis :: Bdd -> Bdd -> Bdd
 dis = (Data.Boolean.CUDD.\/)
 
 conSet :: [Bdd] -> Bdd
-conSet [] = top
-conSet (b:bs) =
-  if bot `elem` (b:bs)
-    then bot
-    else foldl con b bs
+conSet = Data.Boolean.CUDD.conjoin
 
 disSet :: [Bdd] -> Bdd
-disSet [] = bot
-disSet (b:bs) =
-  if top `elem` (b:bs)
-    then top
-    else foldl dis b bs
+disSet = Data.Boolean.CUDD.disjoin
 
 xorSet :: [Bdd] -> Bdd
 xorSet [] = bot
-xorSet (b:bs) = foldl xor b bs
+xorSet (b:bs) = foldr xor b bs
 
 type Assignment = [(Int,Bool)]
 
@@ -95,6 +88,15 @@ firstVarOf b
   | b == top = Nothing
   | otherwise = Just (read $ Data.Boolean.CUDD.unbvar $ Data.Boolean.CUDD.bif b)
 
+maxVarOf ::  Bdd -> Maybe Int
+maxVarOf b
+  | b == bot = Nothing
+  | b == top = Nothing
+  | otherwise = maximum [ Just v, m1, m2 ] where
+      v = read $ Data.Boolean.CUDD.unbvar b :: Int
+      m1 = maxVarOf $ thenOf b
+      m2 = maxVarOf $ elseOf b
+
 elseOf :: Bdd -> Bdd
 elseOf = Data.Boolean.CUDD.belse
 
@@ -104,8 +106,6 @@ thenOf = Data.Boolean.CUDD.bthen
 gfp :: (Bdd -> Bdd) -> Bdd
 gfp = Data.Boolean.CUDD.fix top
 
--- restrict :: Bdd -> (Int,Bool) -> Bdd
-
 restrict :: Bdd -> (Int,Bool) -> Bdd
 restrict b (n,bit) = Data.Boolean.CUDD.reduce b res where
   res = if bit then var n else neg (var n)
@@ -113,6 +113,9 @@ restrict b (n,bit) = Data.Boolean.CUDD.reduce b res where
 restrictSet :: Bdd -> [(Int,Bool)] -> Bdd
 restrictSet b bits = Data.Boolean.CUDD.reduce b res where
   res = conSet $ map (\(n,bit) -> if bit then var n else neg (var n)) bits
+
+restrictLaw :: Bdd -> Bdd -> Bdd
+restrictLaw = Data.Boolean.CUDD.reduce
 
 -- | Get all satisfying assignments. These will be partial, i.e. only
 -- contain (a subset of) the variables that actually occur in the BDD.
@@ -192,15 +195,15 @@ genGraph myb = genGraph' (unravel myb) where
   genGraph' b = "strict digraph g {\n" ++ genGraphStep (annotate b) ++ sinks ++ rankings ++ "}"
     where
       genGraphStep (AVar v lhs rhs l) =
-	"n" ++ lp l ++ " [label=\"" ++ show v ++ "\",shape=\"circle\"];\n"
-	++ case lhs of
-	  (ATop _) -> "n"++ lp l ++" -> Top;\n"
-	  (ABot _) -> "n"++ lp l ++" -> Bot;\n"
-	  (AVar _ _ _ l') -> "n"++ lp l ++" -> n"++ lp l' ++";\n" ++ genGraphStep lhs
-	++ case rhs of
-	  (ATop _) -> "n"++ lp l ++" -> Top [style=dashed];\n"
-	  (ABot _) -> "n"++ lp l ++" -> Bot [style=dashed];\n"
-	  (AVar _ _ _ l') -> "n"++ lp l ++" -> n"++ lp l' ++" [style=dashed];\n" ++ genGraphStep rhs
+        "n" ++ lp l ++ " [label=\"" ++ show v ++ "\",shape=\"circle\"];\n"
+        ++ case lhs of
+          (ATop _) -> "n"++ lp l ++" -> Top;\n"
+          (ABot _) -> "n"++ lp l ++" -> Bot;\n"
+          (AVar _ _ _ l') -> "n"++ lp l ++" -> n"++ lp l' ++";\n" ++ genGraphStep lhs
+        ++ case rhs of
+          (ATop _) -> "n"++ lp l ++" -> Top [style=dashed];\n"
+          (ABot _) -> "n"++ lp l ++" -> Bot [style=dashed];\n"
+          (AVar _ _ _ l') -> "n"++ lp l ++" -> n"++ lp l' ++" [style=dashed];\n" ++ genGraphStep rhs
       genGraphStep _ = ""
       sinks = "Bot [label=\"0\",shape=\"box\"];\n" ++ "Top [label=\"1\",shape=\"box\"];\n"
       rankings = concat [ "{ rank=same; "++ unwords (nub $ nodesOf v (annotate b)) ++ " }\n" | v <- varsOf b ]
@@ -219,3 +222,14 @@ showGraph b = do
   hClose inp
   _ <- waitForProcess pid
   return ()
+
+-- | Relabel variables according to the given mapping.
+relabel :: [(Int,Int)] -> Bdd -> Bdd
+relabel [] b = b
+relabel rel@((n,newn):rest) b
+  | b == bot = b
+  | b == top = b
+  | otherwise = case compare n (fromJust (firstVarOf b)) of
+                  LT -> relabel rest b
+                  EQ -> ifthenelse (var newn) (relabel rest (thenOf b)) (relabel rest (elseOf b))
+                  GT -> ifthenelse (var (fromJust (firstVarOf b))) (relabel rel (thenOf b)) (relabel rel (elseOf b))

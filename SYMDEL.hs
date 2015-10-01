@@ -1,11 +1,14 @@
 
 module SYMDEL where
 import Control.Arrow (second)
-import Data.List (groupBy,sort,(\\))
+import Data.List (groupBy,sort,(\\),elemIndex)
+import Data.Maybe (fromJust)
 import DELLANG
 import KNSCAC
 import KRIPKEDEL
 import HELP (apply,powerset)
+
+import Data.HasCacBDD hiding (Top,Bot)
 
 knsToKripke :: Scenario -> PointedModel
 knsToKripke (kns@(KnS ps _ obs),curs) =
@@ -23,23 +26,26 @@ knsToKripke (kns@(KnS ps _ obs),curs) =
     cur    = apply lav curs
 
 kripkeToKns :: PointedModel -> Scenario
-kripkeToKns (KrM worlds rel val, cur) = (KnS ps theta obs, curs) where
+kripkeToKns (KrM worlds rel val, cur) = (KnS ps law obs, curs) where
   v         = map fst $ apply val cur
   ags       = map fst rel
   newpstart = fromEnum $ freshp v -- start counting new propositions here
   amount i  = ceiling (logBase 2 (fromIntegral $ length (apply rel i)) :: Float) -- |O_i|
   newpstep  = maximum [ amount i | i <- ags ]
-  newps i   = map (\k -> P (newpstart + (newpstep*i) +k)) [0..(amount i - 1)] -- O_i
+  numberof i = fromJust $ elemIndex i (map fst rel)
+  newps i   = map (\k -> P (newpstart + (newpstep * numberof i) +k)) [0..(amount i - 1)] -- O_i
   copyrel i = zip (apply rel i) (powerset (newps i)) -- label equiv.classes with P(O_i)
   gag i w   = snd $ head $ filter (\(ws,_) -> elem w ws) (copyrel i)
   g w       = filter (apply (apply val w)) v ++ concat [ gag i w | i <- ags ]
-  fWith set = [ Disj [ if p `elem` psubset then PrpF p else Neg $ PrpF p | p <- set ] | psubset <- powerset set ] -- build a finite state law
-  formulas  = concat [ fWith set | set <- powerset ps ]
-  glotrue f = and [ boolEval (g w) f | w<-worlds ]
   ps        = v ++ concat [ newps i | i <- ags ]
-  theta     = boolBddOf $ Conj (filter glotrue formulas) -- convert state law to a BDD
+  law       = disSet [ booloutof (g w) ps | w <- worlds ]
   obs       = [ (i,newps i) | i<- ags ]
   curs      = sort $ g cur
+
+booloutof :: [Prp] -> [Prp] -> Bdd
+booloutof ps qs = conSet $
+  [ var n | (P n) <- ps ] ++
+  [ neg $ var n | (P n) <- qs \\ ps ]
 
 actionToEvent :: PointedActionModel -> Event
 actionToEvent (ActM actions precon actrel, faction) = (KnT eprops elaw eobs, efacts) where
@@ -52,7 +58,8 @@ actionToEvent (ActM actions precon actrel, faction) = (KnT eprops elaw eobs, efa
   actforms     = [ Impl (booloutofForm (apply copyactprops a) actionprops) (apply precon a) | a <- actions ] -- connect the new propositions to the preconditions
   actrelprops  = concat [ newps i | i <- ags ] -- new props to distinguish actions for i
   actrelpstart = maxactprop + 1
-  newps i      = map (\k -> P (actrelpstart + (newpstep*i) +k)) [0..(amount i - 1)]
+  numberof i = fromJust $ elemIndex i (map fst actrel)
+  newps i      = map (\k -> P (actrelpstart + (newpstep * numberof i) +k)) [0..(amount i - 1)]
   amount i     = ceiling (logBase 2 (fromIntegral $ length (apply actrel i)) :: Float)
   newpstep     = maximum [ amount i | i <- ags ]
   copyactrel i = zip (apply actrel i) (powerset (newps i)) -- actrelprops <-> actionprops

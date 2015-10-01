@@ -99,8 +99,8 @@ boolBddOf _             = error "boolBddOf failed: Not a boolean formula."
 boolEval :: [Prp] -> Form -> Bool
 boolEval truths form =  result where
   result = case anySat finalO of
-		Just _  -> True
-		Nothing -> False
+                Just _  -> True
+                Nothing -> False
   finalO   = restrictSet (boolBddOf form) (map (\(P n) -> (n, P n `elem` truths)) (propsInForm form))
 
 data KnowStruct = KnS [Prp] Bdd [(Agent,[Prp])] deriving (Eq,Show)
@@ -259,11 +259,11 @@ texStructure :: Scenario -> String -> IO String
 texStructure (KnS props lawbdd obs, state) filename = do
   lawbddtex <- texBDD lawbdd
   let fullstring = " \\left( \n"
-	++ texPropSet props ++ ", "
-	++ " \\begin{array}{l} \\scalebox{0.4}{"++lawbddtex++"} \\end{array}\n "
-	++ ", \\begin{array}{l}\n"
-	++ intercalate " \\\\\n " (map (\(_,os) -> (texPropSet os)) obs)
-	++ "\\end{array}\n"
-	++ " \\right) , " ++ texPropSet state
+        ++ texPropSet props ++ ", "
+        ++ " \\begin{array}{l} \\scalebox{0.4}{"++lawbddtex++"} \\end{array}\n "
+        ++ ", \\begin{array}{l}\n"
+        ++ intercalate " \\\\\n " (map (\(_,os) -> (texPropSet os)) obs)
+        ++ "\\end{array}\n"
+        ++ " \\right) , " ++ texPropSet state
   _ <- writeFile ("tmp/" ++ filename ++ ".tex") fullstring
   return ("Structure was TeX'd to"++filename)

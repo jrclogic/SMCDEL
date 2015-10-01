@@ -2,6 +2,7 @@
 module DELLANG where
 import Data.List (nub,intercalate,(\\))
 import Data.Maybe (fromJust)
+import Test.QuickCheck
 
 data Prp = P Int  deriving (Eq,Ord,Show)
 instance Enum Prp where
@@ -12,17 +13,11 @@ freshp :: [Prp] -> Prp
 freshp [] = P 0
 freshp prps = P (maximum (map fromEnum prps) + 1)
 
-type Agent = Int
+type Agent = String
 alice,bob,carol :: Agent
-alice   = 0
-bob     = 1
-carol   = 2
-
-showAgent :: Agent -> String
-showAgent 0 = "Alice"
-showAgent 1 = "Bob"
-showAgent 2 = "Carol"
-showAgent n = "Ag " ++ show n
+alice   = "Alice"
+bob     = "Bob"
+carol   = "Carol"
 
 data Form =
   Top | Bot | PrpF Prp | Neg Form | Conj [Form] | Disj [Form] | Xor [Form] |
@@ -30,13 +25,16 @@ data Form =
   K Agent Form | Ck [Agent] Form | Kw Agent Form | Ckw [Agent] Form |
   PubAnnounce Form Form | PubAnnounceW Form Form |
   Announce [Agent] Form Form | AnnounceW [Agent] Form Form
-  deriving (Eq,Show)
+  deriving (Eq,Ord,Show)
 
 pubAnnounceStack :: [Form] -> Form -> Form
 pubAnnounceStack = flip $ foldr PubAnnounce
 
 pubAnnounceWhetherStack :: [Form] -> Form -> Form
 pubAnnounceWhetherStack = flip $ foldr PubAnnounceW
+
+booloutofForm :: [Prp] -> [Prp] -> Form
+booloutofForm ps qs = Conj $ [ PrpF p | p <- ps ] ++ [ Neg $ PrpF r | r <- qs \\ ps ]
 
 substit :: Prp -> Form -> Form -> Form
 substit _ _   Top           = Top
@@ -71,7 +69,7 @@ replPsInF :: [(Prp,Prp)] -> Form -> Form
 replPsInF _       Top      = Top
 replPsInF _       Bot      = Bot
 replPsInF repl (PrpF p)    | p `elem` map fst repl = PrpF (fromJust $ lookup p repl)
-			   | otherwise = PrpF p
+                           | otherwise = PrpF p
 replPsInF repl (Neg f)     = Neg $ replPsInF repl f
 replPsInF repl (Conj fs)   = Conj $ map (replPsInF repl) fs
 replPsInF repl (Disj fs)   = Disj $ map (replPsInF repl) fs
@@ -135,11 +133,11 @@ simStep (Neg f)       = Neg $ simStep f
 simStep (Conj [])     = Top
 simStep (Conj [f])    = simStep f
 simStep (Conj fs)     | Bot `elem` fs = Bot
-		      | otherwise     = Conj (nub $ map simStep (filter (Top /=) fs))
+                      | otherwise     = Conj (nub $ map simStep (filter (Top /=) fs))
 simStep (Disj [])     = Bot
 simStep (Disj [f])    = simStep f
 simStep (Disj fs)     | Top `elem` fs = Top
-		      | otherwise     = Disj (nub $ map simStep (filter (Bot /=) fs))
+                      | otherwise     = Disj (nub $ map simStep (filter (Bot /=) fs))
 simStep (Xor  [])     = Bot
 simStep (Xor  [f])    = Neg $ simStep f
 simStep (Xor  fs)     = Xor (map simStep fs)
@@ -166,5 +164,62 @@ simStep (PubAnnounceW f g)  = PubAnnounceW (simStep f) (simStep g)
 simStep (Announce  ags f g) = Announce  ags (simStep f) (simStep g)
 simStep (AnnounceW ags f g) = AnnounceW ags (simStep f) (simStep g)
 
-booloutofForm :: [Prp] -> [Prp] -> Form
-booloutofForm ps qs = Conj $ [ PrpF p | p <- ps ] ++ [ Neg $ PrpF r | r <- qs \\ ps ]
+texForm :: Form -> String
+texForm Top           = "\\top "
+texForm Bot           = "\\bot "
+texForm (PrpF p)      = texProp p
+texForm (Neg (PubAnnounce f (Neg g))) = "\\langle !" ++ texForm f ++ " \\rangle " ++ texForm g
+texForm (Neg f)       = "\\lnot " ++ texForm f
+texForm (Conj [])     = "\\top "
+texForm (Conj [f])    = texForm f
+texForm (Conj [f,g])  = " ( " ++ texForm f ++ " \\land " ++ texForm g ++" ) "
+texForm (Conj fs)     = "\\bigwedge \\{\n" ++ intercalate "," (map texForm fs) ++" \\} "
+texForm (Disj [])     = "\\bot "
+texForm (Disj [f])    = texForm f
+texForm (Disj [f,g])  = " ( " ++ texForm f ++ " \\lor "++ texForm g ++ " ) "
+texForm (Disj fs)     = "\\bigvee \\{\n " ++ intercalate "," (map texForm fs) ++ " \\} "
+texForm (Xor [])      = "\\bot "
+texForm (Xor [f])     = texForm f
+texForm (Xor [f,g])   = " ( " ++ texForm f  ++ " \\oplus " ++ texForm g ++ " ) "
+texForm (Xor fs)      = "\\bigoplus \\{\n" ++ intercalate "," (map texForm fs) ++ " \\} "
+texForm (Equi f g)    = " ( "++ texForm f ++" \\leftrightarrow "++ texForm g ++" ) "
+texForm (Impl f g)    = " ( "++ texForm f ++" \\rightarrow "++ texForm g ++" ) "
+texForm (Forall ps f) = " \\forall " ++ texPropSet ps ++ " " ++ texForm f
+texForm (Exists ps f) = " \\exists " ++ texPropSet ps ++ " " ++ texForm f
+texForm (K i f)       = "K_{\\text{" ++ i ++ "}} " ++ texForm f
+texForm (Kw i f)      = "K^?_{\\text{" ++ i ++ "}} " ++ texForm f
+texForm (Ck ags f)    = "Ck_{\\{\n" ++ intercalate "," ags ++ "\n\\}} " ++ texForm f
+texForm (Ckw ags f)   = "Ck^?_{\\{\n" ++ intercalate "," ags ++ "\n\\}} " ++ texForm f
+texForm (PubAnnounce f g)   = "[!" ++ texForm f ++ "] " ++ texForm g
+texForm (PubAnnounceW f g)  = "[?!" ++ texForm f ++ "] " ++ texForm g
+texForm (Announce ags f g)  = "[" ++ intercalate "," ags ++ "!" ++ texForm f ++ "] " ++ texForm g
+texForm (AnnounceW ags f g) = "[" ++ intercalate "," ags ++ "?!" ++ texForm f ++ "] " ++ texForm g
+
+testForm :: Form
+testForm = Forall [P 3] $ Equi (Disj [Bot,PrpF $ P 3,Bot]) (Conj [Top,Xor [Top,Kw alice (PrpF (P 4))], AnnounceW [alice,bob] (PrpF (P 5)) (Kw bob $ PrpF (P 5))  ])
+
+data BF = BF Form deriving (Eq,Ord,Show)
+
+instance Arbitrary BF where
+  arbitrary = sized randomboolform
+
+randomboolform ::  Int -> Gen BF
+randomboolform sz = BF <$> bf' sz' where
+  maximumvar = 1000
+  sz' = min maximumvar sz
+  bf' 0 = (PrpF . P) <$> choose (0, sz')
+  bf' n = oneof [ pure DELLANG.Top
+                , pure DELLANG.Bot
+                , (PrpF . P) <$> choose (0, sz')
+                , Neg <$> st
+                , (\x y -> Conj [x,y]) <$> st <*> st
+                , (\x y -> Disj [x,y]) <$> st <*> st
+                , Impl <$> st <*> st
+                , Equi <$> st <*> st
+                , (\x y -> Xor [x,y]) <$> st <*> st
+                , (\m f -> Exists [P m] f) <$> choose (0, maximumvar) <*> st
+                , (\m f -> Forall [P m] f) <$> randomvar <*> st
+                ]
+    where
+      st = bf' (n `div` 2)
+      randomvar = elements [0..maximumvar]

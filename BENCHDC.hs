@@ -11,9 +11,9 @@ import EXAMPLES (genDcKnsInit,genDcReveal)
 genDcCheckForm :: Int -> Form
 genDcCheckForm n = Impl (Neg (PrpF $ P 1)) $
   PubAnnounceW (Xor [genDcReveal n i | i<-[1..n] ]) $
-    Disj [ K 1 (Conj [Neg $ PrpF $ P k | k <- [1..n]  ])
-	 , Conj [ K 1 (Disj [ PrpF $ P k | k <- [2..n] ])
-		, Conj [ Neg $ K 1 (PrpF $ P k) | k <- [2..n] ] ] ]
+    Disj [ K "1" (Conj [Neg $ PrpF $ P k | k <- [1..n]  ])
+         , Conj [ K "1" (Disj [ PrpF $ P k | k <- [2..n] ])
+                , Conj [ Neg $ K "1" (PrpF $ P k) | k <- [2..n] ] ] ]
 
 genDcValid :: Int -> Bool
 genDcValid n = validViaBdd (genDcKnsInit n) (genDcCheckForm n)

@@ -1,10 +1,18 @@
 COMPILER = ghc
 GHCFLAGS = -Wall -pgml g++
-HOMEDIR = $(shell (cd && pwd))
 
-default:
-	$(COMPILER) $(GHCFLAGS) DEMO_S5.hs HELP.hs KRIPKEVIS.hs
-	$(COMPILER) $(GHCFLAGS) DELLANG.hs KRIPKEDEL.hs KNSCAC.hs SYMDEL.hs TEST.hs EXAMPLES.hs
+SMCDEL: *.hs
+	make Lex.o
+	make Parse.o
+	$(COMPILER) $(GHCFLAGS) SMCDEL.hs
+
+Lex.o: Lex.x
+	alex Lex.x
+	ghc -fno-warn-tabs Lex.hs
+
+Parse.o: Parse.y
+	happy Parse.y
+	ghc Parse.hs
 
 otherbdds:
 	$(COMPILER) $(GHCFLAGS) KNSCUDD.hs MyCUDD.hs KNSROB.hs KNSNOO.hs
@@ -15,17 +23,25 @@ BENCHMC:
 BENCHDC:
 	$(COMPILER) $(GHCFLAGS) BENCHDC.hs
 
+BENCHSAP:
+	$(COMPILER) $(GHCFLAGS) BENCHSAP.hs
+
 experiments:
-	$(COMPILER) $(GHCFLAGS) SAP.hs BDDREL.hs
+	$(COMPILER) $(GHCFLAGS) BDDREL.hs SAPTRANS.hs
 
 all:
-	make default
+	make SMCDEL
 	make otherbdds
 	make BENCHMC
 	make BENCHDC
+	make BENCHSAP
 	make experiments
 
 clean:
 	rm -f *.o *.hi
+	rm -f Lex.hs Parse.hs
 	rm -f BENCHMC
 	rm -f BENCHDC
+	rm -f BENCHSAP
+	rm -f SAPTRANS
+	rm -f SMCDEL
