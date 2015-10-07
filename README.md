@@ -9,7 +9,10 @@ See also: Johan van Benthem, Jan van Eijck, Malvin Gattinger, and Kaile Su: Symb
 
 ## Basic usage
 
-0) Install HasCacBDD from https://github.com/m4lvin/HasCacBDD
+0) Install dependencies:
+
+- HasCacBDD from https://github.com/m4lvin/HasCacBDD
+- cabal install alex happy
 
 1) Build the standalone executable by running "make".
 
