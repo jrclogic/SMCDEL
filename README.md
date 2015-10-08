@@ -11,8 +11,10 @@ See also: Johan van Benthem, Jan van Eijck, Malvin Gattinger, and Kaile Su: Symb
 
 0) Install dependencies:
 
-- HasCacBDD from https://github.com/m4lvin/HasCacBDD
-- cabal install alex happy
+- use the latest Haskell Platform from https://www.haskell.org/platform/
+- cabal update
+- cabal install alex happy ansi-terminal
+- get HasCacBDD from https://github.com/m4lvin/HasCacBDD
 
 1) Build the standalone executable by running "make".
 
