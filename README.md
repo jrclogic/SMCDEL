@@ -6,6 +6,10 @@ Complete literate Haskell documentation is in SMCDEL.pdf.
 
 See also: Johan van Benthem, Jan van Eijck, Malvin Gattinger, and Kaile Su: Symbolic Model Checking for Dynamic Epistemic Logic. In: Proceedings of The Fifth International Conference on Logic, Rationality and Interaction (LORI-V), 2015.
 
+## Online
+
+You can try SMCDEL online here: https://w4eg.de/malvin/illc/smcdelweb
+
 
 ## Basic usage
 
