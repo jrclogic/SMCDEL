@@ -1,0 +1,29 @@
+-- Three Dining Cryptographers in SMCDEL
+
+VARS  0,     -- the NSA paid
+      1,2,3, -- cryptographer i paid
+      4,5,6  -- shared bits/coins
+
+LAW -- exactly one person or the NSA paid
+  AND ( OR (0,1,2,3), ~(0&1), ~(0&2), ~(0&3),  ~(1&2), ~(1&3), ~(2&3) )
+
+OBS  alice: 1, 4,5
+     bob  : 2, 4,  6
+     carol: 3,   5,6
+
+VALID?  (alice,bob,carol) comknow that (OR (0,1,2,3))
+
+VALID?  alice knows whether 1
+
+VALID?
+  [?! XOR (1, 4, 5)] -- After everyone announces the
+  [?! XOR (2, 4, 6)] -- XOR of whether they paid and
+  [?! XOR (3, 5, 6)] -- the coins they see ...
+  AND (
+    -- if the NSA paid this is common knowledge:
+    0 -> (alice,bob,carol) comknow that 0,
+    -- if one of the agents paid, the others don't know that:
+    1 -> AND (~ bob knows that 1, ~ carol knows that 1),
+    2 -> AND (~ bob knows that 1, ~ carol knows that 3),
+    3 -> AND (~ bob knows that 1, ~ carol knows that 2)
+  )

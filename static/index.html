@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<head>
+<title>SCMDEL web</title>
+<title>Malvin Gattinger</title>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0" />
+<style type="text/css">
+body {
+  height:100%;
+  font-family: sans-serif; color:#333;
+  min-width:500px;
+}
+a {
+  color:brown;
+  text-decoration:none;
+}
+a:hover {
+  color: #666;
+  text-decoration:underline;
+}
+#left, #right {
+  float:left;
+  padding:2px;
+  margin:2px;
+  width:48%;
+  height:100%;
+  max-height:400px;
+  border:1px solid #666;
+}
+textarea, iframe {
+  width:100%;
+  margin:0px;
+  padding:0px;
+  height:100%;
+  min-height:400px;
+  border:none;
+  box-sizing: border-box;
+}
+.expbut {
+  padding:5px;
+  margin:0px;
+}
+#button {
+  font-weight:bold;
+  padding:5px;
+  margin:0px;
+}
+</style>
+</head>
+<body>
+<h1>SMCDEL web</h1>
+<form action="check" method="POST" target="output">
+<p>This is the web interface of <a href="https://github.com/jrclogic/SMCDEL">SMCDEL</a>, a symbolic model checker for Dynamic Epistemic Logic.
+See <a href="http://homepages.cwi.nl/~jve/papers/15/pdfs/del-bdd-lori-15.pdf">this paper</a> and <a href="https://github.com/jrclogic/SMCDEL/raw/master/SMCDEL.pdf">this technical report</a> for more information.</p>
+<div id="menubar">
+  Load Examples:
+  <input type="button" class="expbut" value="MuddyChildren" />
+  <input type="button" class="expbut" value="DrinkingLogicians" />
+  <input type="button" class="expbut" value="DiningCryptographers" />
+  or enter your own code on the left side, then click on
+  <input id="button" type="submit" value="Run SMCDEL!" />
+</div>
+<div id="left">
+  <textarea name="smcinput" id="smcinput" placeholder="Enter your code here."></textarea>
+</div>
+<div id="right">
+  <iframe name="output" id="output"></iframe>
+</div>
+</form>
+<script src='https://code.jquery.com/jquery-2.1.4.min.js'></script>
+<script>
+$('.expbut').click(function() {
+  $('#smcinput').val('... loading ...');
+  $.get("getExample?filename=" + $(this).val(),
+    function(data) {
+        $('#smcinput').val(data)
+    });
+});
+</script>
+<p style="clear:both; padding-top:1em; color:#666;">
+  Made by <a href="https://w4eg.de/malvin/">Malvin Gattinger</a>.
+  Using
+    <a href="https://www.haskell.org/alex">alex</a>,
+    <a href="https://www.haskell.org/happy">happy</a>,
+    <a href="https://mathjax.org/">MathJax</a>,
+    <a href="https://github.com/scotty-web/scotty">scotty</a>
+    and more awesome free software.
+</p>
+</body>
+</html>

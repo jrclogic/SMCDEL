@@ -1,0 +1,24 @@
+VARS 1,2,3
+
+LAW  Top
+
+OBS  a: 1
+     b: 2
+     c: 3
+
+VALID?
+  [ ! ~ a knows whether (1 & 2 & 3) ]
+  (a,b,c) comknow that 1
+
+
+VALID?
+  [ ! ~ a knows whether (1 & 2 & 3) ]
+  [ ! ~ b knows whether (1 & 2 & 3) ]
+  c knows whether (1 & 2 & 3)
+
+VALID?
+  ( < ! ~ a knows whether (1 & 2 & 3) >
+    < ! ~ b knows whether (1 & 2 & 3) >
+    < ! c knows that (1 & 2 & 3) > Top )
+  iff
+    (1 & 2 & 3)

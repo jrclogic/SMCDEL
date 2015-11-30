@@ -1,0 +1,23 @@
+resolver: lts-3.11
+
+packages:
+- '.'
+- location:
+    git: git@github.com:m4lvin/HasCacBDD
+    commit: 7bcfdb200d444c04ae43b0c528b1cc10fc0620a0
+- location:
+    git: git@github.com:m4lvin/robbed
+    commit: 2da98a318abdfe52dc237290d40b25fd33e34658
+- location:
+    git: git@github.com:m4lvin/hBDD
+    commit: 261c645d0f8deb0422e9b93283382e744ac74c1c
+  subdirs:
+  - .
+  - hBDD-CUDD
+- location:
+    git: git@github.com:m4lvin/NooBDD
+    commit: 81bc83cee18ee7cc51e36b5437d2890330906d75
+
+extra-deps:
+- graphviz-2999.18.0.2
+- z3-4.1.0

@@ -1,0 +1,172 @@
+name:                smcdel
+version:             0.1.0.0
+synopsis:            Symbolic Model Checking for Dynamic Epistemic Logic
+description:         See README.md
+homepage:            http://github.com/jrclogic/SMCDEL
+author:              Malvin Gattinger
+maintainer:          malvin@w4eg.eu
+copyright:           2015 Malvin Gattinger
+category:            Web
+build-type:          Simple
+cabal-version:       >=1.10
+
+Library
+  ghc-options:        -Wall
+  default-language:   Haskell2010
+  hs-source-dirs:     src
+  exposed-modules:    SMCDEL.Language,
+                      SMCDEL.Explicit.Simple,
+                      SMCDEL.Explicit.DEMO_S5,
+                      SMCDEL.Symbolic.HasCacBDD,
+                      SMCDEL.Symbolic.CUDD,
+                      SMCDEL.Symbolic.Robbed,
+                      SMCDEL.Symbolic.NooBDD,
+                      SMCDEL.Symbolic.SatZ3,
+                      SMCDEL.Translations,
+                      SMCDEL.Examples,
+                      SMCDEL.Test,
+                      SMCDEL.Other.NonS5,
+                      SMCDEL.Other.MCTRIANGLE,
+                      SMCDEL.Other.BDD2Form
+  other-modules:      SMCDEL.Internal.MyCUDD,
+                      SMCDEL.Internal.Help,
+                      SMCDEL.Internal.KripkeVis
+  build-depends:      base >= 4.7 && < 5,
+                      array,
+                      containers,
+                      graphviz,
+                      HasCacBDD,
+                      hBDD-CUDD,
+                      NooBDD,
+                      z3,
+                      process,
+                      QuickCheck,
+                      robbed,
+                      random
+
+Executable smcdel
+  ghc-options:        -Wall
+  default-language:   Haskell2010
+  hs-source-dirs:     src
+  main-is:            MainCLI.hs
+  build-tools:        alex, happy
+  build-depends:      base >= 4.7 && < 5,
+                      ansi-terminal,
+                      array,
+                      directory,
+                      filepath,
+                      HasCacBDD,
+                      process,
+                      QuickCheck,
+                      scotty,
+                      smcdel,
+                      text,
+                      transformers
+  other-modules:      SMCDEL.Internal.Help,
+                      SMCDEL.Language
+                      SMCDEL.Internal.Lex,
+                      SMCDEL.Internal.Parse,
+                      SMCDEL.Internal.Token
+                      SMCDEL.Symbolic.HasCacBDD
+
+Benchmark bench-diningcrypto
+  ghc-options:        -Wall
+  hs-source-dirs:     src
+  default-language:   Haskell2010
+  main-is:            SMCDEL/Bench/DiningCrypto.lhs
+  type:               exitcode-stdio-1.0
+  build-depends:      base >= 4.7 && < 5,
+                      HasCacBDD,
+                      smcdel,
+                      QuickCheck,
+                      process,
+                      time
+  other-modules:      SMCDEL.Examples,
+                      SMCDEL.Explicit.Simple,
+                      SMCDEL.Internal.Help,
+                      SMCDEL.Internal.KripkeVis,
+                      SMCDEL.Language,
+                      SMCDEL.Symbolic.HasCacBDD,
+                      SMCDEL.Translations
+
+Benchmark bench-sumandproduct
+  ghc-options:        -Wall
+  hs-source-dirs:     src
+  default-language:   Haskell2010
+  main-is:            SMCDEL/Bench/SumAndProduct.lhs
+  type:               exitcode-stdio-1.0
+  build-depends:      base >= 4.7 && < 5,
+                      HasCacBDD,
+                      smcdel,
+                      QuickCheck,
+                      process,
+                      time
+  other-modules:      SMCDEL.Examples
+                      SMCDEL.Explicit.DEMO_S5
+                      SMCDEL.Explicit.Simple
+                      SMCDEL.Internal.Help
+                      SMCDEL.Internal.KripkeVis
+                      SMCDEL.Language
+                      SMCDEL.Symbolic.HasCacBDD
+                      SMCDEL.Translations
+
+Benchmark bench-muddychildren
+  ghc-options:        -Wall
+  hs-source-dirs:     src
+  default-language:   Haskell2010
+  main-is:            SMCDEL/Bench/MuddyChildren.lhs
+  type:               exitcode-stdio-1.0
+  build-depends:      base >= 4.7 && < 5,
+                      graphviz,
+                      HasCacBDD,
+                      smcdel,
+                      QuickCheck,
+                      hBDD-CUDD,
+                      z3,
+                      process,
+                      time,
+                      NooBDD,
+                      robbed
+  other-modules:      SMCDEL.Examples
+                      SMCDEL.Explicit.DEMO_S5
+                      SMCDEL.Explicit.Simple
+                      SMCDEL.Internal.Help
+                      SMCDEL.Internal.KripkeVis
+                      SMCDEL.Internal.MyCUDD
+                      SMCDEL.Language
+                      SMCDEL.Other.MCTRIANGLE
+                      SMCDEL.Symbolic.CUDD
+                      SMCDEL.Symbolic.HasCacBDD
+                      SMCDEL.Symbolic.NooBDD
+                      SMCDEL.Symbolic.Robbed
+                      SMCDEL.Symbolic.SatZ3
+                      SMCDEL.Translations
+
+Executable smcdel-web
+  ghc-options:        -Wall
+  default-language:   Haskell2010
+  hs-source-dirs:     src
+  main-is:            MainWEB.hs
+  build-tools:        alex, happy
+  build-depends:      base >= 4.7 && < 5,
+                      process,
+                      scotty,
+                      file-embed,
+                      QuickCheck,
+                      HasCacBDD,
+                      smcdel,
+                      text,
+                      array,
+                      wai-middleware-static,
+                      transformers
+  other-modules:      SMCDEL.Examples,
+                      SMCDEL.Explicit.Simple,
+                      SMCDEL.Internal.Files,
+                      SMCDEL.Internal.Help,
+                      SMCDEL.Internal.KripkeVis,
+                      SMCDEL.Internal.Lex,
+                      SMCDEL.Internal.Parse,
+                      SMCDEL.Internal.Token,
+                      SMCDEL.Language,
+                      SMCDEL.Symbolic.HasCacBDD,
+                      SMCDEL.Translations
