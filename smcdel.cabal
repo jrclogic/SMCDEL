@@ -19,8 +19,6 @@ Library
                       SMCDEL.Explicit.DEMO_S5,
                       SMCDEL.Symbolic.HasCacBDD,
                       SMCDEL.Symbolic.CUDD,
-                      SMCDEL.Symbolic.Robbed,
-                      SMCDEL.Symbolic.NooBDD,
                       SMCDEL.Symbolic.SatZ3,
                       SMCDEL.Translations,
                       SMCDEL.Examples,

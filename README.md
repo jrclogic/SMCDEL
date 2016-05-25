@@ -17,8 +17,9 @@ You can try SMCDEL online here: https://w4eg.de/malvin/illc/smcdelweb
 1) Use *stack* from https://www.stackage.org
 
 - `stack build` will compile everything. This might fail if one of
-  the BDD packages written in C and C++ is missing. See `Makefile`
-  for extra library paths and try `make` instead.
+  the BDD packages written in C and C++ is missing. In this case,
+  install those manually and then try `stack build` again.
+
 - `stack install` will put two executables `smcdel` and `smcdel-web`
   into ~/.local/bin which should be in your PATH variable.
 
@@ -66,13 +67,10 @@ Examples can be found in `Examples.hs` and the `Bench` folder.
 SMCDEL can be used with four different BDD packages. To compile and
 run the benchmarks you will have to install all of them.
 
-- [Data.HasCacBDD](https://github.com/m4lvin/HasCacBDD) from  which runs CacBDD from http://kailesu.net/CacBDD/
-- [Data.Boolean.CUDD](https://github.com/peteg/hBDD) ([with some patches](https://github.com/m4lvin/hBDD))
-- [Data.ROBDD](https://github.com/travitch/robbed)
-- [Data.NooBDD](https://github.com/m4lvin/NooBDD)
+- [Data.HasCacBDD](https://github.com/m4lvin/HasCacBDD) which runs CacBDD from <http://kailesu.net/CacBDD/>
+- [Cudd](https://github.com/davidcock/cudd) ([with some patches](https://github.com/m4lvin/cudd))
 
 ## Experimental Stuff
 
-- `SMCDEL.Symbolic.SatZ3` uses the SAT solver Z3 for symbolic evaluation.
-- `SMCDEL.Other.NonS5` implements general knowledge structures. They are
-  equivalent to Kripke models which are not based on equivalence relations.
+`SMCDEL.Other.NonS5` implements general knowledge structures. They are
+equivalent to Kripke models which are not based on equivalence relations.

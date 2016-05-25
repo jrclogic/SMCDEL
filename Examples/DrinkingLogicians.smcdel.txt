@@ -1,3 +1,5 @@
+-- Three Drinking Logicians, see http://spikedmath.com/445.html
+
 VARS 1,2,3
 
 LAW  Top

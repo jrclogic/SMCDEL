@@ -10,9 +10,6 @@ import SMCDEL.Examples
 import qualified SMCDEL.Explicit.DEMO_S5
 import qualified SMCDEL.Symbolic.HasCacBDD
 import qualified SMCDEL.Symbolic.CUDD
-import qualified SMCDEL.Symbolic.Robbed
-import qualified SMCDEL.Symbolic.NooBDD
-import qualified SMCDEL.Symbolic.SatZ3
 import qualified SMCDEL.Other.MCTRIANGLE
 
 checkForm :: Int -> Int -> Form
@@ -36,17 +33,8 @@ findNumberCUDD :: Int -> Int -> Int
 findNumberCUDD = findNumberWith (cuddMudScnInit,SMCDEL.Symbolic.CUDD.evalViaBdd) where
   cuddMudScnInit n m = ( SMCDEL.Symbolic.CUDD.KnS (mudPs n) (SMCDEL.Symbolic.CUDD.boolBddOf Top) [ (show i,delete (P i) (mudPs n)) | i <- [1..n] ], [P 1 .. P m] )
 
-findNumberRobBDD :: Int -> Int -> Int
-findNumberRobBDD = findNumberWith (robMudScnInit,SMCDEL.Symbolic.Robbed.evalViaBdd) where
-  robMudScnInit n m = ( SMCDEL.Symbolic.Robbed.KnS (mudPs n) (SMCDEL.Symbolic.Robbed.boolBddOf Top) [ (show i,delete (P i) (mudPs n)) | i <- [1..n] ], [P 1 .. P m] )
 
-findNumberNooBDD :: Int -> Int -> Int
-findNumberNooBDD = findNumberWith (nooMudScnInit,SMCDEL.Symbolic.NooBDD.evalViaBdd) where
-  nooMudScnInit n m = ( SMCDEL.Symbolic.NooBDD.KnS (mudPs n) (SMCDEL.Symbolic.NooBDD.boolBddOf Top) [ (show i,delete (P i) (mudPs n)) | i <- [1..n] ], [P 1 .. P m] )
 
-findNumberZ3 :: Int -> Int -> Int
-findNumberZ3 = findNumberWith (z3MudScnInit,SMCDEL.Symbolic.SatZ3.evalViaZ3) where
-  z3MudScnInit n m = ( SMCDEL.Symbolic.SatZ3.KnS (mudPs n) (SMCDEL.Symbolic.SatZ3.boolAstOf Top) [ (show i,delete (P i) (mudPs n)) | i <- [1..n] ], [P 1 .. P m] )
 
 mudDemoKrpInit :: Int -> Int -> SMCDEL.Explicit.DEMO_S5.EpistM [Bool]
 mudDemoKrpInit n m = SMCDEL.Explicit.DEMO_S5.Mo states agents [] rels points where
@@ -116,10 +104,7 @@ main = do
   let methodList = [ ("Triangle  ", findNumberTriangle)
                    , ("HasCacBDD ", findNumberCacBDD  )
                    , ("CUDD      ", findNumberCUDD    )
-                   , ("Robbed    ", findNumberRobBDD  )
-                   , ("NooBDD    ", findNumberNooBDD  )
                    , ("DEMO-S5   ", findNumberDemo    )
-                   , ("SatZ3     ", findNumberZ3      )
                    ]
   putStrLn $ "n\t" ++ concatMap ((++ "\t").fst) methodList
   mainLoop (zip (repeat True) (map snd methodList)) ([3..40]++[50,60,70,80,90,100]) limit
