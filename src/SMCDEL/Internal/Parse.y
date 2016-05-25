@@ -51,6 +51,7 @@ import SMCDEL.Language
 %%
 
 CheckInput : VARS IntList LAW Form OBS ObserveSpec JobList { CheckInput $2 $4 $6 $7 }
+           | VARS IntList LAW Form OBS ObserveSpec { CheckInput $2 $4 $6 [] }
 IntList : INT { [$1] }
         | INT COMMA IntList { $1:$3 }
 Form : TOP { Top }

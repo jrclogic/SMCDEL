@@ -1,14 +1,19 @@
 
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, MultiParamTypeClasses, FlexibleContexts #-}
+
 module SMCDEL.Other.NonS5 where
+import Control.Arrow ((&&&))
 import Data.HasCacBDD hiding (Top,Bot)
-import Data.List (nub,intercalate,sort,(\\))
-import Data.Map.Strict (Map,fromList,elems,(!))
+import Data.List (nub,intercalate,sort,(\\),delete)
+import Data.Map.Strict (Map,fromList,elems,(!),mapMaybeWithKey,mapKeys,union)
 import qualified Data.Map.Strict
 import Data.Maybe (fromJust)
 import SMCDEL.Language
-import SMCDEL.Symbolic.HasCacBDD (Scenario,KnState,texBDD)
-import SMCDEL.Explicit.Simple
-import SMCDEL.Translations
+import SMCDEL.Symbolic.HasCacBDD (Scenario,KnState,texBDD,boolBddOf)
+import SMCDEL.Explicit.Simple (PointedModel,KripkeModel(KrM),State)
+import SMCDEL.Translations hiding (voc)
+import SMCDEL.Internal.Help (alleq)
+import SMCDEL.Internal.TexDisplay
 
 problemPM :: PointedModel
 problemPM = ( KrM [0,1,2,3] [ (alice,[[0],[1,2,3]]), (bob,[[0,1,2],[3]]) ]
@@ -72,8 +77,6 @@ examplePointedModel = (exampleModel,1)
 
 distinctVal :: GeneralKripkeModel a -> Bool
 distinctVal m = Data.Map.Strict.size m == length (nub (map fst (elems m)))
--- TODO: improve this with:
--- let xs = M.fromList [(1, '1'), (2, '2')] in M.size xs == (M.size . M.fromList . fmap swap $ M.toList xs)
 
 vocOf :: GeneralKripkeModel a -> [Prp]
 vocOf m = Data.Map.Strict.keys $ fst (head (Data.Map.Strict.elems m))
@@ -86,6 +89,51 @@ relOfIn i = Data.Map.Strict.map (\x -> snd x ! i)
 
 truthsInAt :: Ord a => GeneralKripkeModel a -> a -> [Prp]
 truthsInAt m w = Data.Map.Strict.keys (Data.Map.Strict.filter id (fst (m ! w)))
+
+eval :: Ord a => GeneralPointedModel a -> Form -> Bool
+eval _     Top           = True
+eval _     Bot           = False
+eval (m,w) (PrpF p)      = p `elem` truthsInAt m w
+eval pm    (Neg f)       = not $ eval pm f
+eval pm    (Conj fs)     = all (eval pm) fs
+eval pm    (Disj fs)     = any (eval pm) fs
+eval pm    (Xor  fs)     = odd $ length (filter id $ map (eval pm) fs)
+eval pm    (Impl f g)    = not (eval pm f) || eval pm g
+eval pm    (Equi f g)    = eval pm f == eval pm g
+eval pm    (Forall ps f) = eval pm (foldl singleForall f ps) where
+  singleForall g p = Conj [ substit p Top g, substit p Bot g ]
+eval pm    (Exists ps f) = eval pm (foldl singleExists f ps) where
+  singleExists g p = Disj [ substit p Top g, substit p Bot g ]
+eval (m,w) (K   i f)     = all (\w' -> eval (m,w') f) (snd (m ! w) ! i)
+eval _     (Ck  _ _)     = error "eval: Ck not implemented "
+eval (m,w) (Kw  i f)     = alleq (\w' -> eval (m,w') f) (snd (m ! w) ! i)
+eval _     (Ckw _ _)     = error "eval: Ck not implemented "
+eval (m,w) (PubAnnounce f g) = not (eval (m,w) f) || eval (pubAnnounceNonS5 m f,w) g
+eval (m,w) (PubAnnounceW f g) = eval (pubAnnounceNonS5 m aform, w) g where
+  aform | eval (m,w) f = f
+        | otherwise     = Neg f
+eval (m,w) (Announce is f g) =
+  not (eval (m,w) f) || eval (announceNonS5 m is f, (w,True)) g
+eval (m,w) (AnnounceW is f g) = eval (announceNonS5 m is aform, (w,True)) g where
+  aform | eval (m,w) f = f
+        | otherwise    = Neg f
+
+pubAnnounceNonS5 :: Ord a => GeneralKripkeModel a -> Form -> GeneralKripkeModel a
+pubAnnounceNonS5 m f = newm where
+  newm = mapMaybeWithKey isin m
+  isin w' (v,rs) | eval (m,w') f = Just (v,Data.Map.Strict.map newr rs)
+                 | otherwise     = Nothing
+  newr = filter (`elem` Data.Map.Strict.keys newm)
+
+announceNonS5 :: Ord a => GeneralKripkeModel a -> [Agent] -> Form -> GeneralKripkeModel (a,Bool)
+announceNonS5 m is f = oldm `union` addm where
+  oldm        = mapKeys (\k -> (k,False)) $ Data.Map.Strict.map fixr m
+  fixr (v,rs) = (v, Data.Map.Strict.map (map (\k -> (k,False))) rs)
+  addm        = mapKeys (\k -> (k,True)) $ mapMaybeWithKey copy m
+  copy w' (v,rs) | eval (m,w') f = Just (v,Data.Map.Strict.mapWithKey copyr rs)
+                 | otherwise     = Nothing
+  copyr i rs | i `elem` is = map (\k -> (k,True)) rs
+             | otherwise   = map (\k -> (k,False)) rs
 
 relBddOfIn :: Ord a =>  Agent -> GeneralKripkeModel a -> RelBDD
 relBddOfIn i m
@@ -100,7 +148,7 @@ relBddOfIn i m
         here = Data.Map.Strict.keys (Data.Map.Strict.filter id mapPropBool)
         theres = map (truthsInAt m) (mapAgentReach ! i)
 
-data GenKnowStruct = GenKnS [Prp] Bdd (Map Agent RelBDD) deriving (Show)
+data GenKnowStruct = GenKnS [Prp] Bdd (Map Agent RelBDD) deriving (Eq,Show)
 
 type GenScenario = (GenKnowStruct,[Prp])
 
@@ -122,18 +170,32 @@ bddOf kns@(GenKnS allprops lawbdd obdds) (K i form) = unmvBdd result where
   ps'    = map fromEnum $ cp allprops
   omegai = obdds ! i
 
-bddOf _ (Kw _ _) = error "bddOf failed: Kw not implemented"
+bddOf kns@(GenKnS allprops lawbdd obdds) (Kw i form) = unmvBdd result where
+  result = disSet (map part [form, Neg form])
+  part f = forallSet ps' (cpBdd lawbdd `imp` (omegai `imp` cpBdd (bddOf kns f)))
+  ps'    = map fromEnum $ cp allprops
+  omegai = obdds ! i
 
-bddOf _ (Ck _ _)  = error "bddOf failed: Ck not implemented"
-bddOf _ (Ckw _ _) = error "bddOf failed: Ckw not implemented"
+bddOf _ (Ck _ _)  = error "bddOf: Ck not implemented"
+bddOf _ (Ckw _ _) = error "bddOf: Ckw not implemented"
 
-bddOf kns@(GenKnS allprops lawbdd obdds) (PubAnnounce f g) = imp (bddOf kns f) g' where
-  g' = bddOf newkns g
-  newkns = GenKnS allprops (con lawbdd (bddOf kns f)) obdds
-bddOf _ (PubAnnounceW _ _) = error "bddOf failed: PubAnnounceW not implemented"
+bddOf kns (PubAnnounce f g) =
+  imp (bddOf kns f) (bddOf (pubAnnounce kns f) g)
+bddOf kns (PubAnnounceW f g) =
+  ifthenelse (bddOf kns f)
+    (bddOf (pubAnnounce kns f      ) g)
+    (bddOf (pubAnnounce kns (Neg f)) g)
 
-bddOf _ (Announce{}) = error "bddOf failed: Announce not implemented"
-bddOf _ (AnnounceW{}) = error "bddOf failed: AnnounceW not implemented"
+bddOf kns@(GenKnS props _ _) (Announce ags f g) =
+  imp (bddOf kns f) (restrict bdd2 (k,True)) where
+    bdd2  = bddOf (announce kns ags f) g
+    (P k) = freshp props
+
+bddOf kns@(GenKnS props _ _) (AnnounceW ags f g) =
+  ifthenelse (bddOf kns f) bdd2a bdd2b where
+    bdd2a = restrict (bddOf (announce kns ags f) g) (k,True)
+    bdd2b = restrict (bddOf (announce kns ags f) g) (k,False)
+    (P k) = freshp props
 
 validViaBdd :: GenKnowStruct -> Form -> Bool
 validViaBdd kns@(GenKnS _ lawbdd _) f = top == imp lawbdd (bddOf kns f)
@@ -148,35 +210,44 @@ evalViaBdd (kns@(GenKnS allprops _ _),s) f = let
       (_,True) -> False
       _        -> error "evalViaBdd failed: Composite BDD leftover."
 
-statesOf :: GenKnowStruct -> [KnState]
-statesOf (GenKnS allprops lawbdd _) = map (sort.translate) resultlists where
-  resultlists = map (map convToProp) $ allSatsWith (map (\(P n) -> n) allprops) lawbdd :: [[(Prp, Bool)]]
-  convToProp (n,bool) = (P n,bool)
-  translate l = map fst (filter snd l)
-
 pubAnnounce :: GenKnowStruct -> Form -> GenKnowStruct
-pubAnnounce kns@(GenKnS props lawbdd obs) psi = GenKnS props newlawbdd obs where
-  newlawbdd = con lawbdd (bddOf kns psi)
+pubAnnounce kns@(GenKnS allprops lawbdd obs) f =
+  GenKnS allprops (con lawbdd (bddOf kns f)) obs
 
 pubAnnounceOnScn :: GenScenario -> Form -> GenScenario
 pubAnnounceOnScn (kns,s) psi = if evalViaBdd (kns,s) psi
                                  then (SMCDEL.Other.NonS5.pubAnnounce kns psi,s)
                                  else error "Liar!"
 
-texGenStructure :: GenScenario -> String -> IO String
-texGenStructure (GenKnS props lawbdd obdds, state) filename = do
-  let (bddprefix,bddsuffix) = ("\\begin{array}{l} \\scalebox{0.3}{", "} \\end{array} \n")
-  lawbddtex <- texBDD lawbdd
-  obddstringspure <- mapM  (texBDD . snd) (Data.Map.Strict.toList obdds)
-  let obddstringpairs = zip (map fst (Data.Map.Strict.toList obdds)) obddstringspure
-  let obddstrings = map ( \(i,os) -> "O_{\\text{" ++ i ++ "}} = " ++ bddprefix ++ os ++ bddsuffix ) obddstringpairs
-  let fullstring = " \\left( \n"
-        ++ texPropSet props ++ ", "
-        ++ bddprefix ++ lawbddtex ++ bddsuffix
-        ++ ", " ++ intercalate ", " obddstrings
-        ++ " \\right) , " ++ texPropSet state
-  _ <- writeFile ("tmp/" ++ filename ++ ".tex") fullstring
-  return ("Structure was TeX'd to"++filename)
+announce :: GenKnowStruct -> [Agent] -> Form -> GenKnowStruct
+announce kns@(GenKnS props lawbdd obdds) ags psi = GenKnS newprops newlawbdd newobdds where
+  proppsi@(P k) = freshp props
+  [P k'] = cp [proppsi]
+  newprops  = proppsi:props
+  newlawbdd = con lawbdd (imp (var k) (bddOf kns psi))
+  newobdds  = Data.Map.Strict.mapWithKey newOfor obdds
+  newOfor i oi | i `elem` ags = con oi (equ (var k) (var k'))
+               | otherwise    = con oi (neg (var k')) -- p_psi'
+
+statesOf :: GenKnowStruct -> [KnState]
+statesOf (GenKnS allprops lawbdd _) = map (sort.translate) resultlists where
+  resultlists = map (map convToProp) $ allSatsWith (map (\(P n) -> n) allprops) lawbdd :: [[(Prp, Bool)]] -- FIXME ugly
+  convToProp (n,bool) = (P n,bool)
+  translate l = map fst (filter snd l)
+
+instance TexAble GenScenario where
+  tex (GenKnS props lawbdd obdds, state) = concat
+    [ " \\left( \n"
+    , tex props, ", "
+    , bddprefix, texBDD lawbdd, bddsuffix
+    , ", "
+    , intercalate ", " obddstrings
+    , " \\right) , "
+    , tex state
+    ] where
+        (bddprefix,bddsuffix) = ("\\begin{array}{l} \\scalebox{0.3}{", "} \\end{array} \n")
+        obddstrings =
+          map ( (\(i,os) -> "O_{\\text{" ++ i ++ "}} = " ++ bddprefix ++ os ++ bddsuffix).(fst &&& (texBDD . snd)) ) (Data.Map.Strict.toList obdds)
 
 genKrp2Kns :: Ord a => GeneralPointedModel a -> GenScenario
 genKrp2Kns (m, cur) = (GenKnS voc lawbdd obdds, truthsInAt m cur) where
@@ -191,3 +262,16 @@ exampleGenScn = genKrp2Kns examplePointedModel
 exampleGenStruct :: GenKnowStruct
 exampleGenState :: KnState
 (exampleGenStruct,exampleGenState) = exampleGenScn
+
+allsamebdd :: [Prp] -> RelBDD
+allsamebdd ps = conSet [boolBddOf $ PrpF p `Equi` PrpF p' | (p,p') <- zip (mv ps) (cp ps)]
+
+mudGenScnInit :: Int -> Int -> GenScenario
+mudGenScnInit n m = (GenKnS vocab law obs, actual) where
+  vocab  = [P 1 .. P n]
+  law    = boolBddOf Top
+  obs    = fromList [(show i, allsamebdd $ delete (P i) vocab) | i <- [1..n]]
+  actual = [P 1 .. P m]
+
+myMudGenScnInit :: GenScenario
+myMudGenScnInit = mudGenScnInit 3 3

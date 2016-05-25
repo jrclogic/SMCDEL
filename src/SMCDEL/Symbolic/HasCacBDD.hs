@@ -1,12 +1,16 @@
 
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, MultiParamTypeClasses, FlexibleContexts #-}
+
 module SMCDEL.Symbolic.HasCacBDD where
 import Data.HasCacBDD hiding (Top,Bot)
 import Data.HasCacBDD.Visuals
 import Data.List (sort,intercalate,(\\))
 import System.IO (hPutStr, hGetContents, hClose)
+import System.IO.Unsafe (unsafePerformIO)
 import System.Process (runInteractiveCommand)
-import SMCDEL.Internal.Help (alleq,apply,rtc)
+import SMCDEL.Internal.Help (alleq,apply,rtc,seteq)
 import SMCDEL.Language
+import SMCDEL.Internal.TexDisplay
 
 boolBddOf :: Form -> Bdd
 boolBddOf Top           = top
@@ -46,9 +50,6 @@ numberOfStates (KnS ps lawbdd _) = satCountWith (map (\(P n) -> n) ps) lawbdd
 restrictState :: KnState -> [Prp] -> KnState
 restrictState s props = filter (`elem` props) s
 
-seteq :: Ord a => Eq a => [a] -> [a] -> Bool
-seteq as bs = sort as == sort bs
-
 shareknow :: KnowStruct -> [[Prp]] -> [(KnState,KnState)]
 shareknow kns sets = filter rel [ (s,t) | s <- statesOf kns, t <- statesOf kns ] where
   rel (x,y) = or [ seteq (restrictState x set) (restrictState y set) | set <- sets ]
@@ -80,34 +81,39 @@ eval (kns,s) (Ck ags form)  = all (\s' -> eval (kns,s') form) theres where
   theres = filter (\s' -> (sort s, sort s') `elem` comknow kns ags) (statesOf kns)
 eval (kns,s) (Ckw ags form)  = alleq (\s' -> eval (kns,s') form) theres where
   theres = filter (\s' -> (sort s, sort s') `elem` comknow kns ags) (statesOf kns)
-eval (kns,s) (PubAnnounce form1 form2) =
-  not (eval (kns, s) form1) || eval (pubAnnounce kns form1, s) form2
+eval scn (PubAnnounce form1 form2) =
+  not (eval scn form1) || eval (pubAnnounceOnScn scn form1) form2
 eval (kns,s) (PubAnnounceW form1 form2) =
   if eval (kns, s) form1
     then eval (pubAnnounce kns form1, s) form2
     else eval (pubAnnounce kns (Neg form1), s) form2
-eval (kns@(KnS props _ _),s) (Announce ags form1 form2) =
-  not (eval (kns, s) form1) || eval (announce kns ags form1, freshp props : s) form2
-eval (kns,s) (AnnounceW ags form1 form2) =
-  if eval (kns, s) form1
-    then eval (announce kns ags form1, s) form2
-    else eval (announce kns ags (Neg form1), s) form2
+eval scn (Announce ags form1 form2) =
+  not (eval scn form1) || eval (announceOnScn scn ags form1) form2
+eval scn (AnnounceW ags form1 form2) =
+  if eval scn form1
+    then eval (announceOnScn scn ags form1      ) form2
+    else eval (announceOnScn scn ags (Neg form1)) form2
 
 pubAnnounce :: KnowStruct -> Form -> KnowStruct
 pubAnnounce kns@(KnS props lawbdd obs) psi = KnS props newlawbdd obs where
   newlawbdd = con lawbdd (bddOf kns psi)
 
 pubAnnounceOnScn :: Scenario -> Form -> Scenario
-pubAnnounceOnScn (kns,s) psi = if eval (kns,s) psi
-                                 then (pubAnnounce kns psi,s)
-                                 else error "Liar!"
+pubAnnounceOnScn (kns,s) psi
+  | eval (kns,s) psi = (pubAnnounce kns psi,s)
+  | otherwise        = error "Liar!"
 
 announce :: KnowStruct -> [Agent] -> Form -> KnowStruct
 announce kns@(KnS props lawbdd obs) ags psi = KnS newprops newlawbdd newobs where
   proppsi@(P k) = freshp props
   newprops  = proppsi:props
-  newlawbdd = con lawbdd (imp (var k) (bddOf kns psi))
+  newlawbdd = con lawbdd (equ (var k) (bddOf kns psi))
   newobs    = [(i, apply obs i ++ [proppsi | i `elem` ags]) | i <- map fst obs]
+
+announceOnScn :: Scenario -> [Agent] -> Form -> Scenario
+announceOnScn (kns@(KnS props _ _),s) ags psi
+  | eval (kns,s) psi = (announce kns ags psi, freshp props : s)
+  | otherwise        = error "Liar!"
 
 bddOf :: KnowStruct -> Form -> Bdd
 bddOf _   Top           = top
@@ -140,8 +146,8 @@ bddOf kns@(KnS props _ _) (AnnounceW ags form1 form2) =
     bdd2a = restrict (bddOf (announce kns ags form1) form2) (k,True)
     bdd2b = restrict (bddOf (announce kns ags form1) form2) (k,False)
     (P k) = freshp props
-bddOf kns (PubAnnounce form1 form2) = imp (bddOf kns form1) newform2 where
-    newform2 = bddOf (pubAnnounce kns form1) form2
+bddOf kns (PubAnnounce form1 form2) =
+  imp (bddOf kns form1) (bddOf (pubAnnounce kns form1) form2)
 bddOf kns (PubAnnounceW form1 form2) =
   ifthenelse (bddOf kns form1) newform2a newform2b where
     newform2a = bddOf (pubAnnounce kns form1) form2
@@ -159,7 +165,7 @@ validViaBdd :: KnowStruct -> Form -> Bool
 validViaBdd kns@(KnS _ lawbdd _) f = top == lawbdd `imp` bddOf kns f
 
 whereViaBdd :: KnowStruct -> Form -> [KnState]
-whereViaBdd kns f = statesOf (pubAnnounce kns f) -- FIXME we can do better than updating... How do we ask the BDD package. when the BDD of law and f together is satisfied?!
+whereViaBdd kns f = statesOf (pubAnnounce kns f)
 
 data KnowTransf = KnT [Prp] Form [(Agent,[Prp])] deriving (Eq,Show)
 type Event = (KnowTransf,KnState)
@@ -173,26 +179,22 @@ knowTransform (kns@(KnS props lawbdd obs),s) (KnT addprops addlaw eventobs, even
     newlawbdd = con lawbdd (bddOf kns shiftaddlaw)
     shifteventfacts = map (apply shiftrel) eventfacts
 
-texBDD :: Bdd -> IO String
-texBDD b = do
+texBDD :: Bdd -> String
+texBDD b = unsafePerformIO $ do
   (i,o,_,_) <- runInteractiveCommand "dot2tex --figpreamble=\"\\huge\" --figonly -traw"
   hPutStr i (genGraph b ++ "\n")
   hClose i
   hGetContents o
 
-getTexStructure :: Scenario -> IO String
-getTexStructure (KnS props lawbdd obs, state) = do
-  lawbddtex <- texBDD lawbdd
-  return $ " \\left( \n"
-    ++ texPropSet props ++ ", "
-    ++ " \\begin{array}{l} \\scalebox{0.4}{"++lawbddtex++"} \\end{array}\n "
-    ++ ", \\begin{array}{l}\n"
-    ++ intercalate " \\\\\n " (map (\(_,os) -> (texPropSet os)) obs)
-    ++ "\\end{array}\n"
-    ++ " \\right) , " ++ texPropSet state
-
-texStructure :: Scenario -> String -> IO String
-texStructure scn filename = do
-  fullstring <- getTexStructure scn
-  _ <- writeFile ("tmp/" ++ filename ++ ".tex") fullstring
-  return ("Structure was TeX'd to"++filename)
+instance TexAble Scenario where
+  tex (KnS props lawbdd obs, state) = concat
+    [ " \\left( \n"
+    , tex props ++ ", "
+    , " \\begin{array}{l} \\scalebox{0.4}{"
+    , texBDD lawbdd
+    , "} \\end{array}\n "
+    , ", \\begin{array}{l}\n"
+    , intercalate " \\\\\n " (map (\(_,os) -> (tex os)) obs)
+    , "\\end{array}\n"
+    , " \\right) , "
+    , tex state ]

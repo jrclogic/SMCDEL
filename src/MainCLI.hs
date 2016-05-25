@@ -12,12 +12,14 @@ import System.FilePath.Posix (takeBaseName)
 import System.IO (Handle,hClose,hPutStrLn,stderr,stdout,openTempFile)
 import SMCDEL.Internal.Lex
 import SMCDEL.Internal.Parse
+import SMCDEL.Internal.TexDisplay
 import SMCDEL.Language
 import SMCDEL.Symbolic.HasCacBDD
 
 main :: IO ()
 main = do
   (input,options) <- getInputAndSettings
+  print options
   let showMode = "-show" `elem` options
   let texMode = "-tex" `elem` options || showMode
   tmpdir <- getTemporaryDirectory
@@ -27,39 +29,34 @@ main = do
   when texMode $ hPutStrLn outHandle texPrelude
   let (CheckInput vocabInts lawform obs jobs) = parse $ alexScanTokens input
   let mykns = KnS (map P vocabInts) (boolBddOf lawform) (map (second (map P)) obs)
-  when texMode $ do
-    foo <- getTexStructure (mykns,[])
+  when texMode $
     hPutStrLn outHandle $ unlines
-      [ "\\section{Given Knowledge Structure}", "\\[ (\\mathcal{F},s) = (" ++ foo ++ ") \\]", "\\section{Results}" ]
+      [ "\\section{Given Knowledge Structure}", "\\[ (\\mathcal{F},s) = (" ++ tex ((mykns,[])::Scenario) ++ ") \\]", "\\section{Results}" ]
   mapM_ (doJob outHandle texMode mykns) jobs
   when texMode $ hPutStrLn outHandle texEnd
   when showMode $ do
     hClose outHandle
-    _ <- system ("cd /tmp && pdflatex -interaction=nonstopmode " ++ takeBaseName texFilePath ++ ".tex > " ++ takeBaseName texFilePath ++ ".pdflatex.log && xdg-open "++ takeBaseName texFilePath ++ ".pdf")
+    let command = "cd /tmp && pdflatex -interaction=nonstopmode " ++ takeBaseName texFilePath ++ ".tex > " ++ takeBaseName texFilePath ++ ".pdflatex.log && xdg-open "++ takeBaseName texFilePath ++ ".pdf"
+    putStrLn $ "Now running: " ++ command
+    _ <- system command
     return ()
   putStrLn "\nDoei!"
 
 doJob :: Handle -> Bool -> KnowStruct -> Either Form Form -> IO ()
-doJob outHandle texMode mykns (Left f) =
-  if texMode
-  then do
-    hPutStrLn outHandle $ "\\[" ++ texForm (simplify f) ++ "\\]"
-    hPutStrLn outHandle "Is this valid on the given structure?"
-    hPutStrLn outHandle (show (validViaBdd mykns f) ++ "\n")
-  else do
-    hPutStrLn outHandle $ "Is " ++ show f ++ " valid on the given structure?"
-    vividPutStrLn (show (validViaBdd mykns f) ++ "\n")
-doJob outHandle texMode mykns (Right f) = do
-  if texMode
-    then do
-      hPutStrLn outHandle $ "\\[" ++ texForm (simplify f) ++ "\\]"
-      hPutStrLn outHandle "At which states is this true? $"
-      let states = map texPropSet (whereViaBdd mykns f)
-      hPutStrLn outHandle $ intercalate "," states
-      hPutStrLn outHandle "$"
-    else do
-      hPutStrLn outHandle $ "At which states is " ++ show f ++ " true?"
-      mapM_ (vividPutStrLn.show.map(\(P n) -> n)) (whereViaBdd mykns f)
+doJob outHandle True mykns (Left f) = do
+  hPutStrLn outHandle $ "Is $" ++ texForm (simplify f) ++ "$ valid on $\\mathcal{F}$?"
+  hPutStrLn outHandle (show (validViaBdd mykns f) ++ "\n\n")
+doJob outHandle False mykns (Left f) = do
+  hPutStrLn outHandle $ "Is " ++ ppForm f ++ " valid on the given structure?"
+  vividPutStrLn (show (validViaBdd mykns f) ++ "\n")
+doJob outHandle True mykns (Right f) = do
+  hPutStrLn outHandle $ "At which states is $" ++ texForm (simplify f) ++ "$ true? $"
+  let states = map tex (whereViaBdd mykns f)
+  hPutStrLn outHandle $ intercalate "," states
+  hPutStrLn outHandle "$\n"
+doJob outHandle False mykns (Right f) = do
+  hPutStrLn outHandle $ "At which states is " ++ ppForm f ++ " true?"
+  mapM_ (vividPutStrLn.show.map(\(P n) -> n)) (whereViaBdd mykns f)
   putStr "\n"
 
 getInputAndSettings :: IO (String,[String])
@@ -91,11 +88,17 @@ vividPutStrLn s = do
   setSGR []
 
 infoline :: String
-infoline = "SMCDEL 1.0 by Malvin Gattinger -- https://github.com/jrclogic/SMCDEL\n"
+infoline = "SMCDEL 16.5 by Malvin Gattinger -- https://github.com/jrclogic/SMCDEL\n"
 
 texPrelude, texEnd :: String
 texPrelude = unlines [ "\\documentclass[a4paper,12pt]{article}",
   "\\usepackage{amsmath,amssymb,tikz,graphicx,color,etex,datetime,setspace,latexsym}",
-  "\\usepackage[margin=2cm]{geometry}", "\\usepackage[T1]{fontenc}", "\\parindent0cm",
-  "\\title{Results}", "\\author{SMCDEL}", "\\begin{document}", "\\maketitle" ]
+  "\\usepackage[margin=2cm]{geometry}",
+  "\\usepackage[T1]{fontenc}", "\\parindent0cm", "\\parskip1em",
+  "\\usepackage{hyperref}",
+  "\\hypersetup{pdfborder={0 0 0}}",
+  "\\title{Results}",
+  "\\author{\\href{https://github.com/jrclogic/SMCDEL}{SMCDEL}}",
+  "\\begin{document}",
+  "\\maketitle" ]
 texEnd = "\\end{document}"

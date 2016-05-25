@@ -12,6 +12,8 @@ import SMCDEL.Internal.Lex
 import SMCDEL.Internal.Parse
 import SMCDEL.Internal.Files
 import SMCDEL.Symbolic.HasCacBDD
+import SMCDEL.Internal.TexDisplay
+import SMCDEL.Translations
 import SMCDEL.Language
 import Data.HasCacBDD.Visuals (svgGraph)
 
@@ -21,7 +23,6 @@ main = do
   scotty 3000 $ do
     get "" $ redirect "index.html"
     get "/" $ redirect "index.html"
-    get "/index.html" $ html $ T.fromStrict $ getFileContent "index.html"
     get "/index.html" $ html $ T.fromStrict $ getFileContent "index.html"
     get "/getExample" $ do
       this <- param "filename"
@@ -33,17 +34,21 @@ main = do
       knstring <- liftIO $ showStructure mykns
       let results = concatMap (\j -> "<p>" ++ doJob mykns j ++ "</p>") jobs
       html $ mconcat
-        [ "<html><head>"
-        , "<script type=\"text/x-mathjax-config\">MathJax.Hub.Config({ \"HTML-CSS\": { linebreaks: { automatic: true } }, SVG: { linebreaks: { automatic: true } } }); </script>"
-        , "<script src='https://code.jquery.com/jquery-2.1.4.min.js'></script>"
-        , "<script src='https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML'></script>"
-        , "<script src='check.js'></script>"
-        , "</head><body>"
-        , T.pack knstring
+        [ T.pack knstring
         , "<hr />\n"
-        , T.pack results
-        , "</body></html>\n" ]
+        , T.pack results ]
+    post "/knsToKripke" $ do
+      smcinput <- param "smcinput"
+      let (CheckInput vocabInts lawform obs _) = parse $ alexScanTokens smcinput
+      let mykns = KnS (map P vocabInts) (boolBddOf lawform) (map (second (map P)) obs)
+      _ <- liftIO $ showStructure mykns -- this moves parse errors to scotty
+      if numberOfStates mykns > 20
+        then html $ T.pack $ "Sorry, I will not draw " ++ show (numberOfStates mykns) ++ " states!"
+        else do
+          let myKripke = knsToKripke (mykns, head $ statesOf mykns) -- FIXME: how to pick actual world?
+          html $ T.pack ("<p>" ++ svg myKripke ++ "</p>")
 
+-- FIXME: merge with doJob in MainCLI.hs
 doJob :: KnowStruct -> Either Form Form -> String
 doJob mykns (Left f) = unlines
   [ "\\( \\mathcal{F} "
@@ -51,19 +56,19 @@ doJob mykns (Left f) = unlines
   , (texForm.simplify) f
   , "\\)" ]
 doJob mykns (Right f) = unlines
-  [ "The formula \\("
+  [ "At which states is \\("
   , (texForm.simplify) f
-  , "\\) is true at \\("
-  , intercalate "," $ map texPropSet (whereViaBdd mykns f)
+  , "\\) true?<br /> \\("
+  , intercalate "," $ map tex (whereViaBdd mykns f)
   , "\\)" ]
 
 showStructure :: KnowStruct -> IO String
 showStructure (KnS props lawbdd obs) = do
   svgString <- svgGraph lawbdd
   return $ "$$ \\mathcal{F} = \\left( \n"
-    ++ texPropSet props ++ ", "
-    ++ " \\begin{array}{l} {"++ " \\href{javascript:showlaw()}{\\theta} " ++"} \\end{array}\n "
+    ++ tex props ++ ", "
+    ++ " \\begin{array}{l} {"++ " \\href{javascript:toggleLaw()}{\\theta} " ++"} \\end{array}\n "
     ++ ", \\begin{array}{l}\n"
-    ++ intercalate " \\\\\n " (map (\(i,os) -> ("O_{"++i++"}=" ++ texPropSet os)) obs)
+    ++ intercalate " \\\\\n " (map (\(i,os) -> ("O_{"++i++"}=" ++ tex os)) obs)
     ++ "\\end{array}\n"
     ++ " \\right) $$ \n <div class='lawbdd' style='display:none;'> where \\(\\theta\\) is this BDD:<br /><p align='center'>" ++ svgString ++ "</p></div>"

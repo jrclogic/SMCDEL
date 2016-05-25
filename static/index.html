@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <head>
-<title>SCMDEL web</title>
+<title>SMCDEL 2 web</title>
 <title>Malvin Gattinger</title>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
 <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0" />
@@ -23,33 +23,30 @@ a:hover {
   padding:2px;
   margin:2px;
   width:48%;
-  height:100%;
-  max-height:400px;
   border:1px solid #666;
 }
-textarea, iframe {
+textarea, #output {
   width:100%;
   margin:0px;
   padding:0px;
-  height:100%;
-  min-height:400px;
+  height:400px;
   border:none;
-  box-sizing: border-box;
+  box-sizing:border-box;
+  overflow-y:scroll;
 }
 .expbut {
   padding:5px;
   margin:0px;
 }
-#button {
+#runbutton, #kripkebutton {
   font-weight:bold;
-  padding:5px;
+  padding:3px;
   margin:0px;
 }
 </style>
 </head>
 <body>
 <h1>SMCDEL web</h1>
-<form action="check" method="POST" target="output">
 <p>This is the web interface of <a href="https://github.com/jrclogic/SMCDEL">SMCDEL</a>, a symbolic model checker for Dynamic Epistemic Logic.
 See <a href="http://homepages.cwi.nl/~jve/papers/15/pdfs/del-bdd-lori-15.pdf">this paper</a> and <a href="https://github.com/jrclogic/SMCDEL/raw/master/SMCDEL.pdf">this technical report</a> for more information.</p>
 <div id="menubar">
@@ -58,24 +55,73 @@ See <a href="http://homepages.cwi.nl/~jve/papers/15/pdfs/del-bdd-lori-15.pdf">th
   <input type="button" class="expbut" value="DrinkingLogicians" />
   <input type="button" class="expbut" value="DiningCryptographers" />
   or enter your own code on the left side, then click on
-  <input id="button" type="submit" value="Run SMCDEL!" />
+  <input id="runbutton" type="submit" value="Run SMCDEL!" />
+  or
+  <input id="kripkebutton" type="submit" value="Show Kripke!" />
 </div>
 <div id="left">
   <textarea name="smcinput" id="smcinput" placeholder="Enter your code here."></textarea>
 </div>
 <div id="right">
-  <iframe name="output" id="output"></iframe>
+  <div id="output"></div>
 </div>
-</form>
-<script src='https://code.jquery.com/jquery-2.1.4.min.js'></script>
+<script src='https://code.jquery.com/jquery-2.2.0.min.js'></script>
+<script src='https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML'></script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    "HTML-CSS": { linebreaks: { automatic: true } },
+    SVG: { linebreaks: { automatic: true } }
+  });
+</script>
 <script>
-$('.expbut').click(function() {
-  $('#smcinput').val('... loading ...');
-  $.get("getExample?filename=" + $(this).val(),
-    function(data) {
-        $('#smcinput').val(data)
+  $(document).ready(function(){
+    $('.expbut').click(function() {
+      $('#smcinput').val('... loading ...');
+      $.get("http://localhost:3000/getExample?filename=" + $(this).val(),
+        function(data) {
+            $('#smcinput').val(data);
+        });
     });
-});
+    $('#runbutton').click(function() {
+      $('#output').val('... running ...');
+      $.ajax({
+        type: "POST",
+        url: "check",
+        data: { "smcinput": $('#smcinput').val() },
+        success:
+          function(data,textStatus,jqXHR) {
+            $('#output').html(data);
+            MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
+          },
+        error:
+          function(jqXHR,textStatus,errorThrown) {
+            $('#output').html(jqXHR.responseText);
+          }
+      });
+    });
+
+    $('#kripkebutton').click(function() {
+      $('#output').val('... running ...');
+      $.ajax({
+        type: "POST",
+        url: "knsToKripke",
+        data: { "smcinput": $('#smcinput').val() },
+        success:
+          function(data,textStatus,jqXHR) {
+            $('#output').html(data);
+            MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
+          },
+        error:
+          function(jqXHR,textStatus,errorThrown) {
+            $('#output').html(jqXHR.responseText);
+          }
+      });
+    });
+
+  });
+  function toggleLaw() {
+    $('.lawbdd').fadeToggle();
+  }
 </script>
 <p style="clear:both; padding-top:1em; color:#666;">
   Made by <a href="https://w4eg.de/malvin/">Malvin Gattinger</a>.

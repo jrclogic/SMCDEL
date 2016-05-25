@@ -1,12 +1,12 @@
 
 module SMCDEL.Translations where
 import Control.Arrow (second)
-import Data.List (groupBy,sort,(\\),elemIndex)
+import Data.List (groupBy,sort,(\\),elemIndex,intersect)
 import Data.Maybe (fromJust)
 import SMCDEL.Language
 import SMCDEL.Symbolic.HasCacBDD
 import SMCDEL.Explicit.Simple
-import SMCDEL.Internal.Help (apply,powerset)
+import SMCDEL.Internal.Help (anydiff,alldiff,alleq,apply,powerset)
 
 import Data.HasCacBDD hiding (Top,Bot)
 
@@ -46,6 +46,52 @@ booloutof :: [Prp] -> [Prp] -> Bdd
 booloutof ps qs = conSet $
   [ var n | (P n) <- ps ] ++
   [ neg $ var n | (P n) <- qs \\ ps ]
+
+uniqueVals :: KripkeModel -> Bool
+uniqueVals (KrM _ _ val) = alldiff (map snd val)
+
+voc :: KripkeModel -> [Prp]
+voc (KrM _ _ val) = map fst . snd . head $ val
+
+-- | Get lists of variables which agent i does (not) observe
+-- in model m. This does *not* preserve all information, i.e.
+-- does not characterize every possible S5 relation!
+obsnobs :: KripkeModel -> Agent -> ([Prp],[Prp])
+obsnobs m@(KrM _ rel val) i = (obs,nobs) where
+  propsets = map (map (map fst . filter snd . apply val)) (apply rel i)
+  obs = filter (\p -> all (alleq (elem p)) propsets) (voc m)
+  nobs = filter (\p -> any (anydiff (elem p)) propsets) (voc m)
+
+-- | Test if all relations can be described using observariables.
+descableRels :: KripkeModel -> Bool
+descableRels m@(KrM ws rel val) = all descable (map fst rel) where
+  wpairs = [ (v,w) | v <- ws, w <- ws ]
+  descable i = cover && correct where
+    (obs,nobs) = obsnobs m i
+    cover = sort (voc m) == sort (obs ++ nobs) -- implies disjointness
+    correct = all (\pair -> oldrel pair == newrel pair) wpairs
+    oldrel (v,w) = v `elem` head (filter (elem w) (apply rel i))
+    newrel (v,w) = (factsAt v `intersect` obs) == (factsAt w `intersect` obs)
+    factsAt w = map fst $ filter snd $ apply val w
+
+-- | Try to find an equivalent knowledge structure without
+-- additional propositions. Will succeed iff valuations are
+-- unique and relations can be described using observariables.
+smartKripkeToKns :: PointedModel -> Maybe Scenario
+smartKripkeToKns (m, cur) =
+  if uniqueVals m && descableRels m
+    then Just (smartKripkeToKnsWithoutChecks (m, cur))
+    else Nothing
+
+smartKripkeToKnsWithoutChecks :: PointedModel -> Scenario
+smartKripkeToKnsWithoutChecks (m@(KrM worlds rel val), cur) =
+  (KnS ps law obs, curs) where
+    ps = voc m
+    g w = filter (apply (apply val w)) ps
+    law = disSet [ booloutof (g w) ps | w <- worlds ]
+    obs = map (\(i,_) -> (i,obsOf i) ) rel
+    obsOf = fst.obsnobs m
+    curs = map fst $ filter snd $ apply val cur
 
 actionToEvent :: PointedActionModel -> Event
 actionToEvent (ActM actions precon actrel, faction) = (KnT eprops elaw eobs, efacts) where

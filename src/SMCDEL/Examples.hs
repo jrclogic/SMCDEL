@@ -3,7 +3,7 @@ module SMCDEL.Examples where
 import Data.List (delete,intersect,(\\),elemIndex)
 import Data.Maybe (fromJust)
 import SMCDEL.Language
-import SMCDEL.Internal.Help     (powerset)
+import SMCDEL.Internal.Help (powerset)
 import SMCDEL.Symbolic.HasCacBDD
 import SMCDEL.Explicit.Simple
 import SMCDEL.Translations
@@ -41,8 +41,18 @@ groupAnnounceAction everyone listeners f = (ActM [0,1] [(0,f),(1,Top)] actrel, 0
 exampleGroupAnnounceAction :: PointedActionModel
 exampleGroupAnnounceAction = groupAnnounceAction [alice, bob] [alice] (PrpF (P 0))
 
+actionOne :: PointedActionModel
+actionOne = (ActM [0,1] [(0,p),(1, Disj [q, Neg q])] [("Alice",[[0],[1]]), ("Bob",[[0,1]])], 0) where (p,q) = (PrpF $ P 0, PrpF $ P 1)
+
+actionTwo :: PointedActionModel
+actionTwo = (ActM [0,1,2] [(0,p),(1,q),(2,Neg q)] [("Alice",[[0],[1,2]]), ("Bob",[[0,1,2]]) ], 0) where (p,q) = (PrpF $ P 0, PrpF $ P 1)
+
 mudScnInit :: Int -> Int -> Scenario
-mudScnInit n m = ( KnS mudProps (boolBddOf Top) [ (show i,delete (P i) mudProps) | i <- [1..n] ], [P 1 .. P m] ) where mudProps = [P 1 .. P n]
+mudScnInit n m = (KnS vocab law obs, actual) where
+  vocab  = [P 1 .. P n]
+  law    = boolBddOf Top
+  obs    = [ (show i, delete (P i) vocab) | i <- [1..n] ]
+  actual = [P 1 .. P m]
 
 myMudScnInit :: Scenario
 myMudScnInit = mudScnInit 3 3
@@ -64,6 +74,15 @@ mudScn1 = pubAnnounceOnScn mudScn0 (nobodyknows 3)
 mudScn2 :: Scenario
 mudKns2 :: KnowStruct
 mudScn2@(mudKns2,_) = pubAnnounceOnScn mudScn1 (nobodyknows 3)
+
+empty :: Int -> Scenario
+empty n = (KnS [] (boolBddOf Top) obs,[]) where
+  obs    = [ (show i, []) | i <- [1..n] ]
+
+buildMC :: Int -> Int -> Event
+buildMC n m = (KnT vocab Top obs, map P [1..m]) where
+  obs = [ (show i, delete (P i) vocab) | i <- [1..n] ]
+  vocab = map P [1..n]
 
 thirstyScene :: Int -> Scenario
 thirstyScene n = (KnS [P 1..P n] (boolBddOf Top) [ (show i,[P i]) | i <- [1..n] ], [P 1..P n])
@@ -297,8 +316,8 @@ yProps = [(P  8)..(P 14)]
 sProps = [(P 15)..(P 21)]
 pProps = [(P 22)..(P (21+amount))] where amount = ceiling (logBase 2 (50*50) :: Double)
 
-allProps :: [Prp]
-allProps = xProps ++ yProps ++ sProps ++ pProps
+sapAllProps :: [Prp]
+sapAllProps = xProps ++ yProps ++ sProps ++ pProps
 
 xIs, yIs, sIs, pIs :: Int -> Form
 xIs n = booloutofForm (powerset xProps !! n) xProps
@@ -310,7 +329,7 @@ xyAre :: (Int,Int) -> Form
 xyAre (n,m) = Conj [ xIs n, yIs m ]
 
 sapKnStruct :: KnowStruct
-sapKnStruct = KnS allProps law obs where
+sapKnStruct = KnS sapAllProps law obs where
   law = boolBddOf $ Disj [ Conj [ xyAre (x,y), sIs (x+y), pIs (x*y) ] | (x,y) <- pairs ]
   obs = [ (alice, sProps), (bob, pProps) ]
 
@@ -318,15 +337,9 @@ sapKnows :: Agent -> Form
 sapKnows i = Conj [ xyAre p `Impl` K i (xyAre p) | p <- pairs ]
 
 sapForm1, sapForm2, sapForm3 :: Form
-
---Sum says: I knew that you didn't know the two numbers.
-sapForm1 = K alice $ Neg (sapKnows bob)
-
---Product says: Now I know the two numbers
-sapForm2 = sapKnows bob
-
---Sum says: Now I know the two numbers too
-sapForm3 = sapKnows alice
+sapForm1 = K alice $ Neg (sapKnows bob) -- Sum: I knew that you didn't know the numbers.
+sapForm2 = sapKnows bob -- Product: Now I know the two numbers
+sapForm3 = sapKnows alice -- Sum: Now I know the two numbers too
 
 sapProtocol :: Form
 sapProtocol = Conj [ sapForm1
@@ -339,4 +352,47 @@ sapSolutions = statesOf (SMCDEL.Symbolic.HasCacBDD.pubAnnounce sapKnStruct sapPr
 sapExplainState :: [Prp] -> String
 sapExplainState truths = concat [ "x = ", nmbr xProps, ", y = ", nmbr yProps, ", ",
   "x+y = ", nmbr sProps, " and x*y = ", nmbr pProps ] where
+    nmbr set = show.fromJust $ elemIndex (set `intersect` truths) (powerset set)
+
+wsBound :: Int
+wsBound = 50
+
+wsTriples :: [ (Int,Int,Int) ]
+wsTriples = filter
+  ( \(x,y,z) -> x+y==z || x+z==y || y+z==x )
+  [ (x,y,z) | x <- [1..wsBound], y <- [1..wsBound], z <- [1..wsBound] ]
+
+aProps,bProps,cProps :: [Prp]
+(aProps,bProps,cProps) = ([(P 0)..(P k)],[(P $ k+1)..(P l)],[(P $ l+1)..(P m)]) where
+  [k,l,m] = map (wsAmount*) [1,2,3]
+  wsAmount = ceiling (logBase 2 (fromIntegral wsBound) :: Double)
+
+aIs, bIs, cIs :: Int -> Form
+aIs n = booloutofForm (powerset aProps !! n) aProps
+bIs n = booloutofForm (powerset bProps !! n) bProps
+cIs n = booloutofForm (powerset cProps !! n) cProps
+
+wsKnStruct :: KnowStruct
+wsKnStruct = KnS wsAllProps law obs where
+  wsAllProps = aProps++bProps++cProps
+  law = boolBddOf $ Disj [ Conj [ aIs x, bIs y, cIs z ] | (x,y,z) <- wsTriples ]
+  obs = [ (alice, bProps++cProps), (bob, aProps++cProps), (carol, aProps++bProps) ]
+
+wsKnowSelfA,wsKnowSelfB,wsKnowSelfC :: Form
+wsKnowSelfA = Disj [ K alice $ aIs x | x <- [1..wsBound] ]
+wsKnowSelfB = Disj [ K bob   $ bIs x | x <- [1..wsBound] ]
+wsKnowSelfC = Disj [ K carol $ cIs x | x <- [1..wsBound] ]
+
+wsProtocol :: Form
+wsProtocol = Conj
+  [ Neg wsKnowSelfA
+  , PubAnnounce (Neg wsKnowSelfA) (Neg wsKnowSelfB)
+  , PubAnnounce (Neg wsKnowSelfA) (PubAnnounce (Neg wsKnowSelfB) (Neg wsKnowSelfC)) ]
+
+wsSolutions :: [[Prp]]
+wsSolutions = statesOf (SMCDEL.Symbolic.HasCacBDD.pubAnnounce wsKnStruct wsProtocol)
+
+wsExplainState :: [Prp] -> String
+wsExplainState truths = concat
+  [ "a = ", nmbr aProps, ", b = ", nmbr bProps, ", ", "c = ", nmbr cProps ] where
     nmbr set = show.fromJust $ elemIndex (set `intersect` truths) (powerset set)

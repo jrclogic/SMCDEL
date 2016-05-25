@@ -1,12 +1,20 @@
-module SMCDEL.Internal.Help (alleq,apply,choose,powerset,restrict,rtc,Erel,bl,fusion) where
-import Data.List (nub,union,foldl',(\\))
+module SMCDEL.Internal.Help (alleq,anydiff,alldiff,apply,choose,powerset,restrict,rtc,Erel,bl,fusion,seteq) where
+import Data.List (nub,union,sort,foldl',(\\))
 
 type Rel a b = [(a,b)]
 type Erel a = [[a]]
 
-alleq :: Eq a => (a -> Bool) -> [a] -> Bool
+alleq :: Eq a => Eq b => (a -> b) -> [a] -> Bool
 alleq _ [] = True
 alleq f (x:xs) = all (f x ==) (map f xs)
+
+anydiff :: Eq a => (a -> Bool) -> [a] -> Bool
+anydiff _ [] = False
+anydiff f (x:xs) = any (f x /=) (map f xs)
+
+alldiff :: Eq a => [a] -> Bool
+alldiff [] = True
+alldiff (x:xs) = notElem x xs && alldiff xs
 
 apply :: Show a => Show b => Eq a => Rel a b -> a -> b
 apply rel left = case lookup left rel of
@@ -67,3 +75,6 @@ choose :: Integral a => a -> a -> a
 choose _ 0 = 1
 choose 0 _ = 0
 choose n k = choose (n-1) (k-1) * n `div` k
+
+seteq :: Ord a => Eq a => [a] -> [a] -> Bool
+seteq as bs = sort as == sort bs

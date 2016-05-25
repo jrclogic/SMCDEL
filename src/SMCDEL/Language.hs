@@ -1,23 +1,38 @@
 
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
+
 module SMCDEL.Language where
 import Data.List (nub,intercalate,(\\))
 import Data.Maybe (fromJust)
 import Test.QuickCheck
+import SMCDEL.Internal.TexDisplay
 
 data Prp = P Int  deriving (Eq,Ord,Show)
 instance Enum Prp where
   toEnum = P
   fromEnum (P n) = n
 
+instance Arbitrary Prp where
+  arbitrary = P <$> choose (0,4)
+
 freshp :: [Prp] -> Prp
-freshp [] = P 0
+freshp [] = P 1
 freshp prps = P (maximum (map fromEnum prps) + 1)
 
 type Agent = String
+
 alice,bob,carol :: Agent
 alice   = "Alice"
 bob     = "Bob"
 carol   = "Carol"
+
+data AgAgent = Ag Agent deriving (Eq,Ord,Show)
+
+instance Arbitrary AgAgent where
+  arbitrary = oneof $ map (pure.Ag.(show)) $ [1..(5::Integer)]
+
+instance Arbitrary [AgAgent] where
+  arbitrary = sublistOf $ map (Ag.(show)) [1..(5::Integer)]
 
 data Form
   = Top                         -- ^ True Constant
@@ -34,12 +49,37 @@ data Form
   | K Agent Form                -- ^ Knowing that
   | Ck [Agent] Form             -- ^ Common knowing that
   | Kw Agent Form               -- ^ Knowing whether
-  | Ckw [Agent] Form            -- ^ Common knowing whethe
+  | Ckw [Agent] Form            -- ^ Common knowing whether
   | PubAnnounce Form Form       -- ^ Public announcement that
   | PubAnnounceW Form Form      -- ^ Public announcement whether
   | Announce [Agent] Form Form  -- ^ (Semi-)Private announcement that
   | AnnounceW [Agent] Form Form -- ^ (Semi-)Private announcement whether
   deriving (Eq,Ord,Show)
+
+showSet :: Show a => [a] -> String
+showSet xs = intercalate "," (map show xs)
+
+-- | Pretty print a formula
+ppForm :: Form -> String
+ppForm Top = "T"
+ppForm Bot = "F"
+ppForm (PrpF (P n))  = show n
+ppForm (Neg f)       = "~" ++ ppForm f
+ppForm (Conj fs)     = "(" ++ intercalate " & " (map ppForm fs) ++ ")"
+ppForm (Disj fs)     = "(" ++ intercalate " | " (map ppForm fs) ++ ")"
+ppForm (Xor fs)      = "XOR{" ++ intercalate "," (map ppForm fs) ++ "}"
+ppForm (Impl f g)    = "(" ++ ppForm f ++ "->" ++ ppForm g ++ ")"
+ppForm (Equi f g)    = ppForm f ++ "=" ++ ppForm g
+ppForm (Forall ps f) = "Forall {" ++ showSet ps ++ "}: " ++ ppForm f
+ppForm (Exists ps f) = "Exists {" ++ showSet ps ++ "}: " ++ ppForm f
+ppForm (K i f)    = "K " ++ i ++ " " ++ ppForm f
+ppForm (Ck is f)  = "Ck " ++ intercalate "," is ++ " " ++ ppForm f
+ppForm (Kw i f)   = "Kw " ++ i ++ " " ++ ppForm f
+ppForm (Ckw is f) = "Ckw " ++ intercalate "," is ++ " " ++ ppForm f
+ppForm (PubAnnounce f g)  = "[! " ++ ppForm f ++ "] " ++ ppForm g
+ppForm (PubAnnounceW f g) = "[?! " ++ ppForm f ++ "] " ++ ppForm g
+ppForm (Announce is f g)  = "[" ++ intercalate ", " is ++ " ! " ++ ppForm f ++ "]" ++ ppForm g
+ppForm (AnnounceW is f g) = "[" ++ intercalate ", " is ++ " ?! " ++ ppForm f ++ "]" ++ ppForm g
 
 pubAnnounceStack :: [Form] -> Form -> Form
 pubAnnounceStack = flip $ foldr PubAnnounce
@@ -125,13 +165,13 @@ propsInForm (PubAnnounceW f g) = nub $ propsInForm f ++ propsInForm g
 propsInForms :: [Form] -> [Prp]
 propsInForms fs = nub $ concatMap propsInForm fs
 
-texProp :: Prp -> String
-texProp (P 0) = " p "
-texProp (P n) = " p_{" ++ show n ++ "} "
+instance TexAble Prp where
+  tex (P 0) = " p "
+  tex (P n) = " p_{" ++ show n ++ "} "
 
-texPropSet :: [Prp] -> String
-texPropSet [] = " \\varnothing "
-texPropSet ps = "\\{" ++ intercalate "," (map texProp ps) ++ "\\}"
+instance TexAble [Prp] where
+  tex [] = " \\varnothing "
+  tex ps = "\\{" ++ intercalate "," (map tex ps) ++ "\\}"
 
 simplify :: Form -> Form
 simplify f = if simStep f == f then f else simplify (simStep f)
@@ -147,10 +187,12 @@ simStep (Neg f)       = Neg $ simStep f
 simStep (Conj [])     = Top
 simStep (Conj [f])    = simStep f
 simStep (Conj fs)     | Bot `elem` fs = Bot
+                      | or [ Neg f `elem` fs | f <- fs ] = Bot
                       | otherwise     = Conj (nub $ map simStep (filter (Top /=) fs))
 simStep (Disj [])     = Bot
 simStep (Disj [f])    = simStep f
 simStep (Disj fs)     | Top `elem` fs = Top
+                      | or [ Neg f `elem` fs | f <- fs ] = Top
                       | otherwise     = Disj (nub $ map simStep (filter (Bot /=) fs))
 simStep (Xor  [])     = Bot
 simStep (Xor  [f])    = Neg $ simStep f
@@ -159,12 +201,14 @@ simStep (Impl Bot _)  = Top
 simStep (Impl _ Top)  = Top
 simStep (Impl Top f)  = simStep f
 simStep (Impl f Bot)  = Neg (simStep f)
-simStep (Impl f g)    = Impl (simStep f) (simStep g)
+simStep (Impl f g)    | f==g      = Top
+                      | otherwise = Impl (simStep f) (simStep g)
 simStep (Equi Top f)  = simStep f
 simStep (Equi Bot f)  = Neg (simStep f)
 simStep (Equi f Top)  = simStep f
 simStep (Equi f Bot)  = Neg (simStep f)
-simStep (Equi f g)    = Equi (simStep f) (simStep g)
+simStep (Equi f g)    | f==g      = Top
+                      | otherwise = Equi (simStep f) (simStep g)
 simStep (Forall ps f) = Forall ps (simStep f)
 simStep (Exists ps f) = Exists ps (simStep f)
 simStep (K a f)       = K a (simStep f)
@@ -181,7 +225,7 @@ simStep (AnnounceW ags f g) = AnnounceW ags (simStep f) (simStep g)
 texForm :: Form -> String
 texForm Top           = "\\top "
 texForm Bot           = "\\bot "
-texForm (PrpF p)      = texProp p
+texForm (PrpF p)      = tex p
 texForm (Neg (PubAnnounce f (Neg g))) = "\\langle !" ++ texForm f ++ " \\rangle " ++ texForm g
 texForm (Neg f)       = "\\lnot " ++ texForm f
 texForm (Conj [])     = "\\top "
@@ -198,8 +242,8 @@ texForm (Xor [f,g])   = " ( " ++ texForm f  ++ " \\oplus " ++ texForm g ++ " ) "
 texForm (Xor fs)      = "\\bigoplus \\{\n" ++ intercalate "," (map texForm fs) ++ " \\} "
 texForm (Equi f g)    = " ( "++ texForm f ++" \\leftrightarrow "++ texForm g ++" ) "
 texForm (Impl f g)    = " ( "++ texForm f ++" \\rightarrow "++ texForm g ++" ) "
-texForm (Forall ps f) = " \\forall " ++ texPropSet ps ++ " " ++ texForm f
-texForm (Exists ps f) = " \\exists " ++ texPropSet ps ++ " " ++ texForm f
+texForm (Forall ps f) = " \\forall " ++ tex ps ++ " " ++ texForm f
+texForm (Exists ps f) = " \\exists " ++ tex ps ++ " " ++ texForm f
 texForm (K i f)       = "K_{\\text{" ++ i ++ "}} " ++ texForm f
 texForm (Kw i f)      = "K^?_{\\text{" ++ i ++ "}} " ++ texForm f
 texForm (Ck ags f)    = "Ck_{\\{\n" ++ intercalate "," ags ++ "\n\\}} " ++ texForm f
@@ -208,6 +252,9 @@ texForm (PubAnnounce f g)   = "[!" ++ texForm f ++ "] " ++ texForm g
 texForm (PubAnnounceW f g)  = "[?!" ++ texForm f ++ "] " ++ texForm g
 texForm (Announce ags f g)  = "[" ++ intercalate "," ags ++ "!" ++ texForm f ++ "] " ++ texForm g
 texForm (AnnounceW ags f g) = "[" ++ intercalate "," ags ++ "?!" ++ texForm f ++ "] " ++ texForm g
+
+instance TexAble Form where
+  tex = texForm
 
 testForm :: Form
 testForm = Forall [P 3] $ Equi (Disj [Bot,PrpF $ P 3,Bot]) (Conj [Top,Xor [Top,Kw alice (PrpF (P 4))], AnnounceW [alice,bob] (PrpF (P 5)) (Kw bob $ PrpF (P 5))  ])
@@ -237,3 +284,33 @@ randomboolform sz = BF <$> bf' sz' where
     where
       st = bf' (n `div` 2)
       randomvar = elements [0..maximumvar]
+
+instance Arbitrary Form where
+  arbitrary = sized form where
+    form 0 = oneof [ pure Top
+                    , pure Bot
+                    , PrpF <$> arbitrary ]
+    form n = oneof [ pure SMCDEL.Language.Top
+                  , pure SMCDEL.Language.Bot
+                  , PrpF <$> arbitrary
+                  , Neg <$> form n'
+                  , Conj <$> listOf (form n')
+                  , Disj <$> listOf (form n')
+                  , Xor  <$> listOf (form n')
+                  , Impl <$> form n' <*> form n'
+                  , Equi <$> form n' <*> form n'
+                  -- , Exists <$> arbitrary <*> form n'
+                  -- , Forall <$> arbitrary <*> form n'
+                  , K   <$> arbitraryAg <*> form n'
+                  -- , Ck  <$> arbitraryAgs <*> form n'
+                  , Kw  <$> arbitraryAg <*> form n'
+                  -- , Ckw <$> arbitraryAgs <*> form n'
+                  , PubAnnounce  <$> form n' <*> form n'
+                  , PubAnnounceW <$> form n' <*> form n'
+                  , Announce  <$> arbitraryAgs <*> form n' <*> form n'
+                  , AnnounceW <$> arbitraryAgs <*> form n' <*> form n'
+                  ]
+      where
+        n' = n `div` 4
+        arbitraryAg = (\(Ag i) -> i) <$> arbitrary
+        arbitraryAgs = sublistOf $ map show [1..(5::Integer)]

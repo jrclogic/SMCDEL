@@ -1,14 +1,19 @@
 
+{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, FlexibleContexts #-}
+
 module SMCDEL.Explicit.Simple where
-import Data.List (intercalate)
+import Control.Arrow (second,(&&&))
+import Data.List
 import SMCDEL.Language
-import SMCDEL.Internal.KripkeVis
+import SMCDEL.Internal.TexDisplay
 import SMCDEL.Internal.Help (alleq,fusion,apply)
 
 type State = Int
+
 type Partition = [[State]]
 type Assignment = [(Prp,Bool)]
-data KripkeModel = KrM [State] [(Agent,Partition)] [(State,Assignment)] deriving (Show)
+
+data KripkeModel = KrM [State] [(Agent,Partition)] [(State,Assignment)] deriving (Eq,Ord,Show)
 type PointedModel = (KripkeModel,State)
 
 eval :: PointedModel -> Form -> Bool
@@ -54,40 +59,43 @@ pubAnnounce pm@(m@(KrM sts rel val), cur) form =
                   else error "pubAnnounce failed: Liar!"
   where
     newsts = filter (\s -> eval (m,s) form) sts
-    nrel i = filter ([]/=) $ map (filter (`elem` newsts)) (apply rel i)
-    newrel = [ (i, nrel i) | i <- map fst rel ]
+    newrel = map (second relfil) rel
+    relfil = filter ([]/=) . map (filter (`elem` newsts))
     newval = filter (\p -> fst p `elem` newsts) val
 
 announce :: PointedModel -> [Agent] -> Form -> PointedModel
 announce pm@(m@(KrM sts rel val), cur) ags form =
-  if eval pm form then (KrM newsts newrel newval, newcur)
+  if eval pm form then (KrM sts newrel val, cur)
                   else error "announce failed: Liar!"
   where
-    tocopy = filter (\s -> eval (m,s) form) sts
-    addsts = map (maximum sts +) [1..(length tocopy)]
-    copyto = zip tocopy addsts
-    copyof = zip addsts tocopy
-    mapif  = concatMap (\s -> [apply copyto s | s `elem` tocopy])
-    nrel i | i `elem` ags = apply rel i ++ filter ([]/=) (map mapif (apply rel i))
-           | otherwise = map (\ec -> ec ++ mapif ec) (apply rel i)
-    newsts = sts ++ addsts
-    newrel = [ (i, nrel i) | i <- map fst rel ]
-    newval = val ++ [ (s,apply val $ apply copyof s)  | s <- addsts ]
-    newcur = apply copyto cur
+    split ws = map sort.(\(x,y) -> [x,y]) $ partition ( \s -> eval (m,s) form) ws
+    newrel = map nrel rel
+    nrel (i,ri) | i `elem` ags = (i,filter ([]/=) (concatMap split ri))
+                | otherwise    = (i,ri)
 
-showVal :: Assignment -> String
-showVal ass = case filter snd ass of
-  [] -> ""
-  ps -> "$" ++ intercalate "," (map (texProp.fst) ps) ++ "$"
+instance KripkeLike PointedModel where
+  directed = const False
+  getNodes (KrM ws _ val, _) = map (show &&& labelOf) ws where
+    labelOf w = tex $ apply val w
+  getEdges (KrM _ rel _, _) =
+    nub $ concat $ concat $ concat [ [ [ [(a,show x,show y) | x<y] | x <- part, y <- part ] | part <- apply rel a ] | a <- map fst rel ]
+  getActuals (KrM {}, cur) = [show cur]
 
-myDispModel :: PointedModel -> IO ()
-myDispModel (KrM w r v, cur) = dispModel show id showVal "" (VisModel w r v cur)
+instance TexAble PointedModel where tex = tex.ViaDot
 
-myTexModel :: PointedModel -> String -> IO String
-myTexModel (KrM w r v, cur) = texModel show id showVal "" (VisModel w r v cur)
-
-data ActionModel = ActM [State] [(State,Form)] [(Agent,Partition)] deriving (Show)
+data ActionModel = ActM [State] [(State,Form)] [(Agent,Partition)]
+  deriving (Eq,Ord,Show)
 type PointedActionModel = (ActionModel,State)
+
+instance KripkeLike PointedActionModel where
+  directed = const False
+  getNodes (ActM as actval _, _) = map (show &&& labelOf) as where
+    labelOf w = ppForm $ apply actval w
+  getEdges (ActM _ _ rel, _) =
+    nub $ concat $ concat $ concat [ [ [ [(a,show x,show y) | x<y] | x <- part, y <- part ] | part <- apply rel a ] | a <- map fst rel ]
+  getActuals (ActM {}, cur) = [show cur]
+
+instance TexAble PointedActionModel where tex = tex.ViaDot
 
 productUpdate :: PointedModel -> PointedActionModel -> PointedModel
 productUpdate pm@(m@(KrM oldstates oldrel oldval), oldcur) (ActM actions precon actrel, faction) =

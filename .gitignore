@@ -13,3 +13,4 @@ cabal-dev
 *.aux
 *.hp
 .stack-work/
+*.csv
