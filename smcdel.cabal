@@ -85,9 +85,10 @@ Benchmark bench-diningcrypto
   ghc-options:        -Wall
   hs-source-dirs:     src
   default-language:   Haskell2010
-  main-is:            SMCDEL/Bench/DiningCrypto.lhs
+  main-is:            SMCDEL/Bench/DiningCrypto.hs
   type:               exitcode-stdio-1.0
   build-depends:      base >= 4.7 && < 5,
+                      graphviz,
                       HasCacBDD,
                       smcdel,
                       QuickCheck,
@@ -106,9 +107,10 @@ Benchmark bench-sumandproduct
   ghc-options:        -Wall
   hs-source-dirs:     src
   default-language:   Haskell2010
-  main-is:            SMCDEL/Bench/SumAndProduct.lhs
+  main-is:            SMCDEL/Bench/SumAndProduct.hs
   type:               exitcode-stdio-1.0
   build-depends:      base >= 4.7 && < 5,
+                      graphviz,
                       HasCacBDD,
                       smcdel,
                       QuickCheck,
@@ -128,7 +130,7 @@ Benchmark bench-muddychildren
   ghc-options:        -Wall
   hs-source-dirs:     src
   default-language:   Haskell2010
-  main-is:            SMCDEL/Bench/MuddyChildren.lhs
+  main-is:            SMCDEL/Bench/MuddyChildren.hs
   type:               exitcode-stdio-1.0
   build-depends:      base >= 4.7 && < 5,
                       containers,
@@ -149,6 +151,7 @@ Benchmark bench-muddychildren
                       SMCDEL.Internal.MyHaskCUDD
                       SMCDEL.Language
                       SMCDEL.Other.MCTRIANGLE
+                      SMCDEL.Other.NonS5
                       SMCDEL.Symbolic.CUDD
                       SMCDEL.Symbolic.HasCacBDD
                       SMCDEL.Translations

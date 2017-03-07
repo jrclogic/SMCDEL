@@ -5,6 +5,8 @@ packages:
 - location:
     git: git@github.com:m4lvin/HasCacBDD
     commit: dc7798e900e7e44f0921d13d04df25011e9232be
+  extra-dep: true
 - location:
     git: git@github.com:m4lvin/cudd
     commit: b8da814955f33b207b73da478d21eb97f08aa269
+  extra-dep: true
