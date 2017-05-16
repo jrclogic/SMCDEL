@@ -1,7 +1,8 @@
 
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, MultiParamTypeClasses, FlexibleContexts #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
 
 module SMCDEL.Symbolic.HasCacBDD where
+import Control.Arrow (first)
 import Data.HasCacBDD hiding (Top,Bot)
 import Data.HasCacBDD.Visuals
 import Data.List (sort,intercalate,(\\))
@@ -26,26 +27,27 @@ boolBddOf (Forall ps f) = forallSet (map fromEnum ps) (boolBddOf f)
 boolBddOf (Exists ps f) = existsSet (map fromEnum ps) (boolBddOf f)
 boolBddOf _             = error "boolBddOf failed: Not a boolean formula."
 
-boolEval :: [Prp] -> Form -> Bool
-boolEval truths form = result where
-  values = map (\(P n) -> (n, P n `elem` truths)) (propsInForm form)
-  bdd    = restrictSet (boolBddOf form) values
-  result | bdd==top  = True
-         | bdd==bot  = False
-         | otherwise = error "boolEval failed: BDD leftover."
+boolEvalViaBdd :: [Prp] -> Form -> Bool
+boolEvalViaBdd truths = bddEval truths . boolBddOf
 
-data KnowStruct = KnS [Prp] Bdd [(Agent,[Prp])] deriving (Eq,Show)
+bddEval :: [Prp] -> Bdd -> Bool
+bddEval truths querybdd = evaluateFun querybdd (\n -> P n `elem` truths)
+
+data KnowStruct = KnS [Prp] Bdd [(Agent,[Prp])] deriving Show
 type KnState = [Prp]
 type Scenario = (KnowStruct,KnState)
 
 statesOf :: KnowStruct -> [KnState]
 statesOf (KnS props lawbdd _) = map (sort.translate) resultlists where
-  resultlists = map (map convToProp) $ allSatsWith (map (\(P n) -> n) props) lawbdd :: [[(Prp, Bool)]]
-  convToProp (n,bool) = (P n,bool)
+  resultlists :: [[(Prp, Bool)]]
+  resultlists = map (map (first toEnum)) $ allSatsWith (map fromEnum props) lawbdd
   translate l = map fst (filter snd l)
 
+instance HasAgents KnowStruct where
+  agentsOf (KnS _ _ obs)= map fst obs
+
 numberOfStates :: KnowStruct -> Int
-numberOfStates (KnS ps lawbdd _) = satCountWith (map (\(P n) -> n) ps) lawbdd
+numberOfStates (KnS props lawbdd _) = satCountWith (map fromEnum props) lawbdd
 
 restrictState :: KnState -> [Prp] -> KnState
 restrictState s props = filter (`elem` props) s
@@ -78,9 +80,9 @@ eval (kns@(KnS _ _ obs),s) (Kw i form) = alleq (\s' -> eval (kns,s') form) there
   theres = filter (\s' -> seteq (restrictState s' oi) (restrictState s oi)) (statesOf kns)
   oi = apply obs i
 eval (kns,s) (Ck ags form)  = all (\s' -> eval (kns,s') form) theres where
-  theres = filter (\s' -> (sort s, sort s') `elem` comknow kns ags) (statesOf kns)
+  theres = [ s' | (s0,s') <- comknow kns ags, s0 == s ]
 eval (kns,s) (Ckw ags form)  = alleq (\s' -> eval (kns,s') form) theres where
-  theres = filter (\s' -> (sort s, sort s') `elem` comknow kns ags) (statesOf kns)
+  theres = [ s' | (s0,s') <- comknow kns ags, s0 == s ]
 eval scn (PubAnnounce form1 form2) =
   not (eval scn form1) || eval (pubAnnounceOnScn scn form1) form2
 eval (kns,s) (PubAnnounceW form1 form2) =
@@ -112,7 +114,7 @@ announce kns@(KnS props lawbdd obs) ags psi = KnS newprops newlawbdd newobs wher
 
 announceOnScn :: Scenario -> [Agent] -> Form -> Scenario
 announceOnScn (kns@(KnS props _ _),s) ags psi
-  | eval (kns,s) psi = (announce kns ags psi, freshp props : s)
+  | eval (kns,s) psi = (announce kns ags psi, sort $ freshp props : s)
   | otherwise        = error "Liar!"
 
 bddOf :: KnowStruct -> Form -> Bdd
@@ -154,20 +156,22 @@ bddOf kns (PubAnnounceW form1 form2) =
     newform2b = bddOf (pubAnnounce kns (Neg form1)) form2
 
 evalViaBdd :: Scenario -> Form -> Bool
-evalViaBdd (kns@(KnS allprops _ _),s) f = bool where
-  bool | b==top = True
-       | b==bot = False
-       | otherwise = error ("evalViaBdd failed: BDD leftover:\n" ++ show b)
-  b    = restrictSet (bddOf kns f) list
-  list = [ (n, P n `elem` s) | (P n) <- allprops ]
+evalViaBdd (kns,s) f = evaluateFun (bddOf kns f) (\n -> P n `elem` s)
 
 validViaBdd :: KnowStruct -> Form -> Bool
 validViaBdd kns@(KnS _ lawbdd _) f = top == lawbdd `imp` bddOf kns f
 
 whereViaBdd :: KnowStruct -> Form -> [KnState]
-whereViaBdd kns f = statesOf (pubAnnounce kns f)
+whereViaBdd kns@(KnS props lawbdd _) f =
+ map (sort . map (toEnum . fst) . filter snd) $
+   allSatsWith (map fromEnum props) $ con lawbdd (bddOf kns f)
 
-data KnowTransf = KnT [Prp] Form [(Agent,[Prp])] deriving (Eq,Show)
+type Propulation = Bdd
+
+checkPropu :: Bdd -> KnowStruct -> KnowStruct -> Bool
+checkPropu = undefined
+
+data KnowTransf = KnT [Prp] Form [(Agent,[Prp])] deriving (Show)
 type Event = (KnowTransf,KnState)
 
 knowTransform :: Scenario -> Event -> Scenario
@@ -179,12 +183,15 @@ knowTransform (kns@(KnS props lawbdd obs),s) (KnT addprops addlaw eventobs, even
     newlawbdd = con lawbdd (bddOf kns shiftaddlaw)
     shifteventfacts = map (apply shiftrel) eventfacts
 
-texBDD :: Bdd -> String
-texBDD b = unsafePerformIO $ do
+texBddWith :: (Int -> String) -> Bdd -> String
+texBddWith myShow b = unsafePerformIO $ do
   (i,o,_,_) <- runInteractiveCommand "dot2tex --figpreamble=\"\\huge\" --figonly -traw"
-  hPutStr i (genGraph b ++ "\n")
+  hPutStr i (genGraphWith myShow b ++ "\n")
   hClose i
   hGetContents o
+
+texBDD :: Bdd -> String
+texBDD = texBddWith show
 
 instance TexAble Scenario where
   tex (KnS props lawbdd obs, state) = concat

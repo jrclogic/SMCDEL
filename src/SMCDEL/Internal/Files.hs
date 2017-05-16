@@ -7,9 +7,10 @@ import Data.FileEmbed
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as E
 
-getFileContent :: String -> T.Text
-getFileContent s = case s of
+embeddedFile :: String -> T.Text
+embeddedFile s = case s of
   "index.html"           -> E.decodeUtf8 $(embedFile "static/index.html")
+  "viz-lite.js"          -> E.decodeUtf8 $(embedFile "static/viz-lite.js")
   "MuddyChildren"        -> E.decodeUtf8 $(embedFile "Examples/MuddyChildren.smcdel.txt")
   "DiningCryptographers" -> E.decodeUtf8 $(embedFile "Examples/DiningCryptographers.smcdel.txt")
   "DrinkingLogicians"    -> E.decodeUtf8 $(embedFile "Examples/DrinkingLogicians.smcdel.txt")

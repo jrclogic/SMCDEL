@@ -2,7 +2,7 @@ name:                smcdel
 version:             0.1.0.0
 synopsis:            Symbolic Model Checking for Dynamic Epistemic Logic
 description:         See README.md
-homepage:            http://github.com/jrclogic/SMCDEL
+homepage:            https://github.com/jrclogic/SMCDEL
 license:             GPL-2
 license-file:        LICENSE
 author:              Malvin Gattinger
@@ -16,177 +16,115 @@ Library
   ghc-options:        -Wall
   default-language:   Haskell2010
   hs-source-dirs:     src
-  exposed-modules:    SMCDEL.Language
-                      SMCDEL.Explicit.Simple
+  exposed-modules:    SMCDEL.Examples
                       SMCDEL.Explicit.DEMO_S5
-                      SMCDEL.Symbolic.HasCacBDD
-                      SMCDEL.Symbolic.CUDD
-                      SMCDEL.Translations
-                      SMCDEL.Examples
-                      SMCDEL.Other.MCTRIANGLE
-                      SMCDEL.Other.BDD2Form
-                      SMCDEL.Other.NonS5
-  other-modules:      SMCDEL.Internal.Help
-                      SMCDEL.Internal.TexDisplay
+                      SMCDEL.Explicit.Simple
+                      SMCDEL.Internal.Files
+                      SMCDEL.Internal.Help
+                      SMCDEL.Internal.Lex
                       SMCDEL.Internal.MyHaskCUDD
-  build-depends:      base >= 4.7 && < 5,
+                      SMCDEL.Internal.Parse
+                      SMCDEL.Internal.TexDisplay
+                      SMCDEL.Internal.Token
+                      SMCDEL.Language
+                      SMCDEL.Other.BDD2Form
+                      SMCDEL.Other.MCTRIANGLE
+                      SMCDEL.Other.NonS5
+                      SMCDEL.Symbolic.CUDD
+                      SMCDEL.Symbolic.HasCacBDD
+                      SMCDEL.Translations
+  build-depends:      base >= 4.8 && < 5,
                       array,
                       containers,
+                      cudd == 0.1.0.0,
+                      file-embed,
                       graphviz,
-                      HasCacBDD,
-                      cudd,
+                      HasCacBDD == 0.1.0.0,
+                      lens,
                       process,
                       QuickCheck,
-                      random,
-                      temporary
+                      tagged,
+                      temporary,
+                      text
 
 Executable smcdel
   ghc-options:        -Wall
   default-language:   Haskell2010
-  hs-source-dirs:     src
-  main-is:            MainCLI.hs
+  main-is:            exec/smcdel.hs
   build-tools:        alex, happy
-  build-depends:      base >= 4.7 && < 5,
+  build-depends:      base >= 4.8 && < 5,
                       ansi-terminal,
-                      array,
                       directory,
                       filepath,
-                      graphviz,
-                      HasCacBDD,
                       process,
-                      QuickCheck,
+                      smcdel
+
+Executable smcdel-web
+  ghc-options:        -Wall
+  default-language:   Haskell2010
+  main-is:            exec/smcdel-web.hs
+  build-tools:        alex, happy
+  build-depends:      base >= 4.8 && < 5,
+                      array,
                       scotty,
+                      HasCacBDD,
+                      js-jquery >= 3,
                       smcdel,
-                      temporary,
-                      text,
-                      transformers
-  other-modules:      SMCDEL.Internal.Help
-                      SMCDEL.Language
-                      SMCDEL.Internal.Lex
-                      SMCDEL.Internal.Parse
-                      SMCDEL.Internal.TexDisplay
-                      SMCDEL.Internal.Token
-                      SMCDEL.Symbolic.HasCacBDD
+                      text
 
 Test-Suite translations
   ghc-options:        -Wall
   default-language:   Haskell2010
   hs-source-dirs:     test
-  main-is:            Translations.lhs
+  main-is:            Translations.hs
   type:               exitcode-stdio-1.0
-  build-depends:      base >= 4.7 && < 5,
+  build-depends:      base >= 4.8 && < 5,
                       QuickCheck,
                       random,
                       smcdel
-  ghc-options:        -pgml g++ -Wall -fPIC -fno-full-laziness -fhpc -fforce-recomp
-  cc-options:         -fPIC -shared
+
+Test-Suite examples
+  ghc-options:        -Wall
+  default-language:   Haskell2010
+  hs-source-dirs:     test
+  main-is:            Examples.hs
+  type:               exitcode-stdio-1.0
+  build-depends:      base >= 4.8 && < 5,
+                      hspec,
+                      QuickCheck,
+                      random,
+                      smcdel
 
 Benchmark bench-diningcrypto
   ghc-options:        -Wall
-  hs-source-dirs:     src
   default-language:   Haskell2010
-  main-is:            SMCDEL/Bench/DiningCrypto.hs
+  hs-source-dirs:     bench
+  main-is:            diningcrypto.hs
   type:               exitcode-stdio-1.0
-  build-depends:      base >= 4.7 && < 5,
-                      graphviz,
-                      HasCacBDD,
+  build-depends:      base >= 4.8 && < 5,
                       smcdel,
-                      QuickCheck,
-                      process,
-                      temporary,
                       time
-  other-modules:      SMCDEL.Examples
-                      SMCDEL.Explicit.Simple
-                      SMCDEL.Internal.Help
-                      SMCDEL.Internal.TexDisplay
-                      SMCDEL.Language
-                      SMCDEL.Symbolic.HasCacBDD
-                      SMCDEL.Translations
 
 Benchmark bench-sumandproduct
   ghc-options:        -Wall
-  hs-source-dirs:     src
   default-language:   Haskell2010
-  main-is:            SMCDEL/Bench/SumAndProduct.hs
+  hs-source-dirs:     bench
+  main-is:            sumandproduct.hs
   type:               exitcode-stdio-1.0
-  build-depends:      base >= 4.7 && < 5,
-                      graphviz,
-                      HasCacBDD,
+  build-depends:      base >= 4.8 && < 5,
                       smcdel,
-                      QuickCheck,
-                      process,
-                      temporary,
                       time
-  other-modules:      SMCDEL.Examples
-                      SMCDEL.Explicit.DEMO_S5
-                      SMCDEL.Explicit.Simple
-                      SMCDEL.Internal.Help
-                      SMCDEL.Internal.TexDisplay
-                      SMCDEL.Language
-                      SMCDEL.Symbolic.HasCacBDD
-                      SMCDEL.Translations
 
 Benchmark bench-muddychildren
   ghc-options:        -Wall
-  hs-source-dirs:     src
   default-language:   Haskell2010
-  main-is:            SMCDEL/Bench/MuddyChildren.hs
+  hs-source-dirs:     bench
+  main-is:            muddychildren.hs
   type:               exitcode-stdio-1.0
-  build-depends:      base >= 4.7 && < 5,
+  build-depends:      base >= 4.8 && < 5,
                       containers,
-                      graphviz,
-                      HasCacBDD,
                       smcdel,
-                      QuickCheck,
-                      cudd,
-                      criterion,
-                      process,
-                      temporary,
-                      time
-  other-modules:      SMCDEL.Examples
-                      SMCDEL.Explicit.DEMO_S5
-                      SMCDEL.Explicit.Simple
-                      SMCDEL.Internal.Help
-                      SMCDEL.Internal.TexDisplay
-                      SMCDEL.Internal.MyHaskCUDD
-                      SMCDEL.Language
-                      SMCDEL.Other.MCTRIANGLE
-                      SMCDEL.Other.NonS5
-                      SMCDEL.Symbolic.CUDD
-                      SMCDEL.Symbolic.HasCacBDD
-                      SMCDEL.Translations
-
-Executable smcdel-web
-  ghc-options:        -Wall
-  default-language:   Haskell2010
-  hs-source-dirs:     src
-  main-is:            MainWEB.hs
-  build-tools:        alex, happy
-  build-depends:      base >= 4.7 && < 5,
-                      process,
-                      scotty,
-                      file-embed,
-                      graphviz,
-                      QuickCheck,
-                      HasCacBDD,
-                      smcdel,
-                      temporary,
-                      text,
-                      array,
-                      wai-middleware-static,
-                      transformers
-  other-modules:      SMCDEL.Examples
-                      SMCDEL.Explicit.Simple
-                      SMCDEL.Internal.Files
-                      SMCDEL.Internal.Help
-                      SMCDEL.Internal.TexDisplay
-                      SMCDEL.Internal.Lex
-                      SMCDEL.Internal.Parse
-                      SMCDEL.Internal.TexDisplay
-                      SMCDEL.Internal.Token
-                      SMCDEL.Language
-                      SMCDEL.Symbolic.HasCacBDD
-                      SMCDEL.Translations
+                      criterion
 
 source-repository head
   type:     git

@@ -1,5 +1,5 @@
 {
-{-# OPTIONS_GHC -fno-warn-tabs -fno-warn-missing-signatures #-}
+{-# OPTIONS_GHC -w #-}
 module SMCDEL.Internal.Lex where
 import SMCDEL.Internal.Token
 }

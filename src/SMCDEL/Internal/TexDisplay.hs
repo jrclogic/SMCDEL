@@ -1,7 +1,10 @@
 {-# LANGUAGE FlexibleInstances, UndecidableInstances, MultiParamTypeClasses, AllowAmbiguousTypes, OverloadedStrings #-}
 
 module SMCDEL.Internal.TexDisplay where
+import Control.Monad
 import Data.List
+import qualified Data.Text.Lazy as T
+import System.IO
 import System.IO.Temp
 import System.IO.Unsafe
 import System.Process
@@ -14,18 +17,21 @@ begintab  = "\\\\begin{tabular}{c}"
 endtab    = "\\\\end{tabular}"
 newline   = " \\\\\\\\[0pt] "
 
-type PartitionOf a = [[a]]
-
-type Rel a = [(a,a)]
-
-class (Eq a, Show a) => TexAble a where
+class TexAble a where
   tex :: a -> String
   texTo :: a -> String -> IO ()
   texTo x filename = writeFile (filename++".tex") (tex x)
   texDocumentTo :: a -> String -> IO ()
   texDocumentTo x filename =
     writeFile (filename++".tex") (pre ++ tex x ++ post) where
-      pre = "\\documentclass[a4paper,10pt]{article}\\usepackage[utf8]{inputenc}\\usepackage{tikz,fontenc,graphicx}\\usepackage[pdftex]{hyperref}\\hypersetup{pdfborder={0 0 0},breaklinks=true}\\begin{document}"
+      pre = concat [ "\\documentclass[a4paper,10pt]{article}"
+                   , "\\usepackage[utf8]{inputenc}"
+                   , "\\usepackage{tikz,fontenc,graphicx}"
+                   , "\\usepackage[pdftex]{hyperref}"
+                   , "\\usepackage[margin=1cm]{geometry}"
+                   , "\\hypersetup{pdfborder={0 0 0},breaklinks=true}"
+                   , "\\begin{document}"
+                   , "\\thispagestyle{none}" ]
       post= "\\end{document}"
   pdfTo :: a -> String -> IO ()
   pdfTo x filename = do
@@ -34,7 +40,13 @@ class (Eq a, Show a) => TexAble a where
   disp :: a -> IO ()
   disp x = withSystemTempDirectory "smcdel" $ \tmpdir -> do
     pdfTo x (tmpdir ++ "/temp")
-    runAndWait $ "/usr/bin/okular " ++ tmpdir ++ "/temp.pdf"
+    runIgnoreAndWait $ "/usr/bin/okular " ++ tmpdir ++ "/temp.pdf"
+  svgViaTex :: a -> String
+  svgViaTex x = unsafePerformIO $ withSystemTempDirectory "smcdel" $ \tmpdir -> do
+    let filename = tmpdir ++ "/temp"
+    pdfTo x filename
+    runAndWait $ "pdftocairo -nocrop -svg "++filename++".pdf "++filename++".svg"
+    readFile (filename ++ ".svg")
 
 instance TexAble String where
   tex i = " \\text{" ++ i ++ "} "
@@ -50,7 +62,14 @@ instance TexAble a => TexAble [(a,Bool)] where
 
 runAndWait :: String -> IO ()
 runAndWait command = do
-  (_,_,_,pid) <- runInteractiveCommand command
+  (_inp,_out,err,pid) <- runInteractiveCommand command
+  _ <- waitForProcess pid
+  hGetContents err >>= (\x -> unless (null x) (putStrLn x))
+  return ()
+
+runIgnoreAndWait :: String -> IO ()
+runIgnoreAndWait command = do
+  (_inp,_out,_err,pid) <- runInteractiveCommand command
   _ <- waitForProcess pid
   return ()
 
@@ -61,25 +80,30 @@ class KripkeLike a where
   getActuals = const []
   directed :: a -> Bool
   directed = const True
+  nodeAts :: a -> Bool -> Attributes
+  nodeAts _ True  = [shape DoubleCircle]
+  nodeAts _ False = [shape Circle]
   toGraph :: a -> Data.GraphViz.Types.Generalised.DotGraph String
   toGraph x = (if directed x then digraph' else graph') $ do
     let nodes = getNodes x
     let actuals = filter (\n -> fst n `elem` getActuals x) nodes
     mapM_
-      (\(nid,nlabel) -> node nid [shape DoubleCircle, toLabel $ nid ++":"++ nlabel])
+      (\(nid,nlabel) -> node nid (toLabel nlabel : nodeAts x True))
       actuals
     mapM_
-      (\(nid,nlabel) -> node nid [shape Circle, toLabel $ nid ++":"++ nlabel])
+      (\(nid,nlabel) -> node nid (toLabel nlabel : nodeAts x False))
       (nodes \\ actuals)
     mapM_
       (\(elabel,from,to) -> edge from to [toLabel elabel])
       (getEdges x)
   dispDot :: a -> IO ()
-  dispDot x = runGraphvizCanvas' (toGraph x) Xlib
+  dispDot x = runGraphvizCanvas Dot (toGraph x) Xlib
+  textDot :: a -> T.Text
+  textDot = T.intercalate " " . T.lines . printDotGraph . toGraph
   svg :: a -> String
   svg x = unsafePerformIO $
     withSystemTempDirectory "smcdel" $ \tmpdir -> do
-      _ <- runGraphviz (toGraph x) Svg (tmpdir ++ "/temp.svg")
+      _ <- runGraphvizCommand Dot (toGraph x) Svg (tmpdir ++ "/temp.svg")
       readFile (tmpdir ++ "/temp.svg")
 
 newtype ViaDot a = ViaDot a
@@ -92,8 +116,8 @@ instance (Ord a, Show a, KripkeLike a) => TexAble (ViaDot a) where
       runAndWait $ "dot2tex --figonly -ftikz -traw -p --autosize -w --usepdflatex "++tmpdir++"/temp.dot | sed '/^$/d' > "++tmpdir++"/temp.tex;"
       readFile (tmpdir ++ "/temp.tex")
   texTo (ViaDot x) filename = do
-    _ <- runGraphviz (toGraph x) DotOutput filename
+    _ <- runGraphviz (toGraph x) DotOutput (filename ++ ".dot")
     runAndWait $ "dot2tex --figonly -ftikz -traw -p --autosize -w --usepdflatex "++filename++".dot | sed '/^$/d' > "++filename++".tex;"
   texDocumentTo (ViaDot x) filename = do
-    _ <- runGraphviz (toGraph x) DotOutput filename
+    _ <- runGraphviz (toGraph x) DotOutput (filename ++ ".dot")
     runAndWait $ "dot2tex -ftikz -traw -p --autosize -w --usepdflatex "++filename++".dot -o "++filename++".tex;"

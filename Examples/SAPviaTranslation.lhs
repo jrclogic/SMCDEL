@@ -1,4 +1,11 @@
 
+We solve and check the Sum \& Product puzzle with SMCDEL via translation.
+
+First we translate the initial Kripke model to a knowledge structure.
+Then we check on which states the DEL formula characterizing a solution holds.
+Finally, we verify that the state (4,13) is the only solution.
+
+\begin{code}
 module Main where
 import Data.List
 import DELLANG
@@ -75,3 +82,12 @@ main = do
   -- verifying that it is the unique solution
   putStr "If the announcements are truthful, then x==4 and y==13: "
   print $ validViaBdd sapKnStruct (Impl protocol (Conj [xIs 4, yIs 13]))
+\end{code}
+
+Only finding the solution: 2:14.
+
+Only verifying that it is a solution: 1:58.
+
+Only verifying that it is the unique solution: 2:16.
+
+All three: 6:33.

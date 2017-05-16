@@ -5,7 +5,7 @@ import Control.Arrow (first,second)
 import Data.List (sortBy)
 import SMCDEL.Internal.Help (apply,restrict,Erel,bl)
 
-data Agent = Ag Int deriving (Eq,Ord,Show)
+newtype Agent = Ag Int deriving (Eq,Ord,Show)
 
 data Prp = P Int | Q Int | R Int | S Int deriving (Eq,Ord)
 instance Show Prp where
@@ -94,7 +94,7 @@ updsPa ::  Show state => Ord state =>
             EpistM state -> [Form state] -> EpistM state
 updsPa = foldl updPa
 
-sub :: Show a => Eq a => [(Prp,Form a)] -> Prp -> Form a
+sub :: Show a => [(Prp,Form a)] -> Prp -> Form a
 sub subst p =
   if p `elem` map fst subst
     then apply subst p

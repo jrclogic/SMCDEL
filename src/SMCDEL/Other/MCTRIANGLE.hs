@@ -1,6 +1,7 @@
 
 module SMCDEL.Other.MCTRIANGLE where
 
+data Kind = Muddy | Clean
 type State = (Int,Int)
 data McModel = McM [State] [State] State deriving Show
 
@@ -13,12 +14,12 @@ mcModel cur@(c,m) = McM ostates fstates cur where
 posFrom :: McModel -> State -> [State]
 posFrom (McM _ fstates _) (oc,om) = filter (`elem` fstates) [ (oc+1,om), (oc,om+1) ]
 
-obsFor :: McModel -> Bool -> State
-obsFor (McM _ _ (curc,curm)) False = (curc-1,curm)
-obsFor (McM _ _ (curc,curm)) True = (curc,curm-1)
+obsFor :: McModel -> Kind -> State
+obsFor (McM _ _ (curc,curm)) Clean = (curc-1,curm)
+obsFor (McM _ _ (curc,curm)) Muddy = (curc,curm-1)
 
-posFor :: McModel -> Bool -> [State]
-posFor m muddy = posFrom m $ obsFor m muddy
+posFor :: McModel -> Kind -> [State]
+posFor m status = posFrom m $ obsFor m status
 
 type Quantifier = State -> Bool
 
@@ -28,21 +29,21 @@ some (_,b) = b > 0
 data McFormula = Neg McFormula    -- negations
                | Conj [McFormula] -- conjunctions
                | Qf Quantifier    -- quantifiers
-               | KnowSelf Bool    -- all b agents DO    know their status
-               | NotKnowSelf Bool -- all b agents DON'T know their status
+               | KnowSelf Kind    -- all b agents DO    know their status
+               | NotKnowSelf Kind -- all b agents DON'T know their status
 
 nobodyknows,everyoneKnows :: McFormula
-nobodyknows   = Conj [ NotKnowSelf False, NotKnowSelf True ]
-everyoneKnows = Conj [    KnowSelf False,    KnowSelf True ]
+nobodyknows   = Conj [ NotKnowSelf Clean, NotKnowSelf Muddy ]
+everyoneKnows = Conj [    KnowSelf Clean,    KnowSelf Muddy ]
 
 eval :: McModel -> McFormula -> Bool
 eval m (Neg f)          = not $ eval m f
 eval m (Conj fs)        = all (eval m) fs
 eval (McM _ _ s) (Qf q) = q s
-eval m@(McM _ _ (_,curm)) (KnowSelf    True ) = curm==0 || length (posFor m True ) == 1
-eval m@(McM _ _ (curc,_)) (KnowSelf    False) = curc==0 || length (posFor m False) == 1
-eval m@(McM _ _ (_,curm)) (NotKnowSelf True ) = curm==0 || length (posFor m True ) == 2
-eval m@(McM _ _ (curc,_)) (NotKnowSelf False) = curc==0 || length (posFor m False) == 2
+eval m@(McM _ _ (_,curm)) (KnowSelf    Muddy) = curm==0 || length (posFor m Muddy) == 1
+eval m@(McM _ _ (curc,_)) (KnowSelf    Clean) = curc==0 || length (posFor m Clean) == 1
+eval m@(McM _ _ (_,curm)) (NotKnowSelf Muddy) = curm==0 || length (posFor m Muddy) == 2
+eval m@(McM _ _ (curc,_)) (NotKnowSelf Clean) = curc==0 || length (posFor m Clean) == 2
 
 update :: McModel -> McFormula -> McModel
 update (McM ostates fstates cur) f =

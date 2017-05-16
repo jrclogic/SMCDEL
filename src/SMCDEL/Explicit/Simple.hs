@@ -3,11 +3,14 @@
 
 module SMCDEL.Explicit.Simple where
 import Control.Arrow (second,(&&&))
+import Data.GraphViz
 import Data.List
 import SMCDEL.Language
 import SMCDEL.Internal.TexDisplay
-import SMCDEL.Internal.Help (alleq,fusion,apply)
+import SMCDEL.Internal.Help (alleq,fusion,apply,(!))
+import Test.QuickCheck
 
+-- FIXME rename this to World, use State only for knowledge structures
 type State = Int
 
 type Partition = [[State]]
@@ -15,6 +18,51 @@ type Assignment = [(Prp,Bool)]
 
 data KripkeModel = KrM [State] [(Agent,Partition)] [(State,Assignment)] deriving (Eq,Ord,Show)
 type PointedModel = (KripkeModel,State)
+
+instance HasAgents KripkeModel where
+  agentsOf (KrM _ rel _) = map fst rel
+
+newtype PropList = PropList [Prp]
+
+withoutWorld :: KripkeModel -> State -> KripkeModel
+withoutWorld (KrM worlds parts val) w = KrM
+  (delete w worlds)
+  (map (second (filter (/=[]) . map (delete w))) parts)
+  (filter ((/=w).fst) val)
+
+instance Arbitrary PropList where
+  arbitrary = do
+    moreprops <- sublistOf (map P [1..10])
+    return $ PropList $ P 0 : moreprops
+
+randomAssFor :: [Prp] -> Gen Assignment
+randomAssFor ps = do
+  tfs <- infiniteListOf $ choose (True,False)
+  return $ zip ps tfs
+
+randomPartFor :: [State] -> Gen Partition
+randomPartFor worlds = do
+  indices <- infiniteListOf $ choose (1, length worlds)
+  let pairs = zip worlds indices
+  let parts = [ sort $ map fst $ filter ((==k).snd) pairs | k <- [1 .. (length worlds)] ]
+  return $ sort $ filter (/=[]) parts
+
+instance Arbitrary KripkeModel where
+  arbitrary = do
+    Group agents <- arbitrary
+    let props = map P [0..4]
+    worlds <- sort . nub <$> listOf1 (elements [0..8])
+    val <- mapM (\w -> do
+      randoma <- randomAssFor props
+      return (w,randoma)
+      ) worlds
+    parts <- mapM (\i -> do
+      randomp <- randomPartFor worlds
+      return (i,randomp)
+      ) agents
+    return $ KrM worlds parts val
+  shrink m@(KrM worlds _ _) =
+    [ m `withoutWorld` w | w <- worlds, length worlds > 1 ]
 
 eval :: PointedModel -> Form -> Bool
 eval _ Top = True
@@ -53,6 +101,9 @@ eval pm (AnnounceW ags form1 form2) =
     then eval (announce pm ags form1) form2
     else eval (announce pm ags (Neg form1)) form2
 
+valid :: KripkeModel -> Form -> Bool
+valid m@(KrM worlds _ _) f = all (\w -> eval (m,w) f) worlds
+
 pubAnnounce :: PointedModel -> Form -> PointedModel
 pubAnnounce pm@(m@(KrM sts rel val), cur) form =
   if eval pm form then (KrM newsts newrel newval, cur)
@@ -81,7 +132,20 @@ instance KripkeLike PointedModel where
     nub $ concat $ concat $ concat [ [ [ [(a,show x,show y) | x<y] | x <- part, y <- part ] | part <- apply rel a ] | a <- map fst rel ]
   getActuals (KrM {}, cur) = [show cur]
 
-instance TexAble PointedModel where tex = tex.ViaDot
+instance TexAble PointedModel where
+  tex = tex.ViaDot
+  texTo = texTo.ViaDot
+  texDocumentTo = texDocumentTo.ViaDot
+
+type Bisimulation = [(State,State)]
+
+checkBisim :: Bisimulation -> KripkeModel -> KripkeModel -> Bool
+checkBisim z m1@(KrM _ rel1 val1) m2@(KrM _ rel2 val2) =
+     all (\(w1,w2) -> val1 ! w1 == val2 ! w2) z -- same props
+  && and [ any (\v2 -> (v1,v2) `elem` z) (concat $ filter (elem w2) (rel2 ! ag)) -- forth
+         | (w1,w2) <- z, ag <- agentsOf m1, v1 <- concat $ filter (elem w1) (rel1 ! ag) ]
+  && and [ any (\v1 -> (v1,v2) `elem` z) (concat $ filter (elem w1) (rel1 ! ag)) -- back
+         | (w1,w2) <- z, ag <- agentsOf m2, v2 <- concat $ filter (elem w2) (rel2 ! ag) ]
 
 data ActionModel = ActM [State] [(State,Form)] [(Agent,Partition)]
   deriving (Eq,Ord,Show)
@@ -94,8 +158,18 @@ instance KripkeLike PointedActionModel where
   getEdges (ActM _ _ rel, _) =
     nub $ concat $ concat $ concat [ [ [ [(a,show x,show y) | x<y] | x <- part, y <- part ] | part <- apply rel a ] | a <- map fst rel ]
   getActuals (ActM {}, cur) = [show cur]
+  nodeAts _ True  = [shape BoxShape, style solid]
+  nodeAts _ False = [shape BoxShape, style dashed]
 
 instance TexAble PointedActionModel where tex = tex.ViaDot
+
+instance Arbitrary ActionModel where
+  arbitrary = do
+    f <- arbitrary
+    g <- arbitrary
+    h <- arbitrary
+    return $
+      ActM [0..3] [(0,Top),(1,f),(2,g),(3,h)] ( ("0",[[0],[1],[2],[3]]):[(show k,[[0..3::Int]]) | k<-[1..5::Int] ])
 
 productUpdate :: PointedModel -> PointedActionModel -> PointedModel
 productUpdate pm@(m@(KrM oldstates oldrel oldval), oldcur) (ActM actions precon actrel, faction) =

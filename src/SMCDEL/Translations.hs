@@ -1,19 +1,50 @@
 
 module SMCDEL.Translations where
 import Control.Arrow (second)
-import Data.List (groupBy,sort,(\\),elemIndex,intersect)
+import Data.List (groupBy,sort,(\\),elemIndex,intersect,nub)
 import Data.Maybe (fromJust)
 import SMCDEL.Language
 import SMCDEL.Symbolic.HasCacBDD
 import SMCDEL.Explicit.Simple
-import SMCDEL.Internal.Help (anydiff,alldiff,alleq,apply,powerset)
+import SMCDEL.Internal.Help (anydiff,alldiff,alleq,apply,powerset,(!),seteq)
 
 import Data.HasCacBDD hiding (Top,Bot)
 
+type StateMap = State -> KnState
+
+equivalentWith :: PointedModel -> Scenario -> StateMap -> Bool
+equivalentWith (KrM ws rel val, actw) (kns@(KnS _ _ obs), curs) g =
+  c1 && c2 && c3 && g actw == curs where
+    c1 = all (\l -> knsLink l == kriLink l) linkSet where
+      linkSet = nub [ (i,w1,w2) | w1 <- ws, w2 <- ws, w1 <= w2, i <- map fst rel ]
+      knsLink (i,w1,w2) = let oi = obs ! i in (g w1 `intersect` oi) `seteq` (g w2 `intersect` oi)
+      kriLink (i,w1,w2) = any (\p -> w1 `elem` p && w2 `elem` p) (rel ! i)
+    c2 = and [ (p `elem` g w) == ((val ! w) ! p) | w <- ws, p <- map fst (snd $ head val) ]
+    c3 = statesOf kns `seteq` nub (map g ws)
+
+findStateMap :: PointedModel -> Scenario -> Maybe StateMap
+findStateMap pm@(KrM ws _ val, _) scn@(KnS props _ _, _)
+  | any (`notElem` props) kripkeVocab  =  error "Kripke vocabulary not available in KnowStruct"
+  | null gs   = Nothing
+  | otherwise = Just (head gs)
+  where
+    kripkeVocab = map fst (snd $ head val)
+    _sharedVocab = kripkeVocab `intersect` props -- FIXME: use this instead of generating all functions!
+    allFuncs :: Eq a => [a] -> [b] -> [a -> b]
+    allFuncs [] _ = [ const undefined ]
+    allFuncs (x:xs) ys = [ \a -> if a==x then y else f a | y <- ys, f <- allFuncs xs ys ]
+    allMaps :: [StateMap]
+    allMaps = allFuncs ws (powerset props)
+    gs :: [StateMap]
+    gs =  filter (equivalentWith pm scn) allMaps
+
 knsToKripke :: Scenario -> PointedModel
-knsToKripke (kns@(KnS ps _ obs),curs) =
+knsToKripke = fst . knsToKripkeWithG
+
+knsToKripkeWithG :: Scenario -> (PointedModel, StateMap)
+knsToKripkeWithG (kns@(KnS ps _ obs),curs) =
   if curs `elem` statesOf kns
-     then (KrM worlds rel val, cur)
+     then ((KrM worlds rel val, cur) , g)
      else error "knsToKripke failed: Invalid state."
   where
     lav    = zip (statesOf kns) [0..(length (statesOf kns)-1)]
@@ -21,22 +52,26 @@ knsToKripke (kns@(KnS ps _ obs),curs) =
       state2kripkeass s = map (\p -> (p, p `elem` s)) ps
     rel    = [(i,rfor i) | i <- map fst obs]
     rfor i = map (map snd) (groupBy ( \ (x,_) (y,_) -> x==y ) (sort pairs)) where
-      pairs = map (\s -> (restrictState s (apply obs i), apply lav s)) (statesOf kns)
-    worlds = map fst val
-    cur    = apply lav curs
+      pairs = map (\s -> (restrictState s (obs ! i), lav ! s)) (statesOf kns)
+    worlds = map snd lav
+    cur    = lav ! curs
+    g w    = statesOf kns !! w
 
 kripkeToKns :: PointedModel -> Scenario
-kripkeToKns (KrM worlds rel val, cur) = (KnS ps law obs, curs) where
-  v         = map fst $ apply val cur
+kripkeToKns = fst . kripkeToKnsWithG
+
+kripkeToKnsWithG :: PointedModel -> (Scenario, StateMap)
+kripkeToKnsWithG (KrM worlds rel val, cur) = ((KnS ps law obs, curs), g) where
+  v         = map fst (val ! cur)
   ags       = map fst rel
   newpstart = fromEnum $ freshp v -- start counting new propositions here
-  amount i  = ceiling (logBase 2 (fromIntegral $ length (apply rel i)) :: Float) -- |O_i|
+  amount i  = ceiling (logBase 2 (fromIntegral $ length (rel ! i)) :: Float) -- = |O_i|
   newpstep  = maximum [ amount i | i <- ags ]
   numberof i = fromJust $ elemIndex i (map fst rel)
   newps i   = map (\k -> P (newpstart + (newpstep * numberof i) +k)) [0..(amount i - 1)] -- O_i
-  copyrel i = zip (apply rel i) (powerset (newps i)) -- label equiv.classes with P(O_i)
+  copyrel i = zip (rel ! i) (powerset (newps i)) -- label equiv.classes with P(O_i)
   gag i w   = snd $ head $ filter (\(ws,_) -> elem w ws) (copyrel i)
-  g w       = filter (apply (apply val w)) v ++ concat [ gag i w | i <- ags ]
+  g w       = filter (apply (val ! w)) v ++ concat [ gag i w | i <- ags ]
   ps        = v ++ concat [ newps i | i <- ags ]
   law       = disSet [ booloutof (g w) ps | w <- worlds ]
   obs       = [ (i,newps i) | i<- ags ]

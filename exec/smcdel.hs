@@ -19,7 +19,6 @@ import SMCDEL.Symbolic.HasCacBDD
 main :: IO ()
 main = do
   (input,options) <- getInputAndSettings
-  print options
   let showMode = "-show" `elem` options
   let texMode = "-tex" `elem` options || showMode
   tmpdir <- getTemporaryDirectory
@@ -71,14 +70,12 @@ getInputAndSettings = do
       return (input,options)
     _ -> do
       name <- getProgName
-      hPutStrLn stderr infoline
-      hPutStrLn stderr $ "usage: " ++ name ++ " <filename> {Options}"
-      hPutStrLn stderr $ "       (use filename " ++ name ++ " -  to read STDIN)"
-      hPutStrLn stderr ""
-      hPutStrLn stderr "  -tex   Output will be LaTeX code"
-      hPutStrLn stderr ""
-      hPutStrLn stderr "  -show  Write output to /tmp, generate PDF and show it."
-      hPutStrLn stderr "         (implies -tex)"
+      mapM_ (hPutStrLn stderr)
+        [ infoline
+        , "usage: " ++ name ++ " <filename> {options}"
+        , "       (use filename - for STDIN)\n"
+        , "  -tex   generate LaTeX code\n"
+        , "  -show  write to /tmp, generate PDF and show it (implies -tex)\n" ]
       exitFailure
 
 vividPutStrLn :: String -> IO ()

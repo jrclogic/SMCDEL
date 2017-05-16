@@ -7,7 +7,8 @@ import Data.Maybe (fromJust)
 import Test.QuickCheck
 import SMCDEL.Internal.TexDisplay
 
-data Prp = P Int  deriving (Eq,Ord,Show)
+newtype Prp = P Int deriving (Eq,Ord,Show)
+
 instance Enum Prp where
   toEnum = P
   fromEnum (P n) = n
@@ -26,13 +27,18 @@ alice   = "Alice"
 bob     = "Bob"
 carol   = "Carol"
 
-data AgAgent = Ag Agent deriving (Eq,Ord,Show)
+newtype AgAgent = Ag Agent deriving (Eq,Ord,Show)
 
 instance Arbitrary AgAgent where
-  arbitrary = oneof $ map (pure.Ag.(show)) $ [1..(5::Integer)]
+  arbitrary = oneof $ map (pure . Ag . show) [1..(5::Integer)]
 
-instance Arbitrary [AgAgent] where
-  arbitrary = sublistOf $ map (Ag.(show)) [1..(5::Integer)]
+class HasAgents a where
+  agentsOf :: a -> [Agent]
+
+newtype Group = Group [Agent] deriving (Eq,Ord,Show)
+
+instance Arbitrary Group where
+  arbitrary = fmap Group $ sublistOf $ map show [1..(5::Integer)]
 
 data Form
   = Top                         -- ^ True Constant
@@ -59,27 +65,30 @@ data Form
 showSet :: Show a => [a] -> String
 showSet xs = intercalate "," (map show xs)
 
--- | Pretty print a formula
+-- | Pretty print a formula, possibly with a translation for atoms:
 ppForm :: Form -> String
-ppForm Top = "T"
-ppForm Bot = "F"
-ppForm (PrpF (P n))  = show n
-ppForm (Neg f)       = "~" ++ ppForm f
-ppForm (Conj fs)     = "(" ++ intercalate " & " (map ppForm fs) ++ ")"
-ppForm (Disj fs)     = "(" ++ intercalate " | " (map ppForm fs) ++ ")"
-ppForm (Xor fs)      = "XOR{" ++ intercalate "," (map ppForm fs) ++ "}"
-ppForm (Impl f g)    = "(" ++ ppForm f ++ "->" ++ ppForm g ++ ")"
-ppForm (Equi f g)    = ppForm f ++ "=" ++ ppForm g
-ppForm (Forall ps f) = "Forall {" ++ showSet ps ++ "}: " ++ ppForm f
-ppForm (Exists ps f) = "Exists {" ++ showSet ps ++ "}: " ++ ppForm f
-ppForm (K i f)    = "K " ++ i ++ " " ++ ppForm f
-ppForm (Ck is f)  = "Ck " ++ intercalate "," is ++ " " ++ ppForm f
-ppForm (Kw i f)   = "Kw " ++ i ++ " " ++ ppForm f
-ppForm (Ckw is f) = "Ckw " ++ intercalate "," is ++ " " ++ ppForm f
-ppForm (PubAnnounce f g)  = "[! " ++ ppForm f ++ "] " ++ ppForm g
-ppForm (PubAnnounceW f g) = "[?! " ++ ppForm f ++ "] " ++ ppForm g
-ppForm (Announce is f g)  = "[" ++ intercalate ", " is ++ " ! " ++ ppForm f ++ "]" ++ ppForm g
-ppForm (AnnounceW is f g) = "[" ++ intercalate ", " is ++ " ?! " ++ ppForm f ++ "]" ++ ppForm g
+ppForm = ppFormWith (\(P n) -> show n)
+
+ppFormWith :: (Prp -> String)-> Form -> String
+ppFormWith _     Top           = "T"
+ppFormWith _     Bot           = "F"
+ppFormWith trans (PrpF p)      = trans p
+ppFormWith trans (Neg f)       = "~" ++ ppFormWith trans f
+ppFormWith trans (Conj fs)     = "(" ++ intercalate " & " (map (ppFormWith trans) fs) ++ ")"
+ppFormWith trans (Disj fs)     = "(" ++ intercalate " | " (map (ppFormWith trans) fs) ++ ")"
+ppFormWith trans (Xor fs)      = "XOR{" ++ intercalate "," (map (ppFormWith trans) fs) ++ "}"
+ppFormWith trans (Impl f g)    = "(" ++ ppFormWith trans f ++ "->" ++ ppFormWith trans g ++ ")"
+ppFormWith trans (Equi f g)    = ppFormWith trans f ++ "=" ++ ppFormWith trans g
+ppFormWith trans (Forall ps f) = "Forall {" ++ showSet ps ++ "}: " ++ ppFormWith trans f
+ppFormWith trans (Exists ps f) = "Exists {" ++ showSet ps ++ "}: " ++ ppFormWith trans f
+ppFormWith trans (K i f)       = "K " ++ i ++ " " ++ ppFormWith trans f
+ppFormWith trans (Ck is f)     = "Ck " ++ intercalate "," is ++ " " ++ ppFormWith trans f
+ppFormWith trans (Kw i f)      = "Kw " ++ i ++ " " ++ ppFormWith trans f
+ppFormWith trans (Ckw is f)    = "Ckw " ++ intercalate "," is ++ " " ++ ppFormWith trans f
+ppFormWith trans (PubAnnounce f g)  = "[! " ++ ppFormWith trans f ++ "] " ++ ppFormWith trans g
+ppFormWith trans (PubAnnounceW f g) = "[?! " ++ ppFormWith trans f ++ "] " ++ ppFormWith trans g
+ppFormWith trans (Announce is f g)  = "[" ++ intercalate ", " is ++ " ! " ++ ppFormWith trans f ++ "]" ++ ppFormWith trans g
+ppFormWith trans (AnnounceW is f g) = "[" ++ intercalate ", " is ++ " ?! " ++ ppFormWith trans f ++ "]" ++ ppFormWith trans g
 
 pubAnnounceStack :: [Form] -> Form -> Form
 pubAnnounceStack = flip $ foldr PubAnnounce
@@ -195,8 +204,9 @@ simStep (Disj fs)     | Top `elem` fs = Top
                       | or [ Neg f `elem` fs | f <- fs ] = Top
                       | otherwise     = Disj (nub $ map simStep (filter (Bot /=) fs))
 simStep (Xor  [])     = Bot
-simStep (Xor  [f])    = Neg $ simStep f
-simStep (Xor  fs)     = Xor (map simStep fs)
+simStep (Xor  [Bot])  = Bot
+simStep (Xor  [f])    = simStep f
+simStep (Xor  fs)     = Xor (map simStep $ filter (Bot /=) fs)
 simStep (Impl Bot _)  = Top
 simStep (Impl _ Top)  = Top
 simStep (Impl Top f)  = simStep f
@@ -213,7 +223,11 @@ simStep (Forall ps f) = Forall ps (simStep f)
 simStep (Exists ps f) = Exists ps (simStep f)
 simStep (K a f)       = K a (simStep f)
 simStep (Kw a f)      = Kw a (simStep f)
+simStep (Ck _   Top)  = Top
+simStep (Ck _   Bot)  = Bot
 simStep (Ck ags f)    = Ck ags (simStep f)
+simStep (Ckw _   Top) = Top
+simStep (Ckw _   Bot) = Top
 simStep (Ckw ags f)   = Ckw ags (simStep f)
 simStep (PubAnnounce Top f) = simStep f
 simStep (PubAnnounce Bot _) = Top
@@ -259,14 +273,15 @@ instance TexAble Form where
 testForm :: Form
 testForm = Forall [P 3] $ Equi (Disj [Bot,PrpF $ P 3,Bot]) (Conj [Top,Xor [Top,Kw alice (PrpF (P 4))], AnnounceW [alice,bob] (PrpF (P 5)) (Kw bob $ PrpF (P 5))  ])
 
-data BF = BF Form deriving (Eq,Ord,Show)
+newtype BF = BF Form deriving (Show)
 
 instance Arbitrary BF where
   arbitrary = sized randomboolform
+  -- TODO: shrink!
 
 randomboolform ::  Int -> Gen BF
 randomboolform sz = BF <$> bf' sz' where
-  maximumvar = 1000
+  maximumvar = 100
   sz' = min maximumvar sz
   bf' 0 = (PrpF . P) <$> choose (0, sz')
   bf' n = oneof [ pure SMCDEL.Language.Top
@@ -274,15 +289,19 @@ randomboolform sz = BF <$> bf' sz' where
                 , (PrpF . P) <$> choose (0, sz')
                 , Neg <$> st
                 , (\x y -> Conj [x,y]) <$> st <*> st
+                , (\x y z -> Conj [x,y,z]) <$> st <*> st <*> st
                 , (\x y -> Disj [x,y]) <$> st <*> st
+                , (\x y z -> Disj [x,y,z]) <$> st <*> st <*> st
                 , Impl <$> st <*> st
                 , Equi <$> st <*> st
+                , (\x -> Xor [x]) <$> st
                 , (\x y -> Xor [x,y]) <$> st <*> st
+                , (\x y z -> Xor [x,y,z]) <$> st <*> st <*> st
                 , (\m f -> Exists [P m] f) <$> choose (0, maximumvar) <*> st
                 , (\m f -> Forall [P m] f) <$> randomvar <*> st
                 ]
     where
-      st = bf' (n `div` 2)
+      st = bf' (n `div` 3)
       randomvar = elements [0..maximumvar]
 
 instance Arbitrary Form where
@@ -299,18 +318,18 @@ instance Arbitrary Form where
                   , Xor  <$> listOf (form n')
                   , Impl <$> form n' <*> form n'
                   , Equi <$> form n' <*> form n'
-                  -- , Exists <$> arbitrary <*> form n'
-                  -- , Forall <$> arbitrary <*> form n'
                   , K   <$> arbitraryAg <*> form n'
-                  -- , Ck  <$> arbitraryAgs <*> form n'
+                  , Ck  <$> arbitraryAgs <*> form n'
                   , Kw  <$> arbitraryAg <*> form n'
-                  -- , Ckw <$> arbitraryAgs <*> form n'
+                  , Ckw <$> arbitraryAgs <*> form n'
                   , PubAnnounce  <$> form n' <*> form n'
                   , PubAnnounceW <$> form n' <*> form n'
                   , Announce  <$> arbitraryAgs <*> form n' <*> form n'
                   , AnnounceW <$> arbitraryAgs <*> form n' <*> form n'
                   ]
       where
-        n' = n `div` 4
+        n' = n `div` 5
         arbitraryAg = (\(Ag i) -> i) <$> arbitrary
-        arbitraryAgs = sublistOf $ map show [1..(5::Integer)]
+        arbitraryAgs = sublistOf (map show [1..(5::Integer)]) `suchThat` (not . null)
+  shrink f | f == simplify f = []
+           | otherwise       = [simplify f]

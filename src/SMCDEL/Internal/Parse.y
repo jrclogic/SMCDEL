@@ -1,4 +1,5 @@
 {
+{-# OPTIONS_GHC -w #-}
 module SMCDEL.Internal.Parse where
 import SMCDEL.Internal.Token
 import SMCDEL.Internal.Lex

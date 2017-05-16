@@ -7,7 +7,7 @@ import qualified SMCDEL.Language (Form(Bot,Top))
 import SMCDEL.Symbolic.HasCacBDD
 
 formOf :: Bdd -> Form
-formOf = simplify.formOfTree.unravel
+formOf = simplify . formOfTree . unravel
 
 formOfTree :: BddTree -> Form
 formOfTree Bot = SMCDEL.Language.Bot

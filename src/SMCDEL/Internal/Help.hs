@@ -1,14 +1,14 @@
-module SMCDEL.Internal.Help (alleq,anydiff,alldiff,apply,choose,powerset,restrict,rtc,Erel,bl,fusion,seteq) where
+module SMCDEL.Internal.Help (alleq,anydiff,alldiff,apply,powerset,restrict,rtc,Erel,bl,fusion,seteq,(!)) where
 import Data.List (nub,union,sort,foldl',(\\))
 
 type Rel a b = [(a,b)]
 type Erel a = [[a]]
 
-alleq :: Eq a => Eq b => (a -> b) -> [a] -> Bool
+alleq :: Eq b => (a -> b) -> [a] -> Bool
 alleq _ [] = True
 alleq f (x:xs) = all (f x ==) (map f xs)
 
-anydiff :: Eq a => (a -> Bool) -> [a] -> Bool
+anydiff :: Eq b => (a -> b) -> [a] -> Bool
 anydiff _ [] = False
 anydiff f (x:xs) = any (f x /=) (map f xs)
 
@@ -20,6 +20,9 @@ apply :: Show a => Show b => Eq a => Rel a b -> a -> b
 apply rel left = case lookup left rel of
   Nothing -> error ("apply: Relation " ++ show rel ++ " not defined at " ++ show left)
   (Just this) -> this
+
+(!) :: Show a => Show b => Eq a => Rel a b -> a -> b
+(!) = apply
 
 powerset :: [a] -> [[a]]
 powerset []     = [[]]
@@ -71,10 +74,5 @@ fusion (b:bs) = let
     ds = filter (overlap xs) bs
   in if cs == ds then xs : fusion (bs \\ cs) else fusion (xs : bs)
 
-choose :: Integral a => a -> a -> a
-choose _ 0 = 1
-choose 0 _ = 0
-choose n k = choose (n-1) (k-1) * n `div` k
-
-seteq :: Ord a => Eq a => [a] -> [a] -> Bool
+seteq :: Ord a => [a] -> [a] -> Bool
 seteq as bs = sort as == sort bs

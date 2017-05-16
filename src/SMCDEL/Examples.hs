@@ -1,6 +1,7 @@
 
 module SMCDEL.Examples where
-import Data.List (delete,intersect,(\\),elemIndex)
+import Control.Monad
+import Data.List (delete,intersect,(\\),elemIndex,nub,sort)
 import Data.Maybe (fromJust)
 import SMCDEL.Language
 import SMCDEL.Internal.Help (powerset)
@@ -200,10 +201,14 @@ rcProps   = [ P k | k <-[0..((length rcPlayers * length rcCards)-1)] ]
 hasCard :: Agent -> Int -> Form
 hasCard i n = PrpF (P (3 * n + rcNumOf i))
 
+-- use this in ppFormWith
+rcExplain :: Prp -> String
+rcExplain (P k) = show (rcPlayers !! i) ++ " `hasCard` " ++ show n where (n,i) = divMod k 3
+
 allCardsGiven, allCardsUnique :: Form
 allCardsGiven  = Conj [ Disj [ i `hasCard` n | i <- rcPlayers ] | n <- rcCards ]
 allCardsUnique = Conj [ Neg $ isDouble n | n <- rcCards ] where
-  isDouble n = Disj [ Conj [ x `hasCard` n, y `hasCard` n ] | x <- rcPlayers, y <- rcPlayers, x/=y, x<=y ]
+  isDouble n = Disj [ Conj [ x `hasCard` n, y `hasCard` n ] | x <- rcPlayers, y <- rcPlayers, x < y ]
 
 distribute331 :: Form
 distribute331 = Conj [ aliceAtLeastThree, bobAtLeastThree, carolAtLeastOne ] where
@@ -304,6 +309,94 @@ testPlan (aSays,bSays) = all (evalViaBdd rusSCN) fs where
 
 rcSolutions :: [(Form, Form)]
 rcSolutions = filter testPlan allPlans
+
+type RusCardProblem = (Int,Int,Int)
+
+distribute :: RusCardProblem -> Form
+distribute (na,nb,nc) = Conj [ alice `hasAtLeast` na, bob `hasAtLeast` nb, carol `hasAtLeast` nc ] where
+  n = na + nb + nc
+  hasAtLeast :: Agent -> Int -> Form
+  hasAtLeast _ 0 = Top
+  hasAtLeast i 1 = Disj [ i `hasCard` k | k <- nCards n ]
+  hasAtLeast i 2 = Disj [ Conj (map (i `hasCard`) [x, y]) | x <- nCards n, y <- nCards n, x/=y ]
+  hasAtLeast i 3 = Disj [ Conj (map (i `hasCard`) [x, y, z]) | x<-nCards n, y<-nCards n, z<-nCards n, x/=y, x/=z, y/=z ]
+  hasAtLeast i k = Disj [ Conj (map (i `hasCard`) set) | set <- sets ] where
+    sets = filter alldiff $ nub $ map sort $ replicateM k (nCards n) where
+      alldiff [] = True
+      alldiff (x:xs) = x `notElem` xs && alldiff xs
+
+nCards :: Int -> [Int]
+nCards n = [0..(n-1)]
+
+nCardsGiven, nCardsUnique :: Int -> Form
+nCardsGiven  n = Conj [ Disj [ i `hasCard` k | i <- rcPlayers ] | k <- nCards n ]
+nCardsUnique n = Conj [ Neg $ isDouble k | k <- nCards n ] where
+  isDouble k = Disj [ Conj [ x `hasCard` k, y `hasCard` k ] | x <- rcPlayers, y <- rcPlayers, x/=y, x < y ]
+
+rusSCNfor :: RusCardProblem -> Scenario
+rusSCNfor (na,nb,nc) = (KnS props law [ (i, obs i) | i <- rcPlayers ], defaultDeal) where
+  n = na + nb + nc
+  props   = [ P k | k <-[0..((length rcPlayers * n)-1)] ]
+  law = boolBddOf $ Conj [ nCardsGiven n, nCardsUnique n, distribute (na,nb,nc)  ]
+  obs i = [ P (3 * k + rcNumOf i) | k<-[0..6] ]
+  defaultDeal =  [ let (PrpF p) = i `hasCard` k in p | i <- rcPlayers, k <- cardsFor i ]
+  cardsFor "Alice" = [0..(na-1)]
+  cardsFor "Bob"   = [na..(na+nb-1)]
+  cardsFor "Carol" = [(na+nb)..(na+nb+nc-1)]
+  cardsFor _       = error "Who is that?"
+
+type Plan = [(Form,Form)] -- list of (announcement,goal) tuples
+
+succeeds :: Plan -> Form
+succeeds [] = Top
+succeeds ((step,goal):rest) =
+  Conj [step, PubAnnounce step goal, PubAnnounce step (succeeds rest)]
+
+succeedsOn :: Plan -> Scenario -> Bool
+succeedsOn plan scn = evalViaBdd scn (succeeds plan)
+
+-- the plan for (3,3,1)
+basicPlan :: Plan
+basicPlan =
+  [ (aAnnounce, Conj [ bKnowsAs, Ck [alice,bob] bKnowsAs, Ck [alice,bob,carol] cIgnorant ] )
+  , (bAnnounce, Conj [ aKnowsBs, Ck [alice,bob] aKnowsBs, Ck rcPlayers cIgnorant ] ) ]
+
+possibleHandsN :: Int -> Int -> [[Int]]
+possibleHandsN n na = filter alldiff $ nub $ map sort $ replicateM na (nCards n) where
+  alldiff [] = True
+  alldiff (x:xs) = x `notElem` xs && alldiff xs
+
+allHandListsN :: Int -> Int -> [ [ [Int] ] ]
+allHandListsN n na = concatMap (pickHands (possibleHandsN n na)) [5,6,7] -- FIXME how to adapt the number of hands for larger n?
+
+aKnowsBsN, bKnowsAsN, cIgnorantN :: Int -> Form
+aKnowsBsN n = Conj [ alice `Kw` (bob `hasCard` k) | k <- nCards n ]
+bKnowsAsN n = Conj [ bob `Kw` (alice `hasCard` k) | k <- nCards n ]
+cIgnorantN n = Conj $ concat [ [ Neg $ K carol $ alice `hasCard` i
+                            , Neg $ K carol $ bob   `hasCard` i ] | i <- nCards n ]
+
+checkSetFor :: RusCardProblem -> [[Int]] -> Bool
+checkSetFor (na,nb,nc) set = plan `succeedsOn` rusSCNfor (na,nb,nc) where
+  n = na + nb + nc
+  aliceSays = K alice (Disj [ Conj $ map (alice `hasCard`) h | h <- set ])
+  bobSays = K bob (carol `hasCard` last (nCards n))
+  plan =
+   [ (aliceSays, Conj [ bKnowsAsN n, Ck [alice,bob] (bKnowsAsN n), Ck [alice,bob,carol] (cIgnorantN n) ] )
+   , (bobSays  , Conj [ Ck [alice,bob] $ Conj [aKnowsBsN n, bKnowsAsN n], Ck rcPlayers (cIgnorantN n) ] )
+   ]
+
+checkHandsFor :: RusCardProblem -> [ ( [[Int]], Bool) ]
+checkHandsFor (na,nb,nc) = map (\hs -> (hs, checkSetFor (na,nb,nc) hs)) (allHandListsN n na) where
+  n = na + nb + nc
+
+allCasesUpTo :: Int -> [RusCardProblem]
+allCasesUpTo bound = [ (na,nb,nc) | na <- [1..bound]
+                                  , nb <- [1..(bound-na)]
+                                  , nc <- [1..(bound-(na+nb))]
+                                  -- these restrictions are only proven
+                                  -- for two announcement plans ...
+                                  , nc < (na - 1)
+                                  , nc < nb ]
 
 -- possible pairs 1<x<y, x+y<=100
 pairs :: [(Int, Int)]

@@ -2,14 +2,33 @@
 
 A symbolic model checker for Dynamic Epistemic Logic.
 
-Complete literate Haskell documentation is in [SMCDEL.pdf](SMCDEL.pdf).
+You can find a complete literate Haskell documentation in the file
+[SMCDEL.pdf](https://github.com/jrclogic/SMCDEL/raw/master/SMCDEL.pdf).
 
-See also: [Johan van Benthem, Jan van Eijck, Malvin Gattinger, and Kaile Su: Symbolic Model Checking for Dynamic Epistemic Logic. In: Proceedings of The Fifth International Conference on Logic, Rationality and Interaction (LORI-V), 2015](http://dx.doi.org/10.1007/978-3-662-48561-3_30).
+References:
+
+[Johan van Benthem, Jan van Eijck, Malvin Gattinger, and Kaile Su:
+*Symbolic Model Checking for Dynamic Epistemic Logic.*
+In: Proceedings of The Fifth International Conference on Logic, Rationality and Interaction (LORI-V),
+2015](https://dx.doi.org/10.1007/978-3-662-48561-3_30).
+
+[Johan van Benthem, Jan van Eijck, Malvin Gattinger, and Kaile Su:
+*Symbolic Model Checking for Dynamic Epistemic Logic --- S5 and Beyond.*
+Journal of Logic and Computation,
+to appear](http://homepages.cwi.nl/~jve/papers/16/pdfs/2016-05-23-del-bdd-lori-journal.pdf).
 
 
 ## Online
 
 You can try SMCDEL online here: https://w4eg.de/malvin/illc/smcdelweb
+
+
+## Dependencies
+
+- graphviz
+- dot2tex
+
+On Debian, just do `sudo apt install graphviz dot2tex`.
 
 
 ## Basic usage
@@ -21,11 +40,12 @@ You can try SMCDEL online here: https://w4eg.de/malvin/illc/smcdelweb
   install those manually and then try `stack build` again.
 
 - `stack install` will put two executables `smcdel` and `smcdel-web`
-  into ~/.local/bin which should be in your PATH variable.
+  into ~/.local/bin which should be in your `PATH` variable.
 
 2) Create a text file which describes the knowledge structure and
 the formulas you want to check for truth or validity:
 
+    ```
     -- Three Muddy Children in SMCDEL
     VARS 1,2,3
     LAW  Top
@@ -39,9 +59,11 @@ the formulas you want to check for truth or validity:
       [ ! ((~ (alice knows whether 1)) & (~ (bob knows whether 2)) & (~ (carol knows whether 3))) ]
       [ ! ((~ (alice knows whether 1)) & (~ (bob knows whether 2)) & (~ (carol knows whether 3))) ]
       (alice,bob,carol) comknow that (1 & 2 & 3)
+    ```
 
 3) Run "smcdel textfile" resulting in:
 
+    ```
     >> smcdel MuddyShort.smcdel.txt
     SMCDEL 1.0 by Malvin Gattinger -- https://github.com/jrclogic/SMCDEL
 
@@ -51,8 +73,9 @@ the formulas you want to check for truth or validity:
 
     Is ... valid on the given structure?
     True
+    ```
 
-More example files are in `Examples/`.
+More example files are in the folder [Examples](https://github.com/jrclogic/SMCDEL/tree/master/Examples).
 
 
 ## Advanced usage
@@ -64,11 +87,12 @@ Examples can be found in `Examples.hs` and the `Bench` folder.
 
 ## Used BDD packages
 
-SMCDEL can be used with four different BDD packages. To compile and
+SMCDEL can be used with different BDD packages. To compile and
 run the benchmarks you will have to install all of them.
 
 - [Data.HasCacBDD](https://github.com/m4lvin/HasCacBDD) which runs CacBDD from <http://kailesu.net/CacBDD/>
 - [Cudd](https://github.com/davidcock/cudd) ([with some patches](https://github.com/m4lvin/cudd))
+
 
 ## Experimental Stuff
 

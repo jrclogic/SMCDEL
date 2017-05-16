@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <head>
-<title>SMCDEL 2 web</title>
+<title>SMCDEL web</title>
 <title>Malvin Gattinger</title>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
 <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0" />
@@ -29,7 +29,8 @@ textarea, #output {
   width:100%;
   margin:0px;
   padding:0px;
-  height:400px;
+  min-height:400px;
+  height:100%;
   border:none;
   box-sizing:border-box;
   overflow-y:scroll;
@@ -43,21 +44,26 @@ textarea, #output {
   padding:3px;
   margin:0px;
 }
+#output svg {
+  max-width: 100%;
+  height: auto;
+}
 </style>
 </head>
 <body>
 <h1>SMCDEL web</h1>
 <p>This is the web interface of <a href="https://github.com/jrclogic/SMCDEL">SMCDEL</a>, a symbolic model checker for Dynamic Epistemic Logic.
-See <a href="http://homepages.cwi.nl/~jve/papers/15/pdfs/del-bdd-lori-15.pdf">this paper</a> and <a href="https://github.com/jrclogic/SMCDEL/raw/master/SMCDEL.pdf">this technical report</a> for more information.</p>
+See <a href="http://homepages.cwi.nl/~jve/papers/16/pdfs/2016-05-23-del-bdd-lori-journal.pdf">this paper</a>
+and <a href="https://github.com/jrclogic/SMCDEL/raw/master/SMCDEL.pdf">this technical report</a> for more information.</p>
 <div id="menubar">
   Load Examples:
   <input type="button" class="expbut" value="MuddyChildren" />
   <input type="button" class="expbut" value="DrinkingLogicians" />
   <input type="button" class="expbut" value="DiningCryptographers" />
-  or enter your own code on the left side, then click on
-  <input id="runbutton" type="submit" value="Run SMCDEL!" />
+  or enter your own code on the left side, then
+  <input id="runbutton" type="submit" value="Run SMCDEL!" onclick="myRequest('check');" />
   or
-  <input id="kripkebutton" type="submit" value="Show Kripke!" />
+  <input id="kripkebutton" type="submit" value="Show Kripke!" onclick="myRequest('knsToKripke');" />
 </div>
 <div id="left">
   <textarea name="smcinput" id="smcinput" placeholder="Enter your code here."></textarea>
@@ -65,8 +71,9 @@ See <a href="http://homepages.cwi.nl/~jve/papers/15/pdfs/del-bdd-lori-15.pdf">th
 <div id="right">
   <div id="output"></div>
 </div>
-<script src='https://code.jquery.com/jquery-2.2.0.min.js'></script>
-<script src='https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML'></script>
+<script src="viz-lite.js"></script>
+<script src="jquery.js"></script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML'></script>
 <script type="text/x-mathjax-config">
   MathJax.Hub.Config({
     "HTML-CSS": { linebreaks: { automatic: true } },
@@ -74,6 +81,7 @@ See <a href="http://homepages.cwi.nl/~jve/papers/15/pdfs/del-bdd-lori-15.pdf">th
   });
 </script>
 <script>
+  "use strict";
   $(document).ready(function(){
     $('.expbut').click(function() {
       $('#smcinput').val('... loading ...');
@@ -82,43 +90,24 @@ See <a href="http://homepages.cwi.nl/~jve/papers/15/pdfs/del-bdd-lori-15.pdf">th
             $('#smcinput').val(data);
         });
     });
-    $('#runbutton').click(function() {
-      $('#output').val('... running ...');
-      $.ajax({
-        type: "POST",
-        url: "check",
-        data: { "smcinput": $('#smcinput').val() },
-        success:
-          function(data,textStatus,jqXHR) {
-            $('#output').html(data);
-            MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
-          },
-        error:
-          function(jqXHR,textStatus,errorThrown) {
-            $('#output').html(jqXHR.responseText);
-          }
-      });
-    });
-
-    $('#kripkebutton').click(function() {
-      $('#output').val('... running ...');
-      $.ajax({
-        type: "POST",
-        url: "knsToKripke",
-        data: { "smcinput": $('#smcinput').val() },
-        success:
-          function(data,textStatus,jqXHR) {
-            $('#output').html(data);
-            MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
-          },
-        error:
-          function(jqXHR,textStatus,errorThrown) {
-            $('#output').html(jqXHR.responseText);
-          }
-      });
-    });
-
   });
+  function myRequest (url) {
+    $('#output').val('... running ...');
+    $.ajax({
+      type: "POST",
+      url: url,
+      data: { "smcinput": $('#smcinput').val() },
+      success:
+        function(data,textStatus,jqXHR) {
+          $('#output').html(data);
+          MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
+        },
+      error:
+        function(jqXHR,textStatus,errorThrown) {
+          $('#output').html(jqXHR.responseText);
+        }
+    });
+  }
   function toggleLaw() {
     $('.lawbdd').fadeToggle();
   }
@@ -128,8 +117,10 @@ See <a href="http://homepages.cwi.nl/~jve/papers/15/pdfs/del-bdd-lori-15.pdf">th
   Using
     <a href="https://www.haskell.org/alex">alex</a>,
     <a href="https://www.haskell.org/happy">happy</a>,
+    <a href="https://www.haskell.org/">haskell</a>,
     <a href="https://mathjax.org/">MathJax</a>,
-    <a href="https://github.com/scotty-web/scotty">scotty</a>
+    <a href="https://github.com/scotty-web/scotty">scotty</a>,
+    <a href="https://www.haskellstack.org/">stack</a>,
     and more awesome free software.
 </p>
 </body>
