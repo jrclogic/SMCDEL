@@ -14,3 +14,4 @@ cabal-dev
 *.hp
 .stack-work/
 *.csv
+*.tix
