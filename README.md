@@ -1,5 +1,8 @@
 # SMCDEL
 
+[![Release](https://img.shields.io/github/release/jrclogic/SMCDEL.svg)](https://github.com/jrclogic/SMCDEL/releases)
+[![Build Status](https://api.travis-ci.org/jrclogic/SMCDEL.svg?branch=master)](https://travis-ci.org/jrclogic/SMCDEL)
+
 A symbolic model checker for Dynamic Epistemic Logic.
 
 You can find a complete literate Haskell documentation in the file

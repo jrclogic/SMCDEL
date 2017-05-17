@@ -99,6 +99,31 @@ pubAnnounceWhetherStack = flip $ foldr PubAnnounceW
 booloutofForm :: [Prp] -> [Prp] -> Form
 booloutofForm ps qs = Conj $ [ PrpF p | p <- ps ] ++ [ Neg $ PrpF r | r <- qs \\ ps ]
 
+subformulas :: Form -> [Form]
+subformulas Top           = [Top]
+subformulas Bot           = [Bot]
+subformulas (PrpF p)      = [PrpF p]
+subformulas (Neg f)       = Neg f : subformulas f
+subformulas (Conj fs)     = Conj fs : nub (concatMap subformulas fs)
+subformulas (Disj fs)     = Disj fs : nub (concatMap subformulas fs)
+subformulas (Xor fs)      = Xor  fs : nub (concatMap subformulas fs)
+subformulas (Impl f g)    = Impl f g : nub (concatMap subformulas [f,g])
+subformulas (Equi f g)    = Equi f g : nub (concatMap subformulas [f,g])
+subformulas (Forall ps f) = Forall ps f : subformulas f
+subformulas (Exists ps f) = Exists ps f : subformulas f
+subformulas (K i f)       = K i f : subformulas f
+subformulas (Ck is f)     = Ck is f : subformulas f
+subformulas (Kw i f)      = Kw i f : subformulas f
+subformulas (Ckw is f)    = Ckw is f : subformulas f
+subformulas (PubAnnounce  f g) = PubAnnounce  f g : nub (subformulas f ++ subformulas g)
+subformulas (PubAnnounceW f g) = PubAnnounceW f g : nub (subformulas f ++ subformulas g)
+subformulas (Announce  is f g) = Announce  is f g : nub (subformulas f ++ subformulas g)
+subformulas (AnnounceW is f g) = AnnounceW is f g : nub (subformulas f ++ subformulas g)
+
+shrinkform :: Form -> [Form]
+shrinkform f | f == simplify f = subformulas f \\ [f]
+             | otherwise       = let g = simplify f in subformulas g \\ [g]
+
 substit :: Prp -> Form -> Form -> Form
 substit _ _   Top           = Top
 substit _ _   Bot           = Bot
@@ -277,7 +302,7 @@ newtype BF = BF Form deriving (Show)
 
 instance Arbitrary BF where
   arbitrary = sized randomboolform
-  -- TODO: shrink!
+  shrink (BF f) = map BF $ shrinkform f
 
 randomboolform ::  Int -> Gen BF
 randomboolform sz = BF <$> bf' sz' where
@@ -331,5 +356,4 @@ instance Arbitrary Form where
         n' = n `div` 5
         arbitraryAg = (\(Ag i) -> i) <$> arbitrary
         arbitraryAgs = sublistOf (map show [1..(5::Integer)]) `suchThat` (not . null)
-  shrink f | f == simplify f = []
-           | otherwise       = [simplify f]
+  shrink = shrinkform

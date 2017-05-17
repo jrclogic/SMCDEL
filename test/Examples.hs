@@ -1,5 +1,4 @@
 
--- test/Examples.lhs
 module Main where
 
 import Data.List
@@ -21,6 +20,8 @@ main = hspec $ do
       property $ \(BF bf) -> boolBddOf bf == boolBddOf (simplify bf)
     it "simplifying a boolean formula only removes propositions" $
       property $ \(BF bf) -> all (`elem` propsInForm bf) (propsInForm (simplify bf))
+    it "list of subformulas is already nubbed" $
+      property $ \f -> nub (subformulas f) == subformulas f
     it "formulas are identical iff their show strings are" $
       property $ \f g -> ((f::Form) == g) == (show f == show g)
     it "boolean formulas with same prettyprint are equivalent" $
@@ -44,7 +45,6 @@ main = hspec $ do
       SMCDEL.Explicit.Simple.eval modelB $ Conj [K bob (PrpF (P 0)), Neg $ Kw alice (Kw bob (PrpF (P 0)))]
     it "knsA has two states while knsB has three" $
       [2,3] == map (length . statesOf . fst) [knsA,knsB]
-    -- TODO: add tests for minimizedModel to be equivalent given a g ? or find g automatically?
     it "Three Muddy Children" $
       evalViaBdd mudScn0 (nobodyknows 3) &&
       evalViaBdd mudScn1 (nobodyknows 3) &&

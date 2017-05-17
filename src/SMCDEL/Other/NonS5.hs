@@ -3,7 +3,6 @@
 
 module SMCDEL.Other.NonS5 where
 
--- import SMCDEL.Other.InVocab
 import Data.Tagged
 
 import Control.Arrow ((&&&),(***),first)
@@ -18,7 +17,7 @@ import SMCDEL.Language
 import SMCDEL.Symbolic.HasCacBDD (Scenario,KnState,texBDD,boolBddOf,texBddWith)
 import SMCDEL.Explicit.Simple (PointedModel,KripkeModel(KrM),State)
 import SMCDEL.Translations hiding (voc)
-import SMCDEL.Internal.Help (alleq,apply)
+import SMCDEL.Internal.Help (alleqWith,apply)
 import SMCDEL.Internal.TexDisplay
 
 problemPM :: PointedModel
@@ -134,9 +133,9 @@ eval pm    (Forall ps f) = eval pm (foldl singleForall f ps) where
   singleForall g p = Conj [ substit p Top g, substit p Bot g ]
 eval pm    (Exists ps f) = eval pm (foldl singleExists f ps) where
   singleExists g p = Disj [ substit p Top g, substit p Bot g ]
-eval (GKM m,w) (K   i f)     = all (\w' -> eval (GKM m,w') f) (snd (m ! w) ! i)
-eval _     (Ck  _ _)     = error "eval: Ck not implemented " -- TODO common belief?
-eval (GKM m,w) (Kw  i f)     = alleq (\w' -> eval (GKM m,w') f) (snd (m ! w) ! i)
+eval (GKM m,w) (K   i f) = all (\w' -> eval (GKM m,w') f) (snd (m ! w) ! i)
+eval _     (Ck  _ _)     = error "eval: Ck not implemented "
+eval (GKM m,w) (Kw  i f) = alleqWith (\w' -> eval (GKM m,w') f) (snd (m ! w) ! i)
 eval _     (Ckw _ _)     = error "eval: Ck not implemented "
 eval (m,w) (PubAnnounce f g) = not (eval (m,w) f) || eval (pubAnnounceNonS5 m f,w) g
 eval (m,w) (PubAnnounceW f g) = eval (pubAnnounceNonS5 m aform, w) g where

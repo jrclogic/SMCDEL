@@ -7,7 +7,7 @@ import Data.GraphViz
 import Data.List
 import SMCDEL.Language
 import SMCDEL.Internal.TexDisplay
-import SMCDEL.Internal.Help (alleq,fusion,apply,(!))
+import SMCDEL.Internal.Help (alleqWith,fusion,apply,(!))
 import Test.QuickCheck
 
 -- FIXME rename this to World, use State only for knowledge structures
@@ -80,12 +80,12 @@ eval pm (Exists ps f) = eval pm (foldl singleExists f ps) where
   singleExists g p = Disj [ substit p Top g, substit p Bot g ]
 eval (m@(KrM _ rel _),w) (K ag form) = all (\w' -> eval (m,w') form) vs where
   vs = concat $ filter (elem w) (apply rel ag)
-eval (m@(KrM _ rel _),w) (Kw ag form) = alleq (\w' -> eval (m,w') form) vs where
+eval (m@(KrM _ rel _),w) (Kw ag form) = alleqWith (\w' -> eval (m,w') form) vs where
   vs = concat $ filter (elem w) (apply rel ag)
 eval (m@(KrM _ rel _),w) (Ck ags form) = all (\w' -> eval (m,w') form) vs where
   vs    = concat $ filter (elem w) ckrel
   ckrel = fusion $ concat [ apply rel i | i <- ags ]
-eval (m@(KrM _ rel _),w) (Ckw ags form) = alleq (\w' -> eval (m,w') form) vs where
+eval (m@(KrM _ rel _),w) (Ckw ags form) = alleqWith (\w' -> eval (m,w') form) vs where
   vs    = concat $ filter (elem w) ckrel
   ckrel = fusion $ concat [ apply rel i | i <- ags ]
 eval pm (PubAnnounce form1 form2) =

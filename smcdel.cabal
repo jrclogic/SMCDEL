@@ -79,6 +79,7 @@ Test-Suite translations
   main-is:            Translations.hs
   type:               exitcode-stdio-1.0
   build-depends:      base >= 4.8 && < 5,
+                      hspec,
                       QuickCheck,
                       random,
                       smcdel

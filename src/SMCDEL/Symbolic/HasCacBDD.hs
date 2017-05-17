@@ -9,7 +9,7 @@ import Data.List (sort,intercalate,(\\))
 import System.IO (hPutStr, hGetContents, hClose)
 import System.IO.Unsafe (unsafePerformIO)
 import System.Process (runInteractiveCommand)
-import SMCDEL.Internal.Help (alleq,apply,rtc,seteq)
+import SMCDEL.Internal.Help (alleqWith,apply,rtc,seteq)
 import SMCDEL.Language
 import SMCDEL.Internal.TexDisplay
 
@@ -76,12 +76,12 @@ eval scn     (Exists ps f) = eval scn (foldl singleExists f ps) where
 eval (kns@(KnS _ _ obs),s) (K i form) = all (\s' -> eval (kns,s') form) theres where
   theres = filter (\s' -> seteq (restrictState s' oi) (restrictState s oi)) (statesOf kns)
   oi = apply obs i
-eval (kns@(KnS _ _ obs),s) (Kw i form) = alleq (\s' -> eval (kns,s') form) theres where
+eval (kns@(KnS _ _ obs),s) (Kw i form) = alleqWith (\s' -> eval (kns,s') form) theres where
   theres = filter (\s' -> seteq (restrictState s' oi) (restrictState s oi)) (statesOf kns)
   oi = apply obs i
 eval (kns,s) (Ck ags form)  = all (\s' -> eval (kns,s') form) theres where
   theres = [ s' | (s0,s') <- comknow kns ags, s0 == s ]
-eval (kns,s) (Ckw ags form)  = alleq (\s' -> eval (kns,s') form) theres where
+eval (kns,s) (Ckw ags form)  = alleqWith (\s' -> eval (kns,s') form) theres where
   theres = [ s' | (s0,s') <- comknow kns ags, s0 == s ]
 eval scn (PubAnnounce form1 form2) =
   not (eval scn form1) || eval (pubAnnounceOnScn scn form1) form2

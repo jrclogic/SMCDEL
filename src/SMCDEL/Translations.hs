@@ -6,7 +6,7 @@ import Data.Maybe (fromJust)
 import SMCDEL.Language
 import SMCDEL.Symbolic.HasCacBDD
 import SMCDEL.Explicit.Simple
-import SMCDEL.Internal.Help (anydiff,alldiff,alleq,apply,powerset,(!),seteq)
+import SMCDEL.Internal.Help (anydiffWith,alldiff,alleqWith,apply,powerset,(!),seteq)
 
 import Data.HasCacBDD hiding (Top,Bot)
 
@@ -94,8 +94,8 @@ voc (KrM _ _ val) = map fst . snd . head $ val
 obsnobs :: KripkeModel -> Agent -> ([Prp],[Prp])
 obsnobs m@(KrM _ rel val) i = (obs,nobs) where
   propsets = map (map (map fst . filter snd . apply val)) (apply rel i)
-  obs = filter (\p -> all (alleq (elem p)) propsets) (voc m)
-  nobs = filter (\p -> any (anydiff (elem p)) propsets) (voc m)
+  obs = filter (\p -> all (alleqWith (elem p)) propsets) (voc m)
+  nobs = filter (\p -> any (anydiffWith (elem p)) propsets) (voc m)
 
 -- | Test if all relations can be described using observariables.
 descableRels :: KripkeModel -> Bool

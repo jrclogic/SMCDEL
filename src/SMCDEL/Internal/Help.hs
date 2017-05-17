@@ -1,16 +1,22 @@
-module SMCDEL.Internal.Help (alleq,anydiff,alldiff,apply,powerset,restrict,rtc,Erel,bl,fusion,seteq,(!)) where
+module SMCDEL.Internal.Help (alleq,alleqWith,anydiff,anydiffWith,alldiff,apply,powerset,restrict,rtc,Erel,bl,fusion,seteq,(!)) where
 import Data.List (nub,union,sort,foldl',(\\))
 
 type Rel a b = [(a,b)]
 type Erel a = [[a]]
 
-alleq :: Eq b => (a -> b) -> [a] -> Bool
-alleq _ [] = True
-alleq f (x:xs) = all (f x ==) (map f xs)
+alleq  :: Eq a => [a] -> Bool
+alleq = alleqWith id
 
-anydiff :: Eq b => (a -> b) -> [a] -> Bool
-anydiff _ [] = False
-anydiff f (x:xs) = any (f x /=) (map f xs)
+alleqWith :: Eq b => (a -> b) -> [a] -> Bool
+alleqWith _ [] = True
+alleqWith f (x:xs) = all (f x ==) (map f xs)
+
+anydiff :: Eq a => [a] -> Bool
+anydiff = anydiffWith id
+
+anydiffWith :: Eq b => (a -> b) -> [a] -> Bool
+anydiffWith _ [] = False
+anydiffWith f (x:xs) = any (f x /=) (map f xs)
 
 alldiff :: Eq a => [a] -> Bool
 alldiff [] = True
