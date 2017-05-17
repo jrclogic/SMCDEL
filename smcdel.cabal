@@ -28,6 +28,7 @@ Library
                       SMCDEL.Internal.Token
                       SMCDEL.Language
                       SMCDEL.Other.BDD2Form
+                      SMCDEL.Other.Change
                       SMCDEL.Other.MCTRIANGLE
                       SMCDEL.Other.NonS5
                       SMCDEL.Symbolic.CUDD
