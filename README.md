@@ -20,10 +20,14 @@ In: Proceedings of The Fifth International Conference on Logic, Rationality and 
 Journal of Logic and Computation,
 to appear](http://homepages.cwi.nl/~jve/papers/16/pdfs/2016-05-23-del-bdd-lori-journal.pdf).
 
+[Malvin Gattinger:
+*Towards Symbolic Factual Change in DEL.*
+ESSLLI 2017 student session,
+2017](https://w4eg.de/malvin/illc/2017-07-symbolicfactualchange.pdf).
 
 ## Online
 
-You can try SMCDEL online here: https://w4eg.de/malvin/illc/smcdelweb
+You can try SMCDEL online here: https://w4eg.de/malvin/illc/smcdelweb/
 
 
 ## Dependencies
