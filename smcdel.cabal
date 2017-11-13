@@ -66,7 +66,6 @@ Executable smcdel-web
   main-is:            exec/smcdel-web.hs
   build-tools:        alex, happy
   build-depends:      base >= 4.8 && < 5,
-                      array,
                       scotty,
                       HasCacBDD,
                       js-jquery >= 3,
@@ -82,7 +81,6 @@ Test-Suite translations
   build-depends:      base >= 4.8 && < 5,
                       hspec,
                       QuickCheck,
-                      random,
                       smcdel
 
 Test-Suite examples
@@ -94,7 +92,6 @@ Test-Suite examples
   build-depends:      base >= 4.8 && < 5,
                       hspec,
                       QuickCheck,
-                      random,
                       smcdel
 
 Benchmark bench-diningcrypto

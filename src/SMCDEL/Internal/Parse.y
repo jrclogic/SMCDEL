@@ -88,13 +88,15 @@ Form : TOP { Top }
 FormList : Form { [$1] } | Form COMMA FormList { $1:$3 }
 String : STR { $1 }
 StringList : String { [$1] } | String COMMA StringList { $1:$3 }
-ObservLine : STR COLON IntList { ($1,$3) }
-ObserveSpec : ObservLine { [$1] } | ObservLine ObserveSpec { $1:$2 }
-JobList : JobLine { [$1] } | JobLine JobList { $1:$2 }
-JobLine : VALIDQ Form { Left $2 } | WHEREQ Form { Right $2 }
+ObserveLine : STR COLON IntList { ($1,$3) }
+ObserveSpec : ObserveLine { [$1] } | ObserveLine ObserveSpec { $1:$2 }
+JobList : Job { [$1] } | Job JobList { $1:$2 }
+Job : VALIDQ Form { ValidQ $2 } | WHEREQ Form { WhereQ $2 }
 
 {
-data CheckInput = CheckInput [Int] Form [(String,[Int])] [Either Form Form] deriving (Show,Eq,Ord)
+data CheckInput = CheckInput [Int] Form [(String,[Int])] JobList deriving (Show,Eq,Ord)
+data Job = ValidQ Form | WhereQ Form deriving (Show,Eq,Ord)
+type JobList = [Job]
 type IntList = [Int]
 type FormList = [Form]
 type ObserveLine = (String,IntList)

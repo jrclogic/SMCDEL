@@ -36,7 +36,7 @@ main = do
       let (CheckInput vocabInts lawform obs jobs) = parse $ alexScanTokens smcinput
       let mykns = KnS (map P vocabInts) (boolBddOf lawform) (map (second (map P)) obs)
       knstring <- liftIO $ showStructure mykns
-      let results = concatMap (\j -> "<p>" ++ doJob mykns j ++ "</p>") jobs
+      let results = concatMap (\j -> "<p>" ++ doJobWeb mykns j ++ "</p>") jobs
       html $ mconcat
         [ T.pack knstring
         , "<hr />\n"
@@ -49,21 +49,20 @@ main = do
       if numberOfStates mykns > 32
         then html . T.pack $ "Sorry, I will not draw " ++ show (numberOfStates mykns) ++ " states!"
         else do
-          let myKripke = knsToKripke (mykns, head $ statesOf mykns) -- FIXME: how to pick actual world?
+          let (myKripke, _) = knsToKripke (mykns, head $ statesOf mykns) -- ignore actual world
           html $ T.concat
             [ T.pack "<div id='here'></div>"
             , T.pack "<script>document.getElementById('here').innerHTML += Viz('"
             , textDot myKripke
             , T.pack "');</script>" ]
 
--- FIXME: merge with doJob in MainCLI.hs
-doJob :: KnowStruct -> Either Form Form -> String
-doJob mykns (Left f) = unlines
+doJobWeb :: KnowStruct -> Job -> String
+doJobWeb mykns (ValidQ f) = unlines
   [ "\\( \\mathcal{F} "
   , if validViaBdd mykns f then "\\vDash" else "\\not\\vDash"
   , (texForm.simplify) f
   , "\\)" ]
-doJob mykns (Right f) = unlines
+doJobWeb mykns (WhereQ f) = unlines
   [ "At which states is \\("
   , (texForm.simplify) f
   , "\\) true?<br /> \\("

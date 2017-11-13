@@ -23,9 +23,9 @@ freshp prps = P (maximum (map fromEnum prps) + 1)
 type Agent = String
 
 alice,bob,carol :: Agent
-alice   = "Alice"
-bob     = "Bob"
-carol   = "Carol"
+alice = "Alice"
+bob   = "Bob"
+carol = "Carol"
 
 newtype AgAgent = Ag Agent deriving (Eq,Ord,Show)
 
@@ -293,10 +293,15 @@ texForm (Announce ags f g)  = "[" ++ intercalate "," ags ++ "!" ++ texForm f ++ 
 texForm (AnnounceW ags f g) = "[" ++ intercalate "," ags ++ "?!" ++ texForm f ++ "] " ++ texForm g
 
 instance TexAble Form where
-  tex = texForm
+  tex = removeDoubleSpaces . texForm
 
 testForm :: Form
-testForm = Forall [P 3] $ Equi (Disj [Bot,PrpF $ P 3,Bot]) (Conj [Top,Xor [Top,Kw alice (PrpF (P 4))], AnnounceW [alice,bob] (PrpF (P 5)) (Kw bob $ PrpF (P 5))  ])
+testForm = Forall [P 3] $
+  Equi
+    (Disj [ Bot, PrpF $ P 3, Bot ])
+    (Conj [ Top
+          , Xor [Top,Kw alice (PrpF (P 4))]
+          , AnnounceW [alice,bob] (PrpF (P 5)) (Kw bob $ PrpF (P 5)) ])
 
 newtype BF = BF Form deriving (Show)
 
@@ -332,26 +337,25 @@ randomboolform sz = BF <$> bf' sz' where
 instance Arbitrary Form where
   arbitrary = sized form where
     form 0 = oneof [ pure Top
-                    , pure Bot
-                    , PrpF <$> arbitrary ]
+                   , pure Bot
+                   , PrpF <$> arbitrary ]
     form n = oneof [ pure SMCDEL.Language.Top
-                  , pure SMCDEL.Language.Bot
-                  , PrpF <$> arbitrary
-                  , Neg <$> form n'
-                  , Conj <$> listOf (form n')
-                  , Disj <$> listOf (form n')
-                  , Xor  <$> listOf (form n')
-                  , Impl <$> form n' <*> form n'
-                  , Equi <$> form n' <*> form n'
-                  , K   <$> arbitraryAg <*> form n'
-                  , Ck  <$> arbitraryAgs <*> form n'
-                  , Kw  <$> arbitraryAg <*> form n'
-                  , Ckw <$> arbitraryAgs <*> form n'
-                  , PubAnnounce  <$> form n' <*> form n'
-                  , PubAnnounceW <$> form n' <*> form n'
-                  , Announce  <$> arbitraryAgs <*> form n' <*> form n'
-                  , AnnounceW <$> arbitraryAgs <*> form n' <*> form n'
-                  ]
+                   , pure SMCDEL.Language.Bot
+                   , PrpF <$> arbitrary
+                   , Neg <$> form n'
+                   , Conj <$> listOf (form n')
+                   , Disj <$> listOf (form n')
+                   , Xor  <$> listOf (form n')
+                   , Impl <$> form n' <*> form n'
+                   , Equi <$> form n' <*> form n'
+                   , K   <$> arbitraryAg <*> form n'
+                   , Ck  <$> arbitraryAgs <*> form n'
+                   , Kw  <$> arbitraryAg <*> form n'
+                   , Ckw <$> arbitraryAgs <*> form n'
+                   , PubAnnounce  <$> form n' <*> form n'
+                   , PubAnnounceW <$> form n' <*> form n'
+                   , Announce  <$> arbitraryAgs <*> form n' <*> form n'
+                   , AnnounceW <$> arbitraryAgs <*> form n' <*> form n' ]
       where
         n' = n `div` 5
         arbitraryAg = (\(Ag i) -> i) <$> arbitrary

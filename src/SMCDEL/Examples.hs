@@ -13,7 +13,12 @@ modelA :: PointedModel
 modelA = (KrM [0,1] [(alice,[[0,1]]),(bob,[[0],[1]])] [ (0,[(P 0,True)]), (1,[(P 0,False)]) ], 0)
 
 modelB :: PointedModel
-modelB = (KrM [0,1,2] [(alice,[[0,1,2]]),(bob,[[0],[1,2]])] [ (0,[(P 0,True)]), (1,[(P 0,True)]), (2,[(P 0,False)]) ], 0)
+modelB =
+  (KrM
+    [0,1,2]
+    [(alice,[[0,1,2]]),(bob,[[0],[1,2]])]
+    [ (0,[(P 0,True)]), (1,[(P 0,True)]), (2,[(P 0,False)]) ]
+  , 0)
 
 knsA, knsB :: Scenario
 knsA = kripkeToKns modelA
@@ -147,38 +152,38 @@ dcCheckForm = PubAnnounceW (reveal 1) $ PubAnnounceW (reveal 2) $ PubAnnounceW (
 dcValid :: Bool
 dcValid = validViaBdd dcStruct dcCheckForm where (dcStruct,_) = dcScn1
 
-genSomeonepaid :: Int -> Form
-genSomeonepaid n = Disj (map (PrpF . P) [0..n])
+genDcSomeonepaid :: Int -> Form
+genDcSomeonepaid n = Disj (map (PrpF . P) [0..n])
 
-genNotwopaid :: Int -> Form
-genNotwopaid n = Conj [ Neg $ Conj [ PrpF $ P x, PrpF $ P y ] | x<-[0..n], y<-[(x+1)..n] ]
+genDcNotwopaid :: Int -> Form
+genDcNotwopaid n = Conj [ Neg $ Conj [ PrpF $ P x, PrpF $ P y ] | x<-[0..n], y<-[(x+1)..n] ]
 
 genDcKnsInit :: Int -> KnowStruct
 genDcKnsInit n = KnS props law obs where
   props = [ P 0 ] -- The NSA paid
     ++ [ (P 1) .. (P n) ] -- agent i paid
     ++ sharedbits
-  law = boolBddOf $ Conj [genSomeonepaid n, genNotwopaid n]
+  law = boolBddOf $ Conj [genDcSomeonepaid n, genDcNotwopaid n]
   obs = [ (show i, obsfor i) | i<-[1..n] ]
   sharedbitLabels = [ [k,l] | k <- [1..n], l <- [1..n], k<l ] -- n(n-1)/2 shared bits
   sharedbitRel = zip sharedbitLabels [ (P $ n+1) .. ]
   sharedbits =  map snd sharedbitRel
   obsfor i =  P i : map snd (filter (\(label,_) -> i `elem` label) sharedbitRel)
 
-genEveryoneKnowsWhetherNSApaid :: Int -> Form
-genEveryoneKnowsWhetherNSApaid n = Conj [ Kw (show i) (PrpF $ P 0) | i <- [1..n] ]
+genDcEveryoneKnowsWhetherNSApaid :: Int -> Form
+genDcEveryoneKnowsWhetherNSApaid n = Conj [ Kw (show i) (PrpF $ P 0) | i <- [1..n] ]
 
 genDcReveal :: Int -> Int -> Form
 genDcReveal n i = Xor (map PrpF (fromJust $ lookup (show i) obs)) where (KnS _ _ obs) = genDcKnsInit n
 
-genNobodyknowsWhoPaid :: Int -> Form
-genNobodyknowsWhoPaid n =
+genDcNobodyknowsWhoPaid :: Int -> Form
+genDcNobodyknowsWhoPaid n =
   Conj [ Impl (PrpF (P i)) (Conj [Neg $ K (show k) (PrpF $ P i) | k <- delete i [1..n] ]) | i <- [1..n] ]
 
 genDcCheckForm :: Int -> Form
 genDcCheckForm n =
   pubAnnounceWhetherStack [ genDcReveal n i | i<-[1..n] ] $
-    Conj [ genEveryoneKnowsWhetherNSApaid n, genNobodyknowsWhoPaid n ]
+    Conj [ genDcEveryoneKnowsWhetherNSApaid n, genDcNobodyknowsWhoPaid n ]
 
 genDcValid :: Int -> Bool
 genDcValid n = validViaBdd (genDcKnsInit n) (genDcCheckForm n)
@@ -440,7 +445,7 @@ sapProtocol = Conj [ sapForm1
                    , PubAnnounce sapForm1 (PubAnnounce sapForm2 sapForm3) ]
 
 sapSolutions :: [[Prp]]
-sapSolutions = statesOf (SMCDEL.Symbolic.HasCacBDD.pubAnnounce sapKnStruct sapProtocol)
+sapSolutions = SMCDEL.Symbolic.HasCacBDD.whereViaBdd sapKnStruct sapProtocol
 
 sapExplainState :: [Prp] -> String
 sapExplainState truths = concat [ "x = ", nmbr xProps, ", y = ", nmbr yProps, ", ",
@@ -482,8 +487,8 @@ wsProtocol = Conj
   , PubAnnounce (Neg wsKnowSelfA) (Neg wsKnowSelfB)
   , PubAnnounce (Neg wsKnowSelfA) (PubAnnounce (Neg wsKnowSelfB) (Neg wsKnowSelfC)) ]
 
-wsSolutions :: [[Prp]]
-wsSolutions = statesOf (SMCDEL.Symbolic.HasCacBDD.pubAnnounce wsKnStruct wsProtocol)
+wsSolutions :: [KnState]
+wsSolutions = SMCDEL.Symbolic.HasCacBDD.whereViaBdd wsKnStruct wsProtocol
 
 wsExplainState :: [Prp] -> String
 wsExplainState truths = concat

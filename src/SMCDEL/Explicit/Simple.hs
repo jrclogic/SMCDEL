@@ -119,18 +119,23 @@ announce pm@(m@(KrM sts rel val), cur) ags form =
   if eval pm form then (KrM sts newrel val, cur)
                   else error "announce failed: Liar!"
   where
-    split ws = map sort.(\(x,y) -> [x,y]) $ partition ( \s -> eval (m,s) form) ws
+    split ws = map sort.(\(x,y) -> [x,y]) $ partition (\s -> eval (m,s) form) ws
     newrel = map nrel rel
     nrel (i,ri) | i `elem` ags = (i,filter ([]/=) (concatMap split ri))
                 | otherwise    = (i,ri)
 
-instance KripkeLike PointedModel where
+instance KripkeLike KripkeModel where
   directed = const False
-  getNodes (KrM ws _ val, _) = map (show &&& labelOf) ws where
+  getNodes (KrM ws _ val) = map (show &&& labelOf) ws where
     labelOf w = tex $ apply val w
-  getEdges (KrM _ rel _, _) =
-    nub $ concat $ concat $ concat [ [ [ [(a,show x,show y) | x<y] | x <- part, y <- part ] | part <- apply rel a ] | a <- map fst rel ]
-  getActuals (KrM {}, cur) = [show cur]
+  getEdges (KrM _ rel _) =
+    nub [ (a,show x,show y) | a <- map fst rel, part <- apply rel a, x <- part, y <- part, x < y ]
+
+instance KripkeLike PointedModel where
+  directed = directed . fst
+  getNodes = getNodes . fst
+  getEdges = getEdges . fst
+  getActuals (_, cur) = [show cur]
 
 instance TexAble PointedModel where
   tex = tex.ViaDot

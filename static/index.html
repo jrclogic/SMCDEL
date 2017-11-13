@@ -85,7 +85,7 @@ and <a href="https://github.com/jrclogic/SMCDEL/raw/master/SMCDEL.pdf">this tech
   $(document).ready(function(){
     $('.expbut').click(function() {
       $('#smcinput').val('... loading ...');
-      $.get("http://localhost:3000/getExample?filename=" + $(this).val(),
+      $.get("getExample?filename=" + $(this).val(),
         function(data) {
             $('#smcinput').val(data);
         });

@@ -48,7 +48,7 @@ forallSet [] b = b
 forallSet ns b = Cudd.Cudd.cuddBddUnivAbstract manager b (Cudd.Cudd.cuddIndicesToCube manager ns)
 
 equ :: Bdd -> Bdd -> Bdd
-equ a b = con (imp a b) (imp b a) -- FIXME
+equ a b = con (imp a b) (imp b a)
 
 imp :: Bdd -> Bdd -> Bdd
 imp b1 b2 = Cudd.Cudd.cuddBddIte manager b1 b2 top
@@ -74,7 +74,6 @@ xorSet :: [Bdd] -> Bdd
 xorSet [] = bot
 xorSet (b:bs) = foldl xor b bs
 
--- FIXME: does (haskell_)cudd have a function for this?
 gfp :: (Bdd -> Bdd) -> Bdd
 gfp operator = gfpLoop top where
   gfpLoop :: Bdd -> Bdd

@@ -17,6 +17,11 @@ begintab  = "\\\\begin{tabular}{c}"
 endtab    = "\\\\end{tabular}"
 newline   = " \\\\\\\\[0pt] "
 
+removeDoubleSpaces :: String -> String
+removeDoubleSpaces (' ':' ':rest) = removeDoubleSpaces (' ':rest)
+removeDoubleSpaces (x  : xs     ) = x : removeDoubleSpaces xs
+removeDoubleSpaces [            ] = [ ]
+
 class TexAble a where
   tex :: a -> String
   texTo :: a -> String -> IO ()

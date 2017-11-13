@@ -41,19 +41,19 @@ main = do
     return ()
   putStrLn "\nDoei!"
 
-doJob :: Handle -> Bool -> KnowStruct -> Either Form Form -> IO ()
-doJob outHandle True mykns (Left f) = do
+doJob :: Handle -> Bool -> KnowStruct -> Job -> IO ()
+doJob outHandle True mykns (ValidQ f) = do
   hPutStrLn outHandle $ "Is $" ++ texForm (simplify f) ++ "$ valid on $\\mathcal{F}$?"
   hPutStrLn outHandle (show (validViaBdd mykns f) ++ "\n\n")
-doJob outHandle False mykns (Left f) = do
+doJob outHandle False mykns (ValidQ f) = do
   hPutStrLn outHandle $ "Is " ++ ppForm f ++ " valid on the given structure?"
   vividPutStrLn (show (validViaBdd mykns f) ++ "\n")
-doJob outHandle True mykns (Right f) = do
+doJob outHandle True mykns (WhereQ f) = do
   hPutStrLn outHandle $ "At which states is $" ++ texForm (simplify f) ++ "$ true? $"
   let states = map tex (whereViaBdd mykns f)
   hPutStrLn outHandle $ intercalate "," states
   hPutStrLn outHandle "$\n"
-doJob outHandle False mykns (Right f) = do
+doJob outHandle False mykns (WhereQ f) = do
   hPutStrLn outHandle $ "At which states is " ++ ppForm f ++ " true?"
   mapM_ (vividPutStrLn.show.map(\(P n) -> n)) (whereViaBdd mykns f)
   putStr "\n"

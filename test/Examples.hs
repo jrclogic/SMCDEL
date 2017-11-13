@@ -29,9 +29,9 @@ main = hspec $ do
     it "boolean formulas with same LaTeX are equivalent" $
       property $ \(BF bf) (BF bg) -> (tex bf /= tex bg) || boolBddOf bf == boolBddOf bg
     it "we can LaTeX the testForm" $ tex testForm == intercalate "\n"
-        [ " \\forall \\{ p_{3} \\}  ( \\bigvee \\{"
-        , " \\bot , p_{3} ,\\bot  \\}  \\leftrightarrow \\bigwedge \\{"
-        , "\\top , ( \\top  \\oplus K^?_{\\text{Alice}}  p_{4}  ) ,[Alice,Bob?! p_{5} ] K^?_{\\text{Bob}}  p_{5}  \\}  ) " ]
+        [ " \\forall \\{ p_{3} \\} ( \\bigvee \\{"
+        , " \\bot , p_{3} ,\\bot \\} \\leftrightarrow \\bigwedge \\{"
+        , "\\top , ( \\top \\oplus K^?_{\\text{Alice}} p_{4} ) ,[Alice,Bob?! p_{5} ] K^?_{\\text{Bob}} p_{5} \\} ) " ]
   describe "SMCDEL.Symbolic.HasCacBDD" $
     it "boolEvalViaBdd agrees on simplified formulas" $
       property $ \(BF bf) props -> let truths = nub props in boolEvalViaBdd truths bf == boolEvalViaBdd truths (simplify bf)
