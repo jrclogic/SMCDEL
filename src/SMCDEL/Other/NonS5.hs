@@ -259,13 +259,12 @@ pubAnnounceOnScn (kns,s) psi = if evalViaBdd (kns,s) psi
 
 announce :: GenKnowStruct -> [Agent] -> Form -> GenKnowStruct
 announce kns@(GenKnS props lawbdd obdds) ags psi = GenKnS newprops newlawbdd newobdds where
-  proppsi@(P k) = freshp props
-  [P k'] = cp [proppsi]
-  newprops  = proppsi:props
+  (P k)     = freshp props
+  newprops  = sort $ P k : props
   newlawbdd = con lawbdd (imp (var k) (bddOf kns psi))
   newobdds  = Data.Map.Strict.mapWithKey newOfor obdds
-  newOfor i oi | i `elem` ags = con <$> oi <*> pure (equ (var k) (var k'))
-               | otherwise    = con <$> oi <*> pure (neg (var k')) -- p_psi'
+  newOfor i oi | i `elem` ags = con <$> oi <*> (equ <$> mvBdd (var k) <*> cpBdd (var k))
+               | otherwise    = con <$> oi <*> (neg <$> cpBdd (var k)) -- p_psi'
 
 statesOf :: GenKnowStruct -> [KnState]
 statesOf (GenKnS allprops lawbdd _) = map (sort.getTrues) prpsats where
