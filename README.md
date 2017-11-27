@@ -8,17 +8,17 @@ A symbolic model checker for Dynamic Epistemic Logic.
 You can find a complete literate Haskell documentation in the file
 [SMCDEL.pdf](https://github.com/jrclogic/SMCDEL/raw/master/SMCDEL.pdf).
 
-References:
+## References
 
 [Johan van Benthem, Jan van Eijck, Malvin Gattinger, and Kaile Su:
 *Symbolic Model Checking for Dynamic Epistemic Logic.*
 In: Proceedings of The Fifth International Conference on Logic, Rationality and Interaction (LORI-V),
-2015](https://dx.doi.org/10.1007/978-3-662-48561-3_30).
+2015](https://doi.org/10.1007/978-3-662-48561-3_30).
 
 [Johan van Benthem, Jan van Eijck, Malvin Gattinger, and Kaile Su:
 *Symbolic Model Checking for Dynamic Epistemic Logic --- S5 and Beyond.*
 Journal of Logic and Computation,
-to appear](http://homepages.cwi.nl/~jve/papers/16/pdfs/2016-05-23-del-bdd-lori-journal.pdf).
+2017](http://homepages.cwi.nl/~jve/papers/16/pdfs/2016-05-23-del-bdd-lori-journal.pdf).
 
 [Malvin Gattinger:
 *Towards Symbolic Factual Change in DEL.*

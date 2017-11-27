@@ -20,6 +20,9 @@ freshp :: [Prp] -> Prp
 freshp [] = P 1
 freshp prps = P (maximum (map fromEnum prps) + 1)
 
+class HasVocab a where
+  vocabOf :: a -> [Prp]
+
 type Agent = String
 
 alice,bob,carol :: Agent
@@ -37,8 +40,9 @@ class HasAgents a where
 
 newtype Group = Group [Agent] deriving (Eq,Ord,Show)
 
+-- generate a non-empty group of up to 5 agents
 instance Arbitrary Group where
-  arbitrary = fmap Group $ sublistOf $ map show [1..(5::Integer)]
+  arbitrary = fmap (Group.("1":)) $ sublistOf $ map show [2..(5::Integer)]
 
 data Form
   = Top                         -- ^ True Constant
@@ -153,6 +157,9 @@ substitSet :: [(Prp,Form)] -> Form -> Form
 substitSet [] f = f
 substitSet ((q,psi):rest) f = substitSet rest (substit q psi f)
 
+substitOutOf :: [Prp] -> [Prp] -> Form -> Form
+substitOutOf truths allps = substitSet $ [(p,Top) | p <- truths] ++ [(p,Bot) | p <- allps \\ truths]
+
 replPsInF :: [(Prp,Prp)] -> Form -> Form
 replPsInF _       Top      = Top
 replPsInF _       Bot      = Bot
@@ -222,12 +229,18 @@ simStep (Conj [])     = Top
 simStep (Conj [f])    = simStep f
 simStep (Conj fs)     | Bot `elem` fs = Bot
                       | or [ Neg f `elem` fs | f <- fs ] = Bot
-                      | otherwise     = Conj (nub $ map simStep (filter (Top /=) fs))
+                      | otherwise     = Conj (nub $ concatMap unpack fs) where
+                          unpack Top = []
+                          unpack (Conj subfs) = map simStep $ filter (Top /=) subfs
+                          unpack f = [simStep f]
 simStep (Disj [])     = Bot
 simStep (Disj [f])    = simStep f
 simStep (Disj fs)     | Top `elem` fs = Top
                       | or [ Neg f `elem` fs | f <- fs ] = Top
-                      | otherwise     = Disj (nub $ map simStep (filter (Bot /=) fs))
+                      | otherwise     = Disj (nub $ concatMap unpack fs) where
+                          unpack Bot = []
+                          unpack (Disj subfs) = map simStep $ filter (Bot /=) subfs
+                          unpack f = [simStep f]
 simStep (Xor  [])     = Bot
 simStep (Xor  [Bot])  = Bot
 simStep (Xor  [f])    = simStep f
