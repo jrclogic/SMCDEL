@@ -11,7 +11,6 @@ import Data.HasCacBDD hiding (Top,Bot)
 import Data.List (nub,intercalate,sort,(\\),delete)
 import Data.Map.Strict (Map,fromList,toList,elems,(!),mapMaybeWithKey)
 import qualified Data.Map.Strict
-import Data.Maybe (fromJust)
 
 import SMCDEL.Language
 import SMCDEL.Symbolic.HasCacBDD (Scenario,KnState,texBDD,boolBddOf,texBddWith)
@@ -49,6 +48,12 @@ type RelBDD = Tagged Dubbel Bdd
 
 triviRelBdd :: RelBDD
 triviRelBdd = pure $ boolBddOf Top
+
+class TagBdd a where
+  tagBddEval :: [Prp] -> Tagged a Bdd -> Bool
+  tagBddEval truths querybdd = evaluateFun (untag querybdd) (\n -> P n `elem` truths)
+
+instance TagBdd Dubbel
 
 cpBdd :: Bdd -> RelBDD
 cpBdd b = pure $ case maxVarOf b of
@@ -239,8 +244,8 @@ bddOf kns@(GenKnS props _ _) (Announce ags f g) =
 
 bddOf kns@(GenKnS props _ _) (AnnounceW ags f g) =
   ifthenelse (bddOf kns f) bdd2a bdd2b where
-    bdd2a = restrict (bddOf (announce kns ags f) g) (k,True)
-    bdd2b = restrict (bddOf (announce kns ags f) g) (k,False)
+    bdd2a = restrict (bddOf (announce kns ags f      ) g) (k,True)
+    bdd2b = restrict (bddOf (announce kns ags (Neg f)) g) (k,True)
     (P k) = freshp props
 
 validViaBdd :: GenKnowStruct -> Form -> Bool
@@ -248,19 +253,20 @@ validViaBdd kns@(GenKnS _ lawbdd _) f = top == imp lawbdd (bddOf kns f)
 
 evalViaBdd :: GenScenario -> Form -> Bool
 evalViaBdd (kns@(GenKnS allprops _ _),s) f = let
-    b    = restrictSet (bddOf kns f) list
+    bdd  = bddOf kns f
+    b    = restrictSet bdd list
     list = [ (n, P n `elem` s) | (P n) <- allprops ]
   in
     case (b==top,b==bot) of
       (True,_) -> True
       (_,True) -> False
       _        -> error $ "evalViaBdd failed: Composite BDD leftover!\n"
-        ++ "  kns: " ++ show kns ++ "\n"
-        ++ "  s: " ++ show s ++ "\n"
+        ++ "  kns:  " ++ show kns ++ "\n"
+        ++ "  s:    " ++ show s ++ "\n"
         ++ "  form: " ++ show f ++ "\n"
-        ++ "  bddOf kns f: " ++ show (bddOf kns f) ++ "\n"
+        ++ "  bdd:  " ++ show bdd ++ "\n"
         ++ "  list: " ++ show list ++ "\n"
-        ++ "  b: " ++ show b ++ "\n"
+        ++ "  b:    " ++ show b ++ "\n"
 
 pubAnnounce :: GenKnowStruct -> Form -> GenKnowStruct
 pubAnnounce kns@(GenKnS allprops lawbdd obs) f =
@@ -370,10 +376,10 @@ productUpdate (GKM m, oldcur) (GAM am, act)
   | agentsOf (GKM m) /= agentsOf (GAM am)    = error "productUpdate failed: Agents of GKM and GAM are not the same!"
   | not $ eval (GKM m, oldcur) (fst $ am ! act) = error "productUpdate failed: Actual precondition is false!"
   | otherwise = (GKM $ fromList (map annotate statePairs), newcur) where
-    statePairs = zip (concat [ [ (s, a) | eval (GKM m, s) (fst $ am ! a) ] | s <- worldsOf (GKM m), a <- eventsOf (GAM am) ]) [0..]
+    statePairs = zip [ (s, a) | s <- worldsOf (GKM m), a <- eventsOf (GAM am), eval (GKM m, s) (fst $ am ! a) ] [0..]
     annotate ((s,a),news) = (news , (fst $ m ! s, fromList (map reachFor (agentsOf (GKM m))))) where
       reachFor i = (i, [ news' | ((s',a'),news') <- statePairs, s' `elem` snd (m !  s) ! i, a' `elem` snd (am ! a) ! i ])
-    newcur = fromJust $ lookup (oldcur,act) statePairs
+    (Just newcur) = lookup (oldcur,act) statePairs
 
 -- Privately tell alice that P 0, while bob thinks nothing happens.
 exampleGenActM :: GeneralActionModel
