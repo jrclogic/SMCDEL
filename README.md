@@ -18,7 +18,7 @@ In: Proceedings of The Fifth International Conference on Logic, Rationality and 
 [Johan van Benthem, Jan van Eijck, Malvin Gattinger, and Kaile Su:
 *Symbolic Model Checking for Dynamic Epistemic Logic --- S5 and Beyond.*
 Journal of Logic and Computation,
-2017](http://homepages.cwi.nl/~jve/papers/16/pdfs/2016-05-23-del-bdd-lori-journal.pdf).
+2017](https://homepages.cwi.nl/~jve/papers/16/pdfs/2016-05-23-del-bdd-lori-journal.pdf).
 
 [Malvin Gattinger:
 *Towards Symbolic Factual Change in DEL.*
@@ -32,8 +32,8 @@ You can try SMCDEL online here: https://w4eg.de/malvin/illc/smcdelweb/
 
 ## Dependencies
 
-- graphviz
-- dot2tex
+- [graphviz](http://graphviz.org/)
+- [dot2tex](https://github.com/kjellmf/dot2tex)
 
 On Debian, just do `sudo apt install graphviz dot2tex`.
 
