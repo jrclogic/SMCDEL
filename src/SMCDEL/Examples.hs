@@ -40,9 +40,9 @@ examplePaAction :: PointedActionModel
 examplePaAction = pubAnnounceAction [alice,bob] (PrpF (P 0))
 
 groupAnnounceAction :: [Agent] -> [Agent] -> Form -> PointedActionModel
-groupAnnounceAction everyone listeners f = (ActM [0,1] [(0,f),(1,Top)] actrel, 0)
-  where actrel = [ (i,[[0],[1]]) | i <- listeners ]
-              ++ [ (i,[[0 , 1]]) | i <- everyone \\ listeners ]
+groupAnnounceAction everyone listeners f = (ActM [0,1] [(0,f),(1,Neg f)] actrel, 0)
+  where actrel = sort $ [ (i,[[0],[1]]) | i <- listeners ]
+                     ++ [ (i,[[0 , 1]]) | i <- everyone \\ listeners ]
 
 exampleGroupAnnounceAction :: PointedActionModel
 exampleGroupAnnounceAction = groupAnnounceAction [alice, bob] [alice] (PrpF (P 0))
