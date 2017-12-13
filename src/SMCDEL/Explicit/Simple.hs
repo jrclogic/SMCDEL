@@ -10,21 +10,38 @@ import SMCDEL.Internal.TexDisplay
 import SMCDEL.Internal.Help (alleqWith,fusion,apply,(!))
 import Test.QuickCheck
 
--- FIXME rename this to World, use State only for knowledge structures
-type State = Int
+type World = Int
 
-type Partition = [[State]]
+class HasWorlds a where
+  worldsOf :: a -> [World]
+
+type Partition = [[World]]
 type Assignment = [(Prp,Bool)]
 
-data KripkeModel = KrM [State] [(Agent,Partition)] [(State,Assignment)] deriving (Eq,Ord,Show)
-type PointedModel = (KripkeModel,State)
+data KripkeModel = KrM [World] [(Agent,Partition)] [(World,Assignment)] deriving (Eq,Ord,Show)
+type PointedModel = (KripkeModel,World)
 
 instance HasAgents KripkeModel where
   agentsOf (KrM _ rel _) = map fst rel
 
+instance HasAgents PointedModel where
+  agentsOf = agentsOf . fst
+
+instance HasVocab KripkeModel where
+  vocabOf (KrM _ _ val) = map fst $ snd (head val)
+
+instance HasVocab PointedModel where
+  vocabOf = vocabOf . fst
+
+instance HasWorlds KripkeModel where
+  worldsOf (KrM ws _ _) = ws
+
+instance HasWorlds PointedModel where
+  worldsOf = worldsOf . fst
+
 newtype PropList = PropList [Prp]
 
-withoutWorld :: KripkeModel -> State -> KripkeModel
+withoutWorld :: KripkeModel -> World -> KripkeModel
 withoutWorld (KrM worlds parts val) w = KrM
   (delete w worlds)
   (map (second (filter (/=[]) . map (delete w))) parts)
@@ -40,7 +57,7 @@ randomAssFor ps = do
   tfs <- infiniteListOf $ choose (True,False)
   return $ zip ps tfs
 
-randomPartFor :: [State] -> Gen Partition
+randomPartFor :: [World] -> Gen Partition
 randomPartFor worlds = do
   indices <- infiniteListOf $ choose (1, length worlds)
   let pairs = zip worlds indices
@@ -142,7 +159,7 @@ instance TexAble PointedModel where
   texTo = texTo.ViaDot
   texDocumentTo = texDocumentTo.ViaDot
 
-type Bisimulation = [(State,State)]
+type Bisimulation = [(World,World)]
 
 checkBisim :: Bisimulation -> KripkeModel -> KripkeModel -> Bool
 checkBisim z m1@(KrM _ rel1 val1) m2@(KrM _ rel2 val2) =
@@ -152,9 +169,10 @@ checkBisim z m1@(KrM _ rel1 val1) m2@(KrM _ rel2 val2) =
   && and [ any (\v1 -> (v1,v2) `elem` z) (concat $ filter (elem w1) (rel1 ! ag)) -- back
          | (w1,w2) <- z, ag <- agentsOf m2, v2 <- concat $ filter (elem w2) (rel2 ! ag) ]
 
-data ActionModel = ActM [State] [(State,Form)] [(Agent,Partition)]
+type Action = Int
+data ActionModel = ActM [Action] [(Action,Form)] [(Agent,Partition)]
   deriving (Eq,Ord,Show)
-type PointedActionModel = (ActionModel,State)
+type PointedActionModel = (ActionModel,Action)
 
 instance KripkeLike PointedActionModel where
   directed = const False
@@ -177,16 +195,16 @@ instance Arbitrary ActionModel where
       ActM [0..3] [(0,Top),(1,f),(2,g),(3,h)] ( ("0",[[0],[1],[2],[3]]):[(show k,[[0..3::Int]]) | k<-[1..5::Int] ])
 
 productUpdate :: PointedModel -> PointedActionModel -> PointedModel
-productUpdate pm@(m@(KrM oldstates oldrel oldval), oldcur) (ActM actions precon actrel, faction) =
+productUpdate pm@(m@(KrM oldWorlds oldrel oldval), oldcur) (ActM actions precon actrel, faction) =
   let
-    startcount        = maximum oldstates + 1
+    startcount        = maximum oldWorlds + 1
     copiesOf (s,a)    = [ (s, a, a * startcount + s) | eval (m, s) (apply precon a) ]
-    newstatesTriples  = concat [ copiesOf (s,a) | s <- oldstates, a <- actions ]
-    newstates         = map (\(_,_,x) -> x) newstatesTriples
-    newval            = map (\(s,_,t) -> (t, apply oldval s)) newstatesTriples
+    newWorldsTriples  = concat [ copiesOf (s,a) | s <- oldWorlds, a <- actions ]
+    newWorlds         = map (\(_,_,x) -> x) newWorldsTriples
+    newval            = map (\(s,_,t) -> (t, apply oldval s)) newWorldsTriples
     listFor ag        = cartProd (apply oldrel ag) (apply actrel ag)
     newPartsFor ag    = [ cartProd as bs | (as,bs) <- listFor ag ]
-    translSingle pair = filter (`elem` newstates) $ map (\(_,_,x) -> x) $ copiesOf pair
+    translSingle pair = filter (`elem` newWorlds) $ map (\(_,_,x) -> x) $ copiesOf pair
     transEqClass      = concatMap translSingle
     nTransPartsFor ag = filter (\x-> x/=[]) $ map transEqClass (newPartsFor ag)
     newrel            = [ (a, nTransPartsFor a)  | a <- map fst oldrel ]
@@ -196,4 +214,4 @@ productUpdate pm@(m@(KrM oldstates oldrel oldval), oldcur) (ActM actions precon 
   in case ( map fst oldrel == map fst actrel, eval pm factTest ) of
     (False, _) -> error "productUpdate failed: Agents of KrM and ActM are not the same!"
     (_, False) -> error "productUpdate failed: Actual precondition is false!"
-    _          -> (KrM newstates newrel newval, newcur)
+    _          -> (KrM newWorlds newrel newval, newcur)

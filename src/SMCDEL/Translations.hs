@@ -10,7 +10,7 @@ import SMCDEL.Internal.Help (anydiffWith,alldiff,alleqWith,apply,powerset,(!),se
 
 import Data.HasCacBDD hiding (Top,Bot)
 
-type StateMap = State -> KnState
+type StateMap = World -> KnState
 
 equivalentWith :: PointedModel -> Scenario -> StateMap -> Bool
 equivalentWith (KrM ws rel val, actw) (kns@(KnS _ _ obs), curs) g =

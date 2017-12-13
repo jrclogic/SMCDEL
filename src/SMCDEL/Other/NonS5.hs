@@ -14,7 +14,7 @@ import qualified Data.Map.Strict
 
 import SMCDEL.Language
 import SMCDEL.Symbolic.HasCacBDD (Scenario,KnState,texBDD,boolBddOf,texBddWith)
-import SMCDEL.Explicit.Simple (PointedModel,KripkeModel(KrM),State)
+import SMCDEL.Explicit.Simple (PointedModel,KripkeModel(KrM),World,HasWorlds,worldsOf,Action)
 import SMCDEL.Translations hiding (voc)
 import SMCDEL.Internal.Help (alleqWith,apply)
 import SMCDEL.Internal.TexDisplay
@@ -22,7 +22,7 @@ import SMCDEL.Internal.TexDisplay
 problemPM :: PointedModel
 problemPM = ( KrM [0,1,2,3] [ (alice,[[0],[1,2,3]]), (bob,[[0,1,2],[3]]) ]
   [ (0,[(P 1,True ),(P 2,True )]), (1,[(P 1,True ),(P 2,False)])
-  , (2,[(P 1,False),(P 2,True )]), (3,[(P 1,False),(P 2,False)]) ], 1::State )
+  , (2,[(P 1,False),(P 2,True )]), (3,[(P 1,False),(P 2,False)]) ], 1::World )
 
 problemKNS :: Scenario
 problemKNS = kripkeToKns problemPM
@@ -83,27 +83,27 @@ samplerel = fromList [
   ( [P 2]     , [    [P 2],      [P 1, P 2] ] ),
   ( [P 1, P 2], [                [P 1, P 2] ] )  ]
 
-newtype GeneralKripkeModel = GKM (Map State (Map Prp Bool, Map Agent [State]))
+newtype GeneralKripkeModel = GKM (Map World (Map Prp Bool, Map Agent [World]))
   deriving (Eq,Ord,Show)
 
-type GeneralPointedModel = (GeneralKripkeModel, State)
+type GeneralPointedModel = (GeneralKripkeModel, World)
 
 distinctVal :: GeneralKripkeModel -> Bool
 distinctVal (GKM m) = Data.Map.Strict.size m == length (nub (map fst (elems m)))
 
-worldsOf :: GeneralKripkeModel -> [State]
-worldsOf (GKM m) = Data.Map.Strict.keys m
+instance HasWorlds GeneralKripkeModel where
+  worldsOf (GKM m) = Data.Map.Strict.keys m
 
-vocOf :: GeneralKripkeModel -> [Prp]
-vocOf (GKM m) = Data.Map.Strict.keys $ fst (head (Data.Map.Strict.elems m))
+instance HasVocab GeneralKripkeModel where
+  vocabOf (GKM m) = Data.Map.Strict.keys $ fst (head (Data.Map.Strict.elems m))
 
 instance HasAgents GeneralKripkeModel where
   agentsOf (GKM m) = Data.Map.Strict.keys $ snd (head (Data.Map.Strict.elems m))
 
-relOfIn :: Agent -> GeneralKripkeModel -> Map State [State]
+relOfIn :: Agent -> GeneralKripkeModel -> Map World [World]
 relOfIn i (GKM m) = Data.Map.Strict.map (\x -> snd x ! i) m
 
-truthsInAt :: GeneralKripkeModel -> State -> [Prp]
+truthsInAt :: GeneralKripkeModel -> World -> [Prp]
 truthsInAt (GKM m) w = Data.Map.Strict.keys (Data.Map.Strict.filter id (fst (m ! w)))
 
 instance KripkeLike GeneralKripkeModel where
@@ -321,7 +321,7 @@ instance TexAble GenScenario where
 
 genKrp2Kns :: GeneralPointedModel -> GenScenario
 genKrp2Kns (m, cur) = (GenKnS vocab lawbdd obdds, truthsInAt m cur) where
-  vocab  = vocOf m
+  vocab  = vocabOf m
   lawbdd = disSet [ booloutof (truthsInAt m w) vocab | w <- worldsOf m ]
   obdds  :: Map Agent RelBDD
   obdds  = fromList [ (i, restrictLaw <$> relBddOfIn i m <*> (con <$> mvBdd lawbdd <*> cpBdd lawbdd)) | i <- agents ]
@@ -347,17 +347,17 @@ mudGenScnInit n m = (GenKnS vocab law obs, actual) where
 myMudGenScnInit :: GenScenario
 myMudGenScnInit = mudGenScnInit 3 3
 
-newtype GeneralActionModel = GAM (Map State (Form, Map Agent [State]))
+newtype GeneralActionModel = GAM (Map Action (Form, Map Agent [Action]))
   deriving (Eq,Ord,Show)
-type GeneralPointedActionModel = (GeneralActionModel, State)
+type GeneralPointedActionModel = (GeneralActionModel, Action)
 
-eventsOf :: GeneralActionModel -> [State]
+eventsOf :: GeneralActionModel -> [Action]
 eventsOf (GAM am) = Data.Map.Strict.keys am
 
 instance HasAgents GeneralActionModel where
   agentsOf (GAM am) = Data.Map.Strict.keys $ snd (head (Data.Map.Strict.elems am))
 
-relOfInGAM :: Agent -> GeneralActionModel -> Map State [State]
+relOfInGAM :: Agent -> GeneralActionModel -> Map Action [Action]
 relOfInGAM i (GAM am) = Data.Map.Strict.map (\x -> snd x ! i) am
 
 instance KripkeLike GeneralPointedActionModel where
