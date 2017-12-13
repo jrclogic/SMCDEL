@@ -3,7 +3,7 @@
 
 module SMCDEL.Language where
 import Data.List (nub,intercalate,(\\))
-import Data.Maybe (fromJust)
+import Data.Maybe (fromMaybe)
 import Test.QuickCheck
 import SMCDEL.Internal.TexDisplay
 
@@ -139,10 +139,10 @@ substit q psi (Xor  forms)  = Xor  (map (substit q psi) forms)
 substit q psi (Impl f g)    = Impl (substit q psi f) (substit q psi g)
 substit q psi (Equi f g)    = Equi (substit q psi f) (substit q psi g)
 substit q psi (Forall ps f) = if q `elem` ps
-  then error ("substit failed: Substituens "++ show q ++ " in 'Forall " ++ show ps)
+  then error ("substit failed: Substituens "++ show q ++ " in 'Forall " ++ show ps ++ " " ++ show f)
   else Forall ps (substit q psi f)
 substit q psi (Exists ps f) = if q `elem` ps
-  then error ("substit failed: Substituens " ++ show q ++ " in 'Exists " ++ show ps)
+  then error ("substit failed: Substituens " ++ show q ++ " in 'Exists " ++ show ps ++ " " ++ show f)
   else Exists ps (substit q psi f)
 substit q psi (K  i f)     = K  i (substit q psi f)
 substit q psi (Kw i f)     = Kw i (substit q psi f)
@@ -160,19 +160,21 @@ substitSet ((q,psi):rest) f = substitSet rest (substit q psi f)
 substitOutOf :: [Prp] -> [Prp] -> Form -> Form
 substitOutOf truths allps = substitSet $ [(p,Top) | p <- truths] ++ [(p,Bot) | p <- allps \\ truths]
 
+replPsInP :: [(Prp,Prp)] -> Prp -> Prp
+replPsInP repl p = fromMaybe p (lookup p repl)
+
 replPsInF :: [(Prp,Prp)] -> Form -> Form
 replPsInF _       Top      = Top
 replPsInF _       Bot      = Bot
-replPsInF repl (PrpF p)    | p `elem` map fst repl = PrpF (fromJust $ lookup p repl)
-                           | otherwise = PrpF p
+replPsInF repl (PrpF p)    = PrpF $ replPsInP repl p
 replPsInF repl (Neg f)     = Neg $ replPsInF repl f
 replPsInF repl (Conj fs)   = Conj $ map (replPsInF repl) fs
 replPsInF repl (Disj fs)   = Disj $ map (replPsInF repl) fs
 replPsInF repl (Xor  fs)   = Xor  $ map (replPsInF repl) fs
 replPsInF repl (Impl f g)  = Impl (replPsInF repl f) (replPsInF repl g)
 replPsInF repl (Equi f g)  = Equi (replPsInF repl f) (replPsInF repl g)
-replPsInF repl (Forall ps f) = Forall (map (fromJust . flip lookup repl) ps) (replPsInF repl f)
-replPsInF repl (Exists ps f) = Exists (map (fromJust . flip lookup repl) ps) (replPsInF repl f)
+replPsInF repl (Forall ps f) = Forall (map (replPsInP repl) ps) (replPsInF repl f)
+replPsInF repl (Exists ps f) = Exists (map (replPsInP repl) ps) (replPsInF repl f)
 replPsInF repl (K i f)     = K i (replPsInF repl f)
 replPsInF repl (Kw i f)    = Kw i (replPsInF repl f)
 replPsInF repl (Ck ags f)  = Ck ags (replPsInF repl f)
@@ -319,17 +321,15 @@ testForm = Forall [P 3] $
 newtype BF = BF Form deriving (Show)
 
 instance Arbitrary BF where
-  arbitrary = sized randomboolform
+  arbitrary = sized $ randomboolformWith [P 1 .. P 100]
   shrink (BF f) = map BF $ shrinkform f
 
-randomboolform ::  Int -> Gen BF
-randomboolform sz = BF <$> bf' sz' where
-  maximumvar = 100
-  sz' = min maximumvar sz
-  bf' 0 = (PrpF . P) <$> choose (0, sz')
+randomboolformWith :: [Prp] -> Int -> Gen BF
+randomboolformWith allprops sz = BF <$> bf' sz where
+  bf' 0 = PrpF <$> elements allprops
   bf' n = oneof [ pure SMCDEL.Language.Top
                 , pure SMCDEL.Language.Bot
-                , (PrpF . P) <$> choose (0, sz')
+                , PrpF <$> elements allprops
                 , Neg <$> st
                 , (\x y -> Conj [x,y]) <$> st <*> st
                 , (\x y z -> Conj [x,y,z]) <$> st <*> st <*> st
@@ -340,12 +340,11 @@ randomboolform sz = BF <$> bf' sz' where
                 , (\x -> Xor [x]) <$> st
                 , (\x y -> Xor [x,y]) <$> st <*> st
                 , (\x y z -> Xor [x,y,z]) <$> st <*> st <*> st
-                , (\m f -> Exists [P m] f) <$> choose (0, maximumvar) <*> st
-                , (\m f -> Forall [P m] f) <$> randomvar <*> st
+                -- , (\p f -> Exists [p] f) <$> elements allprops <*> st
+                -- , (\p f -> Forall [p] f) <$> elements allprops <*> st
                 ]
     where
       st = bf' (n `div` 3)
-      randomvar = elements [0..maximumvar]
 
 instance Arbitrary Form where
   arbitrary = sized form where
@@ -374,3 +373,9 @@ instance Arbitrary Form where
         arbitraryAg = (\(Ag i) -> i) <$> arbitrary
         arbitraryAgs = sublistOf (map show [1..(5::Integer)]) `suchThat` (not . null)
   shrink = shrinkform
+
+newtype SimplifiedForm = SF Form deriving (Eq,Ord,Show)
+
+instance Arbitrary SimplifiedForm where
+  arbitrary = SF . simplify <$> arbitrary
+  shrink (SF f) = nub $ map (SF . simplify) (shrinkform f)
