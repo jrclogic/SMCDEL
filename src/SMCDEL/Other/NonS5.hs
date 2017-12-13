@@ -28,15 +28,18 @@ problemPM = ( KrM [0,1,2,3] [ (alice,[[0],[1,2,3]]), (bob,[[0,1,2],[3]]) ]
 problemKNS :: Scenario
 problemKNS = kripkeToKns problemPM
 
-mv :: [Prp] -> [Prp]
-mv = map (fromJust . (`lookup` [ (P n, P  (2*n)      ) | n <- [0..] ])) -- represent p in the double vocabulary
-cp :: [Prp] -> [Prp]
-cp = map (fromJust . (`lookup` [ (P n, P ((2*n) + 1) ) | n <- [0..] ])) -- represent p' in the double vocabulary
-unmv :: [Prp] -> [Prp]
+mvP, cpP :: Prp -> Prp
+mvP (P n) = P  (2*n)      -- represent p  in the double vocabulary
+cpP (P n) = P ((2*n) + 1) -- represent p' in the double vocabulary
+
+mv, cp :: [Prp] -> [Prp]
+mv = map mvP
+cp = map cpP
+
+unmv, uncp :: [Prp] -> [Prp]
 unmv = map f where -- Go from p in double vocabulary to p in single vocabulary:
   f (P m) | odd m    = error "unmv failed: Number is odd!"
           | otherwise = P $ m `div` 2
-uncp :: [Prp] -> [Prp]
 uncp = map f where -- Go from p' in double vocabulary to p in single vocabulary:
   f (P m) | even m    = error "uncp failed: Number is even!"
           | otherwise = P $ (m-1) `div` 2
@@ -98,13 +101,24 @@ relOfIn i (GKM m) = Data.Map.Strict.map (\x -> snd x ! i) m
 truthsInAt :: GeneralKripkeModel -> State -> [Prp]
 truthsInAt (GKM m) w = Data.Map.Strict.keys (Data.Map.Strict.filter id (fst (m ! w)))
 
-instance KripkeLike GeneralPointedModel where
+instance KripkeLike GeneralKripkeModel where
   directed = const True
-  getNodes (m,_) = map (show . fromEnum &&& labelOf) (worldsOf m) where
+  getNodes m = map (show . fromEnum &&& labelOf) (worldsOf m) where
     labelOf w = "$" ++ tex (truthsInAt m w) ++ "$"
-  getEdges (m, _) =
+  getEdges m =
     concat [ [ (a, show $ fromEnum w, show $ fromEnum v) | v <- relOfIn a m ! w ] | w <- worldsOf m, a <- agentsOf m ]
-  getActuals (_,w) = [show $ fromEnum w]
+  getActuals = const []
+
+instance KripkeLike GeneralPointedModel where
+  directed = directed . fst
+  getNodes = getNodes . fst
+  getEdges = getEdges . fst
+  getActuals = return . show . fromEnum . snd
+
+instance TexAble GeneralKripkeModel where
+  tex = tex.ViaDot
+  texTo = texTo.ViaDot
+  texDocumentTo = texDocumentTo.ViaDot
 
 instance TexAble GeneralPointedModel where
   tex = tex.ViaDot
@@ -152,7 +166,7 @@ pubAnnounceNonS5 :: GeneralKripkeModel -> Form -> GeneralKripkeModel
 pubAnnounceNonS5 (GKM m) f = GKM newm where
   newm = mapMaybeWithKey isin m
   isin w' (v,rs) | eval (GKM m,w') f = Just (v,Data.Map.Strict.map newr rs)
-                 | otherwise     = Nothing
+                 | otherwise         = Nothing
   newr = filter (`elem` Data.Map.Strict.keys newm)
 
 announceActionNonS5 :: [Agent] -> [Agent] -> Form -> GeneralPointedActionModel
