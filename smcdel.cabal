@@ -46,7 +46,8 @@ Library
                       QuickCheck,
                       tagged,
                       temporary,
-                      text
+                      text,
+                      time
 
 Executable smcdel
   ghc-options:        -Wall

@@ -11,6 +11,7 @@ import System.Process
 import Data.GraphViz
 import Data.GraphViz.Types.Generalised
 import Data.GraphViz.Types.Monadic
+import Data.Time.Clock.POSIX
 
 begintab, endtab, newline :: String
 begintab  = "\\\\begin{tabular}{c}"
@@ -29,14 +30,13 @@ class TexAble a where
   texDocumentTo :: a -> String -> IO ()
   texDocumentTo x filename =
     writeFile (filename++".tex") (pre ++ tex x ++ post) where
-      pre = concat [ "\\documentclass[a4paper,10pt]{article}"
+      pre = concat [ "\\documentclass{standalone}"
                    , "\\usepackage[utf8]{inputenc}"
                    , "\\usepackage{tikz,fontenc,graphicx}"
                    , "\\usepackage[pdftex]{hyperref}"
-                   , "\\usepackage[margin=1cm]{geometry}"
                    , "\\hypersetup{pdfborder={0 0 0},breaklinks=true}"
                    , "\\begin{document}"
-                   , "\\thispagestyle{none}" ]
+                   ]
       post= "\\end{document}"
   pdfTo :: a -> String -> IO ()
   pdfTo x filename = do
@@ -44,11 +44,14 @@ class TexAble a where
     runAndWait $ "cd " ++ filename ++ "/../; /usr/bin/pdflatex -interaction=nonstopmode "++filename++".tex"
   disp :: a -> IO ()
   disp x = withSystemTempDirectory "smcdel" $ \tmpdir -> do
-    pdfTo x (tmpdir ++ "/temp")
-    runIgnoreAndWait $ "/usr/bin/okular " ++ tmpdir ++ "/temp.pdf"
+    ts <- round <$> getPOSIXTime
+    let filename = tmpdir ++ "/disp-" ++ show (ts :: Int)
+    pdfTo x filename
+    runIgnoreAndWait $ "/usr/bin/okular " ++ filename ++ ".pdf"
   svgViaTex :: a -> String
   svgViaTex x = unsafePerformIO $ withSystemTempDirectory "smcdel" $ \tmpdir -> do
-    let filename = tmpdir ++ "/temp"
+    ts <- round <$> getPOSIXTime
+    let filename = tmpdir ++ "/svgViaTex-" ++ show (ts :: Int)
     pdfTo x filename
     runAndWait $ "pdftocairo -nocrop -svg "++filename++".pdf "++filename++".svg"
     readFile (filename ++ ".svg")
