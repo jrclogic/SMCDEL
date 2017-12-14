@@ -64,19 +64,7 @@ findNumberNonS5 = findNumberWith
 
 findNumberNonS5Trans :: Int -> Int -> Int
 findNumberNonS5Trans = findNumberWith (start,SMCDEL.Other.NonS5.evalViaBdd) where
-  start n m = SMCDEL.Other.NonS5.genKrp2Kns $ mudGenKrpInit n m
-
-mudGenKrpInit :: Int -> Int -> SMCDEL.Other.NonS5.GeneralPointedModel
-mudGenKrpInit n m = (SMCDEL.Other.NonS5.GKM $ fromList wlist, cur) where
-  wlist = [ (w, (fromList (vals !! w), fromList $ relFor w)) | w <- ws ]
-  ws    = [0..(2^n-1)]
-  vals  = map sort (foldl buildTable [[]] [P k | k<- [1..n]])
-  buildTable partrows p = [ (p,v):pr | v <-[True,False], pr <- partrows ]
-  relFor w = [ (show i, seesFrom i w) | i <- [1..n] ]
-  seesFrom i w = filter (\v -> samefor i (vals !! w) (vals !! v)) ws
-  samefor i ps qs = seteq (delete (P i) (map fst $ filter snd ps)) (delete (P i) (map fst $ filter snd qs))
-  cur = fromJust (elemIndex curVal vals)
-  curVal = sort $ [(p,True) | p <- [P 1 .. P m]] ++ [(p,True) | p <- [P (m+1) .. P n]]
+  start n m = SMCDEL.Other.NonS5.genKrp2Kns $ SMCDEL.Other.NonS5.mudGenKrpInit n m
 
 mudDemoKrpInit :: Int -> Int -> DEMO_S5.EpistM [Bool]
 mudDemoKrpInit n m = DEMO_S5.Mo states agents [] rels points where

@@ -8,7 +8,7 @@ import Data.Tagged
 import Control.Arrow ((&&&),(***),first)
 import Data.GraphViz
 import Data.HasCacBDD hiding (Top,Bot)
-import Data.List (nub,intercalate,sort,(\\),delete)
+import Data.List (nub,intercalate,sort,(\\),delete,elemIndex)
 import Data.Map.Strict (Map,fromList,toList,elems,(!),mapMaybeWithKey)
 import qualified Data.Map.Strict
 
@@ -16,7 +16,7 @@ import SMCDEL.Language
 import SMCDEL.Symbolic.HasCacBDD (Scenario,KnState,texBDD,boolBddOf,texBddWith)
 import SMCDEL.Explicit.Simple (PointedModel,KripkeModel(KrM),World,HasWorlds,worldsOf,Action)
 import SMCDEL.Translations hiding (voc)
-import SMCDEL.Internal.Help (alleqWith,apply)
+import SMCDEL.Internal.Help (alleqWith,apply,lfp,seteq)
 import SMCDEL.Internal.TexDisplay
 
 problemPM :: PointedModel
@@ -46,8 +46,9 @@ uncp = map f where -- Go from p' in double vocabulary to p in single vocabulary:
 data Dubbel
 type RelBDD = Tagged Dubbel Bdd
 
-triviRelBdd :: RelBDD
-triviRelBdd = pure $ boolBddOf Top
+totalRelBdd, emptyRelBdd :: RelBDD
+totalRelBdd = pure $ boolBddOf Top
+emptyRelBdd = pure $ boolBddOf Bot
 
 class TagBdd a where
   tagBddEval :: [Prp] -> Tagged a Bdd -> Bool
@@ -180,6 +181,30 @@ announceActionNonS5 everyone listeners f = (GAM am, 1) where
     [ (1, (f  , fromList $ [(i,[1]) | i <- listeners] ++ [(i,[2]) | i <- everyone \\ listeners]))
     , (2, (Top, fromList   [(i,[2]) | i <- everyone]) ) ]
 
+mudGenKrpInit :: Int -> Int -> GeneralPointedModel
+mudGenKrpInit n m = (GKM $ fromList wlist, cur) where
+  wlist = [ (w, (fromList (vals !! w), fromList $ relFor w)) | w <- ws ]
+  ws    = [0..(2^n-1)]
+  vals  = map sort (foldl buildTable [[]] [P k | k<- [1..n]])
+  buildTable partrows p = [ (p,v):pr | v <-[True,False], pr <- partrows ]
+  relFor w = [ (show i, seesFrom i w) | i <- [1..n] ]
+  seesFrom i w = filter (\v -> samefor i (vals !! w) (vals !! v)) ws
+  samefor i ps qs = seteq (delete (P i) (map fst $ filter snd ps)) (delete (P i) (map fst $ filter snd qs))
+  (Just cur) = elemIndex curVal vals
+  curVal = sort $ [(p,True) | p <- [P 1 .. P m]] ++ [(p,True) | p <- [P (m+1) .. P n]]
+
+myMudGenKrpInit :: GeneralPointedModel
+myMudGenKrpInit = mudGenKrpInit 3 3
+
+generatedSubmodel :: GeneralPointedModel -> GeneralPointedModel
+generatedSubmodel (GKM m, cur) = (GKM newm, cur) where
+  newm = mapMaybeWithKey isin m
+  isin w' (v,rs) | w' `elem` reachable = Just (v, Data.Map.Strict.map newr rs)
+                 | otherwise           = Nothing
+  newr = filter (`elem` Data.Map.Strict.keys newm)
+  reachable = lfp follow [cur] where
+    follow xs = sort . nub $ concat [ snd (m ! x) ! a | x <- xs, a <- agentsOf (GKM m) ]
+
 relBddOfIn :: Agent -> GeneralKripkeModel -> RelBDD
 relBddOfIn i (GKM m)
   | not (distinctVal (GKM m)) = error "m does not have distinct valuations."
@@ -195,7 +220,13 @@ relBddOfIn i (GKM m)
 
 data GenKnowStruct = GenKnS [Prp] Bdd (Map Agent RelBDD) deriving (Eq,Show)
 
+instance HasVocab GenKnowStruct where
+  vocabOf (GenKnS voc _ _) = voc
+
 type GenScenario = (GenKnowStruct,[Prp])
+
+instance HasVocab GenScenario where
+  vocabOf = vocabOf . fst
 
 instance HasAgents GenKnowStruct where
   agentsOf (GenKnS _ _ obdds) = Data.Map.Strict.keys obdds
