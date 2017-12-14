@@ -1,5 +1,6 @@
 
 module Main where
+import Data.List (sort)
 import Test.QuickCheck
 import Test.Hspec
 import SMCDEL.Internal.Help (alleq)
@@ -17,15 +18,16 @@ main = hspec $
     it "lemma equivalence Kripke" $ property lemmaEquivTestKr
     it "number of states"         $ property numOfStatesTest
     it "public announcement"      $ property pubAnnounceTest
-    it "group announcement"       $ property announceTest
-    it "single action"            $ property singleActionTest
+    it "group announcement"       $ property (\sf gl sg  -> alleq $ announceTest sf gl sg)
+    it "single action"            $ property (\am f -> alleq $ singleActionTest am f)
 
 mymodel :: PointedModel
-mymodel = (KrM ws rel (zip ws table), 0) where
-  ws    = [0..31]
+mymodel = (KrM ws rel val, 0) where
+  buildTable partrows p = [ (p,v):pr | v <- [True,False], pr <- partrows ]
+  table = foldl buildTable [[]] [P 0 .. P 4]
+  val   = zip [0..] (map sort table)
+  ws    = map fst val
   rel   = ("0", map (:[]) ws) : [ (show i,[ws]) | i <- [1..5::Int] ]
-  table = foldl buildTable [[]] [P k | k <- [0..4::Int]]
-  buildTable partrows p = [ (p,v):pr | v <-[True,False], pr<-partrows ]
 
 myscn :: Scenario
 myscn = (KnS ps (boolBddOf Top) (("0",ps):[(show i,[]) | i<-[1..5::Int]]) , ps)
@@ -64,27 +66,34 @@ lemmaEquivTestKns kns = equivalentWith pm scn g where
   scn = (kns, head $ statesOf kns)
   (pm,g) = knsToKripkeWithG scn
 
-pubAnnounceTest :: Prp -> Form -> Bool
-pubAnnounceTest prp g = alleq
+pubAnnounceTest :: Prp -> SimplifiedForm -> Bool
+pubAnnounceTest prp (SF g) = alleq
   [ Exp.eval mymodel (PubAnnounce f g)
-  , Sym.eval (kripkeToKns mymodel) (PubAnnounce f sg)
+  , Sym.eval (kripkeToKns mymodel) (PubAnnounce f g)
   , Sym.evalViaBdd (kripkeToKns mymodel) (PubAnnounce f g)
-  , Sym.eval (knowTransform (kripkeToKns mymodel) (actionToEvent (pubAnnounceAction (map show [1..(5::Int)]) f))) sg
+  , Sym.eval (knowTransform (kripkeToKns mymodel) (actionToEvent (pubAnnounceAction (agentsOf mymodel) f))) g
   ] where
       f = PrpF prp
-      sg = simplify g
 
-announceTest :: Form -> Group -> Form -> Bool
-announceTest f (Group ags) g = alleq
-  [ Exp.eval mymodel (Announce ags f g)
-  , Sym.eval (kripkeToKns mymodel) (Announce ags sf sg)
-  , Sym.evalViaBdd (kripkeToKns mymodel) (Announce ags f g)
-  , not (Sym.eval (kripkeToKns mymodel) sf)
-      || Sym.eval (knowTransform (kripkeToKns mymodel) (actionToEvent (groupAnnounceAction (map show [1..(5::Int)]) ags sf))) sg
-  ] where [sf,sg] = map simplify [f,g]
+announceTest :: SimplifiedForm -> Group -> SimplifiedForm -> [Bool]
+announceTest (SF f) (Group listeners) (SF g) =
+  [ Exp.eval mymodel (Announce listeners f g) -- directly on Kripke
+  , let -- apply action model to Kripke
+      precon   = Exp.eval mymodel f
+      action   = groupAnnounceAction (agentsOf mymodel) listeners f
+      newModel = productUpdate mymodel action
+    in not precon || Exp.eval newModel g
+  , Sym.eval (kripkeToKns mymodel) (Announce listeners f g) -- on equivalent kns
+  , Sym.evalViaBdd (kripkeToKns mymodel) (Announce listeners f g) -- BDD on equivalent kns
+  , let -- apply equivalent transformer to equivalent kns
+      precon  = Sym.eval (kripkeToKns mymodel) f
+      equiTrf = actionToEvent (groupAnnounceAction (agentsOf mymodel) listeners f)
+      newKns  = knowTransform (kripkeToKns mymodel) equiTrf
+    in not precon || Sym.eval newKns g
+  ]
 
-singleActionTest :: ActionModel -> Form -> Bool
-singleActionTest myact f = a==b && b==c where
+singleActionTest :: ActionModel -> Form -> [Bool]
+singleActionTest myact f = [a,b,c] where
   a = Exp.eval (productUpdate mymodel (myact,0)) f
   b = Sym.evalViaBdd (knowTransform (kripkeToKns mymodel) (actionToEvent (myact,0))) f
   c = Exp.eval (productUpdate mymodel (eventToAction (actionToEvent (myact,0)))) f
