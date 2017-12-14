@@ -7,7 +7,7 @@ import Data.GraphViz
 import Data.List
 import SMCDEL.Language
 import SMCDEL.Internal.TexDisplay
-import SMCDEL.Internal.Help (alleqWith,fusion,apply,(!))
+import SMCDEL.Internal.Help (alleqWith,fusion,apply,(!),lfp)
 import Test.QuickCheck
 
 type World = Int
@@ -47,6 +47,12 @@ withoutWorld (KrM worlds parts val) w = KrM
   (map (second (filter (/=[]) . map (delete w))) parts)
   (filter ((/=w).fst) val)
 
+withoutProps :: KripkeModel -> [Prp] -> KripkeModel
+withoutProps (KrM worlds parts val) dropProps = KrM
+  worlds
+  parts
+  (map (second $ filter ((`notElem` dropProps) . fst)) val)
+
 instance Arbitrary PropList where
   arbitrary = do
     moreprops <- sublistOf (map P [1..10])
@@ -66,7 +72,7 @@ randomPartFor worlds = do
 
 instance Arbitrary KripkeModel where
   arbitrary = do
-    Group agents <- arbitrary
+    let agents = map show [1..(5::Int)]
     let props = map P [0..4]
     worlds <- sort . nub <$> listOf1 (elements [0..8])
     val <- mapM (\w -> do
@@ -162,12 +168,21 @@ instance TexAble PointedModel where
 type Bisimulation = [(World,World)]
 
 checkBisim :: Bisimulation -> KripkeModel -> KripkeModel -> Bool
-checkBisim z m1@(KrM _ rel1 val1) m2@(KrM _ rel2 val2) =
+checkBisim [] _                   _                     = False
+checkBisim z  m1@(KrM _ rel1 val1) m2@(KrM _ rel2 val2) =
      all (\(w1,w2) -> val1 ! w1 == val2 ! w2) z -- same props
   && and [ any (\v2 -> (v1,v2) `elem` z) (concat $ filter (elem w2) (rel2 ! ag)) -- forth
          | (w1,w2) <- z, ag <- agentsOf m1, v1 <- concat $ filter (elem w1) (rel1 ! ag) ]
   && and [ any (\v1 -> (v1,v2) `elem` z) (concat $ filter (elem w1) (rel1 ! ag)) -- back
          | (w1,w2) <- z, ag <- agentsOf m2, v2 <- concat $ filter (elem w2) (rel2 ! ag) ]
+
+generatedSubmodel :: PointedModel -> PointedModel
+generatedSubmodel (KrM _ rel val, cur) = (KrM newWorlds newrel newval, cur) where
+  newWorlds :: [World]
+  newWorlds = lfp follow [cur] where
+    follow xs = sort . nub $ concat [ part | (_,parts) <- rel, part <- parts, any (`elem` part) xs ]
+  newrel = map (second $ filter (any (`elem` newWorlds))) rel
+  newval = filter (\p -> fst p `elem` newWorlds) val
 
 type Action = Int
 data ActionModel = ActM [Action] [(Action,Form)] [(Agent,Partition)]
@@ -177,9 +192,9 @@ type PointedActionModel = (ActionModel,Action)
 instance KripkeLike PointedActionModel where
   directed = const False
   getNodes (ActM as actval _, _) = map (show &&& labelOf) as where
-    labelOf w = ppForm $ apply actval w
+    labelOf w = " $ ? " ++ tex (apply actval w) ++ " $ "
   getEdges (ActM _ _ rel, _) =
-    nub $ concat $ concat $ concat [ [ [ [(a,show x,show y) | x<y] | x <- part, y <- part ] | part <- apply rel a ] | a <- map fst rel ]
+    nub [ (a, show x, show y) | a <- map fst rel, part <- apply rel a, x <- part, y <- part, x < y ]
   getActuals (ActM {}, cur) = [show cur]
   nodeAts _ True  = [shape BoxShape, style solid]
   nodeAts _ False = [shape BoxShape, style dashed]
