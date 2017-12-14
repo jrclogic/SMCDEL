@@ -154,9 +154,9 @@ eval pm    (Forall ps f) = eval pm (foldl singleForall f ps) where
 eval pm    (Exists ps f) = eval pm (foldl singleExists f ps) where
   singleExists g p = Disj [ substit p Top g, substit p Bot g ]
 eval (GKM m,w) (K   i f) = all (\w' -> eval (GKM m,w') f) (snd (m ! w) ! i)
-eval _     (Ck  _ _)     = error "eval: Ck not implemented "
 eval (GKM m,w) (Kw  i f) = alleqWith (\w' -> eval (GKM m,w') f) (snd (m ! w) ! i)
-eval _     (Ckw _ _)     = error "eval: Ck not implemented "
+eval (m,w) (Ck ags form) = all (\w' -> eval (m,w') form) (groupRel m ags w)
+eval (m,w) (Ckw ags form) = alleqWith (\w' -> eval (m,w') form) (groupRel m ags w)
 eval (m,w) (PubAnnounce f g) = not (eval (m,w) f) || eval (pubAnnounceNonS5 m f,w) g
 eval (m,w) (PubAnnounceW f g) = eval (pubAnnounceNonS5 m aform, w) g where
   aform | eval (m,w) f = f
@@ -167,6 +167,11 @@ eval (m,w) (AnnounceW listeners f g) = eval newm g where
   newm = (m,w) `productUpdate` announceActionNonS5 (agentsOf m) listeners aform
   aform | eval (m,w) f = f
         | otherwise    = Neg f
+
+groupRel :: GeneralKripkeModel -> [Agent] -> World -> [World]
+groupRel (GKM m) ags w = lfp extend (oneStepReachFrom w) where
+  oneStepReachFrom x = concat [ snd (m ! x) ! a | a <- ags ]
+  extend xs = sort . nub $ xs ++ concatMap oneStepReachFrom xs
 
 pubAnnounceNonS5 :: GeneralKripkeModel -> Form -> GeneralKripkeModel
 pubAnnounceNonS5 (GKM m) f = GKM newm where
@@ -258,8 +263,16 @@ bddOf kns@(GenKnS allprops lawbdd obdds) (Kw i form) = unmvBdd result where
   ps'    = map fromEnum $ cp allprops
   omegai = obdds ! i
 
-bddOf _ (Ck _ _)  = error "bddOf: Ck not implemented"
-bddOf _ (Ckw _ _) = error "bddOf: Ckw not implemented"
+bddOf kns@(GenKnS voc lawbdd obdds) (Ck ags form) = lfp lambda top where
+  ps' = map fromEnum $ cp voc
+  lambda :: Bdd -> Bdd
+  lambda z = unmvBdd $
+    forallSet ps' <$>
+      (imp <$> cpBdd lawbdd <*>
+        (imp <$> (disSet <$> sequence [obdds ! i | i <- ags]) <*>
+          cpBdd (con (bddOf kns form) z)))
+
+bddOf kns (Ckw ags form) = dis (bddOf kns (Ck ags form)) (bddOf kns (Ck ags (Neg form)))
 
 bddOf kns (PubAnnounce f g) =
   imp (bddOf kns f) (bddOf (pubAnnounce kns f) g)
@@ -349,6 +362,16 @@ instance TexAble GenKnowStruct where
 instance TexAble GenScenario where
   tex (kns, state) = concat
     [ " \\left( \n", tex kns, ", ", tex state, " \\right) \n" ]
+
+genKns2Krp :: GenScenario -> GeneralPointedModel
+genKns2Krp (f@(GenKnS _ _ obdds), curs) = (m, cur) where
+  links = zip (statesOf f) [0..]
+  m = GKM $ fromList
+    [ (w, ( fromList [(p, p `elem` s) | p <- vocabOf f]
+          , fromList [(a, map (apply links) $ reachFromFor s a) | a <- agentsOf f] ) )
+    | (s,w) <- links ]
+  reachFromFor s a = filter (\t -> tagBddEval (mv s ++ cp t) (obdds ! a)) (statesOf f)
+  (Just cur) = lookup curs links
 
 genKrp2Kns :: GeneralPointedModel -> GenScenario
 genKrp2Kns (m, cur) = (GenKnS vocab lawbdd obdds, truthsInAt m cur) where
