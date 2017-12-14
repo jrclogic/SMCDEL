@@ -208,3 +208,14 @@ instance TexAble Scenario where
     , "\\end{array}\n"
     , " \\right) , "
     , tex state ]
+
+instance TexAble Event where
+  tex (KnT props changelaw obs, actual) = concat
+    [ " \\left( \n"
+    , tex props ++ ", "
+    , tex changelaw, "\n "
+    , ", \\begin{array}{l}\n"
+    , intercalate " \\\\\n " (map (\(_,os) -> (tex os)) obs)
+    , "\\end{array}\n"
+    , " \\right) , "
+    , tex actual ]

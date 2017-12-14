@@ -25,9 +25,16 @@ type Action = Int
 data Change = Ch {pre :: Form, post :: PostCondition, rel :: M.Map Agent [Action]}
   deriving (Eq,Ord,Show)
 
+-- | Extend `post` to all propositions
+safepost :: Change -> Prp -> Form
+safepost ch p | p `elem` M.keys (post ch) = post ch ! p
+              | otherwise = PrpF p
+
 newtype ChangeModel = ChM (M.Map Action Change)
   deriving (Eq,Ord,Show)
 type PointedChangeModel = (ChangeModel, Action)
+
+type MultipointedChangeModel = (ChangeModel, [Action])
 
 instance HasAgents ChangeModel where
   agentsOf (ChM cm) = M.keys $ rel (head (M.elems cm))
@@ -55,16 +62,41 @@ publicMakeFalseChM ags p = (ChM $ fromList [ (1::Action, Ch myPre myPost myRel) 
   myPost = fromList [(p,Bot)]
   myRel = fromList [(i,[1]) | i <- ags]
 
-instance KripkeLike PointedChangeModel where
+instance KripkeLike ChangeModel where
   directed = const True
-  getNodes (ChM cm, _) = map (show &&& labelOf) (M.keys cm) where
-    labelOf a = "$\\begin{array}{c}\\\\" ++ tex (pre (cm ! a)) ++ "\\\\" ++ intercalate "\\\\\n" (map showPost (M.toList $ post (cm ! a))) ++ "\\end{array}$"
+  getNodes (ChM cm) = map (show &&& labelOf) (M.keys cm) where
+    labelOf a = concat
+      [ "$\\begin{array}{c} ? " , tex (pre (cm ! a)) , "\\\\"
+      , intercalate "\\\\" (map showPost (M.toList $ post (cm ! a)))
+      , "\\end{array}$" ]
     showPost (p,f) = tex p ++ " := " ++ tex f
-  getEdges (ChM cm, _) =
+  getEdges (ChM cm) =
     concat [ [ (i, show a, show b) | b <- rel (cm ! a) ! i ] | a <- M.keys cm, i <- agentsOf (ChM cm) ]
+  getActuals = const [ ]
+
+instance TexAble ChangeModel where
+  tex = tex.ViaDot
+  texTo = texTo.ViaDot
+  texDocumentTo = texDocumentTo.ViaDot
+
+instance KripkeLike PointedChangeModel where
+  directed = directed . fst
+  getNodes = getNodes . fst
+  getEdges = getEdges . fst
   getActuals (_, a) = [show a]
 
 instance TexAble PointedChangeModel where
+  tex = tex.ViaDot
+  texTo = texTo.ViaDot
+  texDocumentTo = texDocumentTo.ViaDot
+
+instance KripkeLike MultipointedChangeModel where
+  directed = directed . fst
+  getNodes = getNodes . fst
+  getEdges = getEdges . fst
+  getActuals (_, as) = map show as
+
+instance TexAble MultipointedChangeModel where
   tex = tex.ViaDot
   texTo = texTo.ViaDot
   texDocumentTo = texDocumentTo.ViaDot
@@ -78,6 +110,9 @@ data Transformer = Trf
   (M.Map Prp Bdd) -- changelaw
   (M.Map Agent RelBDD) -- eventObs
   deriving (Eq,Show)
+
+instance HasAgents Transformer where
+  agentsOf (Trf _ _ _ _ obdds) = M.keys obdds
 
 type Event = (Transformer,State)
 
@@ -146,7 +181,7 @@ transform (kns@(GenKnS props lawbdd obdds),s) (Trf addprops addlaw changeprops c
 publicMakeFalse :: [Agent] -> Prp -> Event
 publicMakeFalse agents p = (Trf [] Top [p] mychangelaw myobs, []) where
   mychangelaw = fromList [ (p,boolBddOf Bot) ]
-  myobs = fromList [ (i,triviRelBdd) | i <- agents ]
+  myobs = fromList [ (i,totalRelBdd) | i <- agents ]
 
 myEvent :: Event
 myEvent = publicMakeFalse (agentsOf $ fst SMCDEL.Other.NonS5.exampleStart) (SMCDEL.Language.P 0)
@@ -161,7 +196,7 @@ flipAndShowTo everyone p i = (Trf [q] myeventlaw [p] mychangelaw myobs, [q])wher
   mychangelaw = fromList [ (p, boolBddOf . Neg . PrpF $ p) ]
   myobs = fromList $
     (i, allsamebdd  [q]) :
-    [ (j,triviRelBdd) | j <- everyone \\ [i] ]
+    [ (j,totalRelBdd) | j <- everyone \\ [i] ]
 
 myOtherEvent :: Event
 myOtherEvent = flipAndShowTo ["1","2"] (P 0) "1"
@@ -177,13 +212,13 @@ qq = P 7 -- this number should not matter!
 sallyInit :: GenScenario
 sallyInit = (GenKnS [pp, tt] law obs, actual) where
   law    = boolBddOf $ Conj [PrpF pp, Neg (PrpF tt)]
-  obs    = fromList [ ("Sally", triviRelBdd), ("Anne", triviRelBdd) ]
+  obs    = fromList [ ("Sally", totalRelBdd), ("Anne", totalRelBdd) ]
   actual = [pp]
 
 sallyPutsMarbleInBasket :: Event
 sallyPutsMarbleInBasket = (Trf [] Top [tt]
   (fromList [ (tt,boolBddOf Top) ])
-  (fromList [ (i,triviRelBdd) | i <- ["Anne","Sally"] ]), [])
+  (fromList [ (i,totalRelBdd) | i <- ["Anne","Sally"] ]), [])
 
 sallyIntermediate1 :: GenScenario
 sallyIntermediate1 = sallyInit `transform` sallyPutsMarbleInBasket
@@ -191,7 +226,7 @@ sallyIntermediate1 = sallyInit `transform` sallyPutsMarbleInBasket
 sallyLeaves :: Event
 sallyLeaves = (Trf [] Top [pp]
   (fromList [ (pp,boolBddOf Bot) ])
-  (fromList [ (i,triviRelBdd) | i <- ["Anne","Sally"] ]), [])
+  (fromList [ (i,totalRelBdd) | i <- ["Anne","Sally"] ]), [])
 
 sallyIntermediate2 :: GenScenario
 sallyIntermediate2 = sallyIntermediate1 `transform` sallyLeaves
@@ -207,7 +242,7 @@ sallyIntermediate3 = sallyIntermediate2 `transform` annePutsMarbleInBox
 sallyComesBack :: Event
 sallyComesBack = (Trf [] Top [pp]
   (fromList [ (pp,boolBddOf Top) ])
-  (fromList [ (i,triviRelBdd) | i <- ["Anne","Sally"] ]), [])
+  (fromList [ (i,totalRelBdd) | i <- ["Anne","Sally"] ]), [])
 
 sallyIntermediate4 :: GenScenario
 sallyIntermediate4 = sallyIntermediate3 `transform` sallyComesBack
