@@ -2,7 +2,7 @@
 module SMCDEL.Examples where
 import Control.Monad
 import Data.List (delete,intersect,(\\),elemIndex,nub,sort)
-import Data.Maybe (fromJust)
+import Data.Maybe (fromMaybe)
 import SMCDEL.Language
 import SMCDEL.Internal.Help (powerset)
 import SMCDEL.Symbolic.HasCacBDD
@@ -174,7 +174,9 @@ genDcEveryoneKnowsWhetherNSApaid :: Int -> Form
 genDcEveryoneKnowsWhetherNSApaid n = Conj [ Kw (show i) (PrpF $ P 0) | i <- [1..n] ]
 
 genDcReveal :: Int -> Int -> Form
-genDcReveal n i = Xor (map PrpF (fromJust $ lookup (show i) obs)) where (KnS _ _ obs) = genDcKnsInit n
+genDcReveal n i = Xor (map PrpF ps) where
+  (KnS _ _ obs) = genDcKnsInit n
+  (Just ps)     = lookup (show i) obs
 
 genDcNobodyknowsWhoPaid :: Int -> Form
 genDcNobodyknowsWhoPaid n =
@@ -448,9 +450,13 @@ sapSolutions :: [[Prp]]
 sapSolutions = SMCDEL.Symbolic.HasCacBDD.whereViaBdd sapKnStruct sapProtocol
 
 sapExplainState :: [Prp] -> String
-sapExplainState truths = concat [ "x = ", nmbr xProps, ", y = ", nmbr yProps, ", ",
-  "x+y = ", nmbr sProps, " and x*y = ", nmbr pProps ] where
-    nmbr set = show.fromJust $ elemIndex (set `intersect` truths) (powerset set)
+sapExplainState truths = concat
+  [ "x = ", explain xProps, ", y = ", explain yProps, ", x+y = ", explain sProps
+  , " and x*y = ", explain pProps ] where explain = show . nmbr truths
+
+nmbr :: [Prp] -> [Prp] -> Int
+nmbr truths set = fromMaybe (error "Value not found") $
+  elemIndex (set `intersect` truths) (powerset set)
 
 wsBound :: Int
 wsBound = 50
@@ -492,5 +498,5 @@ wsSolutions = SMCDEL.Symbolic.HasCacBDD.whereViaBdd wsKnStruct wsProtocol
 
 wsExplainState :: [Prp] -> String
 wsExplainState truths = concat
-  [ "a = ", nmbr aProps, ", b = ", nmbr bProps, ", ", "c = ", nmbr cProps ] where
-    nmbr set = show.fromJust $ elemIndex (set `intersect` truths) (powerset set)
+  [ "a = ", explain aProps, ", b = ", explain bProps, ", ", "c = ", explain cProps ] where
+    explain = show . nmbr truths

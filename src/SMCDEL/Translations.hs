@@ -2,7 +2,6 @@
 module SMCDEL.Translations where
 import Control.Arrow (second)
 import Data.List (groupBy,sort,(\\),elemIndex,intersect,nub)
-import Data.Maybe (fromJust)
 import SMCDEL.Language
 import SMCDEL.Symbolic.HasCacBDD
 import SMCDEL.Explicit.Simple
@@ -67,8 +66,8 @@ kripkeToKnsWithG (KrM worlds rel val, cur) = ((KnS ps law obs, curs), g) where
   newpstart = fromEnum $ freshp v -- start counting new propositions here
   amount i  = ceiling (logBase 2 (fromIntegral $ length (rel ! i)) :: Float) -- = |O_i|
   newpstep  = maximum [ amount i | i <- ags ]
-  numberof i = fromJust $ elemIndex i (map fst rel)
-  newps i   = map (\k -> P (newpstart + (newpstep * numberof i) +k)) [0..(amount i - 1)] -- O_i
+  newps i   = map (\k -> P (newpstart + (newpstep * inum) +k)) [0..(amount i - 1)] -- O_i
+    where (Just inum) = elemIndex i (map fst rel)
   copyrel i = zip (rel ! i) (powerset (newps i)) -- label equiv.classes with P(O_i)
   gag i w   = snd $ head $ filter (\(ws,_) -> elem w ws) (copyrel i)
   g w       = filter (apply (val ! w)) v ++ concat [ gag i w | i <- ags ]
@@ -139,8 +138,8 @@ actionToEvent (ActM actions precon actrel, faction) = (KnT eprops elaw eobs, efa
   actforms     = [ Impl (booloutofForm (apply copyactprops a) actionprops) (apply precon a) | a <- actions ] -- connect the new propositions to the preconditions
   actrelprops  = concat [ newps i | i <- ags ] -- new props to distinguish actions for i
   actrelpstart = maxactprop + 1
-  numberof i = fromJust $ elemIndex i (map fst actrel)
-  newps i      = map (\k -> P (actrelpstart + (newpstep * numberof i) +k)) [0..(amount i - 1)]
+  newps i      = map (\k -> P (actrelpstart + (newpstep * inum) +k)) [0..(amount i - 1)]
+    where (Just inum) = elemIndex i (map fst actrel)
   amount i     = ceiling (logBase 2 (fromIntegral $ length (apply actrel i)) :: Float)
   newpstep     = maximum [ amount i | i <- ags ]
   copyactrel i = zip (apply actrel i) (powerset (newps i)) -- actrelprops <-> actionprops
