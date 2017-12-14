@@ -1,6 +1,5 @@
 
-module Main
-where
+module Main (main) where
 import Data.List (groupBy,sortBy)
 import Data.Time (getCurrentTime, diffUTCTime)
 import SMCDEL.Explicit.DEMO_S5

@@ -33,7 +33,7 @@ boolEvalViaBdd truths = bddEval truths . boolBddOf
 bddEval :: [Prp] -> Bdd -> Bool
 bddEval truths querybdd = evaluateFun querybdd (\n -> P n `elem` truths)
 
-data KnowStruct = KnS [Prp] Bdd [(Agent,[Prp])] deriving Show
+data KnowStruct = KnS [Prp] Bdd [(Agent,[Prp])] deriving (Eq,Show)
 type KnState = [Prp]
 type Scenario = (KnowStruct,KnState)
 
@@ -45,6 +45,9 @@ statesOf (KnS props lawbdd _) = map (sort.translate) resultlists where
 
 instance HasAgents KnowStruct where
   agentsOf (KnS _ _ obs)= map fst obs
+
+instance HasVocab KnowStruct where
+  vocabOf (KnS props _ _) = props
 
 numberOfStates :: KnowStruct -> Int
 numberOfStates (KnS props lawbdd _) = satCountWith (map fromEnum props) lawbdd
