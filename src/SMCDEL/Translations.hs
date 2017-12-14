@@ -2,10 +2,11 @@
 module SMCDEL.Translations where
 import Control.Arrow (second)
 import Data.List (groupBy,sort,(\\),elemIndex,intersect,nub)
+import Data.Maybe (listToMaybe)
 import SMCDEL.Language
 import SMCDEL.Symbolic.HasCacBDD
 import SMCDEL.Explicit.Simple
-import SMCDEL.Internal.Help (anydiffWith,alldiff,alleqWith,apply,powerset,(!),seteq)
+import SMCDEL.Internal.Help (anydiffWith,alldiff,alleqWith,apply,powerset,(!),seteq,subseteq)
 
 import Data.HasCacBDD hiding (Top,Bot)
 
@@ -22,20 +23,18 @@ equivalentWith (KrM ws rel val, actw) (kns@(KnS _ _ obs), curs) g =
     c3 = statesOf kns `seteq` nub (map g ws)
 
 findStateMap :: PointedModel -> Scenario -> Maybe StateMap
-findStateMap pm@(KrM ws _ val, _) scn@(KnS props _ _, _)
-  | any (`notElem` props) kripkeVocab  =  error "Kripke vocabulary not available in KnowStruct"
-  | null gs   = Nothing
-  | otherwise = Just (head gs)
+findStateMap pm@(KrM _ _ val, w) scn@(kns, s)
+  | vocabOf pm `subseteq` vocabOf kns = listToMaybe goodMaps
+  | otherwise = error "vocabOf pm not subseteq vocabOf kns"
   where
-    kripkeVocab = map fst (snd $ head val)
-    _sharedVocab = kripkeVocab `intersect` props -- FIXME: use this instead of generating all functions!
+    extraProps = vocabOf kns \\ vocabOf pm
     allFuncs :: Eq a => [a] -> [b] -> [a -> b]
-    allFuncs [] _ = [ const undefined ]
-    allFuncs (x:xs) ys = [ \a -> if a==x then y else f a | y <- ys, f <- allFuncs xs ys ]
-    allMaps :: [StateMap]
-    allMaps = allFuncs ws (powerset props)
-    gs :: [StateMap]
-    gs =  filter (equivalentWith pm scn) allMaps
+    allFuncs []     _  = [ const undefined ]
+    allFuncs (x:xs) ys = [ \a -> if a == x then y else f a | y <- ys, f <- allFuncs xs ys ]
+    allMaps, goodMaps :: [StateMap]
+    baseMap  = map fst . filter snd . (val !)
+    allMaps  = [ \v -> baseMap v ++ restf v | restf <- allFuncs (worldsOf pm) (powerset extraProps) ]
+    goodMaps = filter (\g -> g w == s && equivalentWith pm scn g) allMaps
 
 knsToKripke :: Scenario -> PointedModel
 knsToKripke = fst . knsToKripkeWithG
@@ -135,19 +134,21 @@ actionToEvent (ActM actions precon actrel, faction) = (KnT eprops elaw eobs, efa
   actionprops  = [P fstnewp..P maxactprop] -- new props to distinguish all actions
   maxactprop   = fstnewp + ceiling (logBase 2 (fromIntegral $ length actions) :: Float) -1
   copyactprops = zip actions (powerset actionprops)
-  actforms     = [ Impl (booloutofForm (apply copyactprops a) actionprops) (apply precon a) | a <- actions ] -- connect the new propositions to the preconditions
+  ell          = apply copyactprops -- label actions with subsets of actionprops
+  happens a    = booloutofForm (ell a) actionprops -- boolean formula to say that a happens
+  actform      = Disj [ Conj [ happens a, apply precon a ] | a <- actions ] -- connect new propositions to preconditions
   actrelprops  = concat [ newps i | i <- ags ] -- new props to distinguish actions for i
   actrelpstart = maxactprop + 1
   newps i      = map (\k -> P (actrelpstart + (newpstep * inum) +k)) [0..(amount i - 1)]
     where (Just inum) = elemIndex i (map fst actrel)
   amount i     = ceiling (logBase 2 (fromIntegral $ length (apply actrel i)) :: Float)
   newpstep     = maximum [ amount i | i <- ags ]
-  copyactrel i = zip (apply actrel i) (powerset (newps i)) -- actrelprops <-> actionprops
-  actrelfs i   = [ Impl (booloutofForm (apply (copyactrel i) as) (newps i)) (Disj [adesc a|a<-as]) | as <- apply actrel i ] where adesc a = booloutofForm (apply copyactprops a) actionprops
+  copyactrel i = zip (apply actrel i) (powerset (newps i)) -- label equclasses-of-actions with subsets-of-newps
+  actrelfs i   = [ Equi (booloutofForm (apply (copyactrel i) as) (newps i)) (Disj (map happens as)) | as <- apply actrel i ]
   actrelforms  = concatMap actrelfs ags
   factsFor i   = snd $ head $ filter (\(as,_) -> elem faction as) (copyactrel i)
   efacts       = apply copyactprops faction ++ concatMap factsFor ags
-  elaw         = simplify $ Conj (actforms ++ actrelforms)
+  elaw         = simplify $ Conj (actform : actrelforms)
   eobs         = [ (i,newps i) | i<- ags ]
 
 eventToAction' :: Event -> PointedActionModel

@@ -1,4 +1,4 @@
-module SMCDEL.Internal.Help (alleq,alleqWith,anydiff,anydiffWith,alldiff,apply,powerset,restrict,rtc,Erel,bl,fusion,seteq,(!)) where
+module SMCDEL.Internal.Help (alleq,alleqWith,anydiff,anydiffWith,alldiff,apply,powerset,restrict,rtc,tc,Erel,bl,fusion,seteq,subseteq,(!),lfp) where
 import Data.List (nub,union,sort,foldl',(\\))
 
 type Rel a b = [(a,b)]
@@ -50,6 +50,9 @@ restrict domain =  nub . filter (/= []) . map (filter (`elem` domain))
 rtc :: Eq a => Rel a a -> Rel a a
 rtc r = lfp (\ s -> s `union` concatRel r s) [(x,x) | x <- dom r ]
 
+tc :: Eq a => Rel a a -> Rel a a
+tc r = lfp (\ s -> s `union` concatRel r s) r
+
 merge :: Ord a => [a] -> [a] -> [a]
 merge xs [] = xs
 merge [] ys = ys
@@ -82,3 +85,6 @@ fusion (b:bs) = let
 
 seteq :: Ord a => [a] -> [a] -> Bool
 seteq as bs = sort as == sort bs
+
+subseteq :: Eq a => [a] -> [a] -> Bool
+subseteq xs ys = all (`elem` ys) xs
