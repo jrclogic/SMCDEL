@@ -1,7 +1,7 @@
 
 {-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, FlexibleContexts #-}
 
-module SMCDEL.Explicit.Simple where
+module SMCDEL.Explicit.S5 where
 import Control.Arrow (second,(&&&))
 import Data.GraphViz
 import Data.List
@@ -18,37 +18,37 @@ class HasWorlds a where
 type Partition = [[World]]
 type Assignment = [(Prp,Bool)]
 
-data KripkeModel = KrM [World] [(Agent,Partition)] [(World,Assignment)] deriving (Eq,Ord,Show)
-type PointedModel = (KripkeModel,World)
+data KripkeModelS5 = KrMS5 [World] [(Agent,Partition)] [(World,Assignment)] deriving (Eq,Ord,Show)
+type PointedModelS5 = (KripkeModelS5,World)
 
-instance HasAgents KripkeModel where
-  agentsOf (KrM _ rel _) = map fst rel
+instance HasAgents KripkeModelS5 where
+  agentsOf (KrMS5 _ rel _) = map fst rel
 
-instance HasAgents PointedModel where
+instance HasAgents PointedModelS5 where
   agentsOf = agentsOf . fst
 
-instance HasVocab KripkeModel where
-  vocabOf (KrM _ _ val) = map fst $ snd (head val)
+instance HasVocab KripkeModelS5 where
+  vocabOf (KrMS5 _ _ val) = map fst $ snd (head val)
 
-instance HasVocab PointedModel where
+instance HasVocab PointedModelS5 where
   vocabOf = vocabOf . fst
 
-instance HasWorlds KripkeModel where
-  worldsOf (KrM ws _ _) = ws
+instance HasWorlds KripkeModelS5 where
+  worldsOf (KrMS5 ws _ _) = ws
 
-instance HasWorlds PointedModel where
+instance HasWorlds PointedModelS5 where
   worldsOf = worldsOf . fst
 
 newtype PropList = PropList [Prp]
 
-withoutWorld :: KripkeModel -> World -> KripkeModel
-withoutWorld (KrM worlds parts val) w = KrM
+withoutWorld :: KripkeModelS5 -> World -> KripkeModelS5
+withoutWorld (KrMS5 worlds parts val) w = KrMS5
   (delete w worlds)
   (map (second (filter (/=[]) . map (delete w))) parts)
   (filter ((/=w).fst) val)
 
-withoutProps :: KripkeModel -> [Prp] -> KripkeModel
-withoutProps (KrM worlds parts val) dropProps = KrM
+withoutProps :: KripkeModelS5 -> [Prp] -> KripkeModelS5
+withoutProps (KrMS5 worlds parts val) dropProps = KrMS5
   worlds
   parts
   (map (second $ filter ((`notElem` dropProps) . fst)) val)
@@ -58,11 +58,6 @@ instance Arbitrary PropList where
     moreprops <- sublistOf (map P [1..10])
     return $ PropList $ P 0 : moreprops
 
-randomAssFor :: [Prp] -> Gen Assignment
-randomAssFor ps = do
-  tfs <- infiniteListOf $ choose (True,False)
-  return $ zip ps tfs
-
 randomPartFor :: [World] -> Gen Partition
 randomPartFor worlds = do
   indices <- infiniteListOf $ choose (1, length worlds)
@@ -70,27 +65,27 @@ randomPartFor worlds = do
   let parts = [ sort $ map fst $ filter ((==k).snd) pairs | k <- [1 .. (length worlds)] ]
   return $ sort $ filter (/=[]) parts
 
-instance Arbitrary KripkeModel where
+instance Arbitrary KripkeModelS5 where
   arbitrary = do
     let agents = map show [1..(5::Int)]
     let props = map P [0..4]
     worlds <- sort . nub <$> listOf1 (elements [0..8])
     val <- mapM (\w -> do
-      randoma <- randomAssFor props
-      return (w,randoma)
+      randomAssignment <- zip props <$> infiniteListOf (choose (True,False))
+      return (w,randomAssignment)
       ) worlds
     parts <- mapM (\i -> do
-      randomp <- randomPartFor worlds
-      return (i,randomp)
+      randomPartition <- randomPartFor worlds
+      return (i,randomPartition)
       ) agents
-    return $ KrM worlds parts val
-  shrink m@(KrM worlds _ _) =
+    return $ KrMS5 worlds parts val
+  shrink m@(KrMS5 worlds _ _) =
     [ m `withoutWorld` w | w <- worlds, length worlds > 1 ]
 
-eval :: PointedModel -> Form -> Bool
+eval :: PointedModelS5 -> Form -> Bool
 eval _ Top = True
 eval _ Bot = False
-eval (KrM _ _ val, cur) (PrpF p) = apply (apply val cur) p
+eval (KrMS5 _ _ val, cur) (PrpF p) = apply (apply val cur) p
 eval pm (Neg form)    = not $ eval pm form
 eval pm (Conj forms)  = all (eval pm) forms
 eval pm (Disj forms)  = any (eval pm) forms
@@ -101,14 +96,14 @@ eval pm (Forall ps f) = eval pm (foldl singleForall f ps) where
   singleForall g p = Conj [ substit p Top g, substit p Bot g ]
 eval pm (Exists ps f) = eval pm (foldl singleExists f ps) where
   singleExists g p = Disj [ substit p Top g, substit p Bot g ]
-eval (m@(KrM _ rel _),w) (K ag form) = all (\w' -> eval (m,w') form) vs where
+eval (m@(KrMS5 _ rel _),w) (K ag form) = all (\w' -> eval (m,w') form) vs where
   vs = concat $ filter (elem w) (apply rel ag)
-eval (m@(KrM _ rel _),w) (Kw ag form) = alleqWith (\w' -> eval (m,w') form) vs where
+eval (m@(KrMS5 _ rel _),w) (Kw ag form) = alleqWith (\w' -> eval (m,w') form) vs where
   vs = concat $ filter (elem w) (apply rel ag)
-eval (m@(KrM _ rel _),w) (Ck ags form) = all (\w' -> eval (m,w') form) vs where
+eval (m@(KrMS5 _ rel _),w) (Ck ags form) = all (\w' -> eval (m,w') form) vs where
   vs    = concat $ filter (elem w) ckrel
   ckrel = fusion $ concat [ apply rel i | i <- ags ]
-eval (m@(KrM _ rel _),w) (Ckw ags form) = alleqWith (\w' -> eval (m,w') form) vs where
+eval (m@(KrMS5 _ rel _),w) (Ckw ags form) = alleqWith (\w' -> eval (m,w') form) vs where
   vs    = concat $ filter (elem w) ckrel
   ckrel = fusion $ concat [ apply rel i | i <- ags ]
 eval pm (PubAnnounce form1 form2) =
@@ -124,12 +119,12 @@ eval pm (AnnounceW ags form1 form2) =
     then eval (announce pm ags form1) form2
     else eval (announce pm ags (Neg form1)) form2
 
-valid :: KripkeModel -> Form -> Bool
-valid m@(KrM worlds _ _) f = all (\w -> eval (m,w) f) worlds
+valid :: KripkeModelS5 -> Form -> Bool
+valid m@(KrMS5 worlds _ _) f = all (\w -> eval (m,w) f) worlds
 
-pubAnnounce :: PointedModel -> Form -> PointedModel
-pubAnnounce pm@(m@(KrM sts rel val), cur) form =
-  if eval pm form then (KrM newsts newrel newval, cur)
+pubAnnounce :: PointedModelS5 -> Form -> PointedModelS5
+pubAnnounce pm@(m@(KrMS5 sts rel val), cur) form =
+  if eval pm form then (KrMS5 newsts newrel newval, cur)
                   else error "pubAnnounce failed: Liar!"
   where
     newsts = filter (\s -> eval (m,s) form) sts
@@ -137,9 +132,9 @@ pubAnnounce pm@(m@(KrM sts rel val), cur) form =
     relfil = filter ([]/=) . map (filter (`elem` newsts))
     newval = filter (\p -> fst p `elem` newsts) val
 
-announce :: PointedModel -> [Agent] -> Form -> PointedModel
-announce pm@(m@(KrM sts rel val), cur) ags form =
-  if eval pm form then (KrM sts newrel val, cur)
+announce :: PointedModelS5 -> [Agent] -> Form -> PointedModelS5
+announce pm@(m@(KrMS5 sts rel val), cur) ags form =
+  if eval pm form then (KrMS5 sts newrel val, cur)
                   else error "announce failed: Liar!"
   where
     split ws = map sort.(\(x,y) -> [x,y]) $ partition (\s -> eval (m,s) form) ws
@@ -147,37 +142,37 @@ announce pm@(m@(KrM sts rel val), cur) ags form =
     nrel (i,ri) | i `elem` ags = (i,filter ([]/=) (concatMap split ri))
                 | otherwise    = (i,ri)
 
-instance KripkeLike KripkeModel where
+instance KripkeLike KripkeModelS5 where
   directed = const False
-  getNodes (KrM ws _ val) = map (show &&& labelOf) ws where
+  getNodes (KrMS5 ws _ val) = map (show &&& labelOf) ws where
     labelOf w = tex $ apply val w
-  getEdges (KrM _ rel _) =
+  getEdges (KrMS5 _ rel _) =
     nub [ (a,show x,show y) | a <- map fst rel, part <- apply rel a, x <- part, y <- part, x < y ]
 
-instance KripkeLike PointedModel where
+instance KripkeLike PointedModelS5 where
   directed = directed . fst
   getNodes = getNodes . fst
   getEdges = getEdges . fst
   getActuals (_, cur) = [show cur]
 
-instance TexAble PointedModel where
+instance TexAble PointedModelS5 where
   tex = tex.ViaDot
   texTo = texTo.ViaDot
   texDocumentTo = texDocumentTo.ViaDot
 
 type Bisimulation = [(World,World)]
 
-checkBisim :: Bisimulation -> KripkeModel -> KripkeModel -> Bool
+checkBisim :: Bisimulation -> KripkeModelS5 -> KripkeModelS5 -> Bool
 checkBisim [] _                   _                     = False
-checkBisim z  m1@(KrM _ rel1 val1) m2@(KrM _ rel2 val2) =
+checkBisim z  m1@(KrMS5 _ rel1 val1) m2@(KrMS5 _ rel2 val2) =
      all (\(w1,w2) -> val1 ! w1 == val2 ! w2) z -- same props
   && and [ any (\v2 -> (v1,v2) `elem` z) (concat $ filter (elem w2) (rel2 ! ag)) -- forth
          | (w1,w2) <- z, ag <- agentsOf m1, v1 <- concat $ filter (elem w1) (rel1 ! ag) ]
   && and [ any (\v1 -> (v1,v2) `elem` z) (concat $ filter (elem w1) (rel1 ! ag)) -- back
          | (w1,w2) <- z, ag <- agentsOf m2, v2 <- concat $ filter (elem w2) (rel2 ! ag) ]
 
-generatedSubmodel :: PointedModel -> PointedModel
-generatedSubmodel (KrM _ rel val, cur) = (KrM newWorlds newrel newval, cur) where
+generatedSubmodel :: PointedModelS5 -> PointedModelS5
+generatedSubmodel (KrMS5 _ rel val, cur) = (KrMS5 newWorlds newrel newval, cur) where
   newWorlds :: [World]
   newWorlds = lfp follow [cur] where
     follow xs = sort . nub $ concat [ part | (_,parts) <- rel, part <- parts, any (`elem` part) xs ]
@@ -209,8 +204,8 @@ instance Arbitrary ActionModel where
     return $
       ActM [0..3] [(0,Top),(1,f),(2,g),(3,h)] ( ("0",[[0],[1],[2],[3]]):[(show k,[[0..3::Int]]) | k<-[1..5::Int] ])
 
-productUpdate :: PointedModel -> PointedActionModel -> PointedModel
-productUpdate pm@(m@(KrM oldWorlds oldrel oldval), oldcur) (ActM actions precon actrel, faction) =
+productUpdate :: PointedModelS5 -> PointedActionModel -> PointedModelS5
+productUpdate pm@(m@(KrMS5 oldWorlds oldrel oldval), oldcur) (ActM actions precon actrel, faction) =
   let
     startcount        = maximum oldWorlds + 1
     copiesOf (s,a)    = [ (s, a, a * startcount + s) | eval (m, s) (apply precon a) ]
@@ -227,6 +222,6 @@ productUpdate pm@(m@(KrM oldWorlds oldrel oldval), oldcur) (ActM actions precon 
     factTest          = apply precon faction
     cartProd xs ys    = [ (x,y) | x <- xs, y <- ys ]
   in case ( map fst oldrel == map fst actrel, eval pm factTest ) of
-    (False, _) -> error "productUpdate failed: Agents of KrM and ActM are not the same!"
+    (False, _) -> error "productUpdate failed: Agents of KrMS5 and ActM are not the same!"
     (_, False) -> error "productUpdate failed: Actual precondition is false!"
-    _          -> (KrM newWorlds newrel newval, newcur)
+    _          -> (KrMS5 newWorlds newrel newval, newcur)

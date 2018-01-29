@@ -3,19 +3,19 @@ module Main where
 import Criterion.Main
 import Data.Function
 import Data.List
-import Data.Maybe (fromJust)
 import Data.Ord (comparing)
 import SMCDEL.Language
-import SMCDEL.Examples
-import SMCDEL.Internal.Help (apply,seteq)
+import SMCDEL.Examples.MuddyChildren
+import SMCDEL.Internal.Help (apply)
 import qualified SMCDEL.Explicit.DEMO_S5 as DEMO_S5
-import qualified SMCDEL.Explicit.Simple
-import qualified SMCDEL.Symbolic.HasCacBDD
-import qualified SMCDEL.Symbolic.CUDD
-import qualified SMCDEL.Translations
+import qualified SMCDEL.Explicit.S5
+import qualified SMCDEL.Symbolic.S5
+import qualified SMCDEL.Symbolic.S5_CUDD
+import qualified SMCDEL.Translations.S5
+import qualified SMCDEL.Translations.K
 import qualified SMCDEL.Other.MCTRIANGLE
-import qualified SMCDEL.Other.NonS5
-import Data.Map.Strict (fromList)
+import qualified SMCDEL.Symbolic.K
+import qualified SMCDEL.Explicit.K
 
 checkForm :: Int -> Int -> Form
 checkForm n 0 = nobodyknows n
@@ -33,19 +33,19 @@ mudPs :: Int -> [Prp]
 mudPs n = [P 1 .. P n]
 
 findNumberCacBDD :: Int -> Int -> Int
-findNumberCacBDD = findNumberWith (cacMudScnInit,SMCDEL.Symbolic.HasCacBDD.evalViaBdd) where
-  cacMudScnInit n m = ( SMCDEL.Symbolic.HasCacBDD.KnS (mudPs n) (SMCDEL.Symbolic.HasCacBDD.boolBddOf Top) [ (show i,delete (P i) (mudPs n)) | i <- [1..n] ], mudPs m )
+findNumberCacBDD = findNumberWith (cacMudScnInit,SMCDEL.Symbolic.S5.evalViaBdd) where
+  cacMudScnInit n m = ( SMCDEL.Symbolic.S5.KnS (mudPs n) (SMCDEL.Symbolic.S5.boolBddOf Top) [ (show i,delete (P i) (mudPs n)) | i <- [1..n] ], mudPs m )
 
 findNumberCUDD :: Int -> Int -> Int
-findNumberCUDD = findNumberWith (cuddMudScnInit,SMCDEL.Symbolic.CUDD.evalViaBdd) where
-  cuddMudScnInit n m = ( SMCDEL.Symbolic.CUDD.KnS (mudPs n) (SMCDEL.Symbolic.CUDD.boolBddOf Top) [ (show i,delete (P i) (mudPs n)) | i <- [1..n] ], mudPs m )
+findNumberCUDD = findNumberWith (cuddMudScnInit,SMCDEL.Symbolic.S5_CUDD.evalViaBdd) where
+  cuddMudScnInit n m = ( SMCDEL.Symbolic.S5_CUDD.KnS (mudPs n) (SMCDEL.Symbolic.S5_CUDD.boolBddOf Top) [ (show i,delete (P i) (mudPs n)) | i <- [1..n] ], mudPs m )
 
 findNumberTrans :: Int -> Int -> Int
-findNumberTrans = findNumberWith (start,SMCDEL.Symbolic.HasCacBDD.evalViaBdd) where
-  start n m = SMCDEL.Translations.kripkeToKns $ mudKrpInit n m
+findNumberTrans = findNumberWith (start,SMCDEL.Symbolic.S5.evalViaBdd) where
+  start n m = SMCDEL.Translations.S5.kripkeToKns $ mudKrpInit n m
 
-mudKrpInit :: Int -> Int -> SMCDEL.Explicit.Simple.PointedModel
-mudKrpInit n m = (SMCDEL.Explicit.Simple.KrM ws rel val, cur) where
+mudKrpInit :: Int -> Int -> SMCDEL.Explicit.S5.PointedModelS5
+mudKrpInit n m = (SMCDEL.Explicit.S5.KrMS5 ws rel val, cur) where
   ws    = [0..(2^n-1)]
   rel   = [ (show i, erelFor i) | i <- [1..n] ] where
     erelFor i = sort $ map sort $
@@ -59,12 +59,11 @@ mudKrpInit n m = (SMCDEL.Explicit.Simple.KrM ws rel val, cur) where
   buildTable partrows p = [ (p,v):pr | v <-[True,False], pr<-partrows ]
 
 findNumberNonS5 :: Int -> Int -> Int
-findNumberNonS5 = findNumberWith
-  (SMCDEL.Other.NonS5.mudGenScnInit,SMCDEL.Other.NonS5.evalViaBdd)
+findNumberNonS5 = findNumberWith (mudBelScnInit, SMCDEL.Symbolic.K.evalViaBdd)
 
 findNumberNonS5Trans :: Int -> Int -> Int
-findNumberNonS5Trans = findNumberWith (start,SMCDEL.Other.NonS5.evalViaBdd) where
-  start n m = SMCDEL.Other.NonS5.genKrp2Kns $ SMCDEL.Other.NonS5.mudGenKrpInit n m
+findNumberNonS5Trans = findNumberWith (start,SMCDEL.Symbolic.K.evalViaBdd) where
+  start n m = SMCDEL.Translations.K.kripkeToBls $ SMCDEL.Explicit.K.mudGenKrpInit n m
 
 mudDemoKrpInit :: Int -> Int -> DEMO_S5.EpistM [Bool]
 mudDemoKrpInit n m = DEMO_S5.Mo states agents [] rels points where

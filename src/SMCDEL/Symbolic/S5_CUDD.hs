@@ -1,5 +1,6 @@
 
-module SMCDEL.Symbolic.CUDD where
+module SMCDEL.Symbolic.S5_CUDD where
+
 import SMCDEL.Internal.MyHaskCUDD
 import Data.List ((\\))
 import SMCDEL.Internal.Help (apply)

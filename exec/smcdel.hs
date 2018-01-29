@@ -14,7 +14,7 @@ import SMCDEL.Internal.Lex
 import SMCDEL.Internal.Parse
 import SMCDEL.Internal.TexDisplay
 import SMCDEL.Language
-import SMCDEL.Symbolic.HasCacBDD
+import SMCDEL.Symbolic.S5
 
 main :: IO ()
 main = do
@@ -30,7 +30,7 @@ main = do
   let mykns = KnS (map P vocabInts) (boolBddOf lawform) (map (second (map P)) obs)
   when texMode $
     hPutStrLn outHandle $ unlines
-      [ "\\section{Given Knowledge Structure}", "\\[ (\\mathcal{F},s) = (" ++ tex ((mykns,[])::Scenario) ++ ") \\]", "\\section{Results}" ]
+      [ "\\section{Given Knowledge Structure}", "\\[ (\\mathcal{F},s) = (" ++ tex ((mykns,[])::KnowScene) ++ ") \\]", "\\section{Results}" ]
   mapM_ (doJob outHandle texMode mykns) jobs
   when texMode $ hPutStrLn outHandle texEnd
   when showMode $ do

@@ -1,7 +1,8 @@
 
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
 
-module SMCDEL.Symbolic.HasCacBDD where
+module SMCDEL.Symbolic.S5 where
+
 import Control.Arrow (first)
 import Data.HasCacBDD hiding (Top,Bot)
 import Data.HasCacBDD.Visuals
@@ -9,7 +10,7 @@ import Data.List (sort,intercalate,(\\))
 import System.IO (hPutStr, hGetContents, hClose)
 import System.IO.Unsafe (unsafePerformIO)
 import System.Process (runInteractiveCommand)
-import SMCDEL.Internal.Help (alleqWith,apply,rtc,seteq)
+import SMCDEL.Internal.Help (alleqWith,apply,(!),rtc,seteq,powerset)
 import SMCDEL.Language
 import SMCDEL.Internal.TexDisplay
 
@@ -33,11 +34,16 @@ boolEvalViaBdd truths = bddEval truths . boolBddOf
 bddEval :: [Prp] -> Bdd -> Bool
 bddEval truths querybdd = evaluateFun querybdd (\n -> P n `elem` truths)
 
-data KnowStruct = KnS [Prp] Bdd [(Agent,[Prp])] deriving (Eq,Show)
-type KnState = [Prp]
-type Scenario = (KnowStruct,KnState)
+data KnowStruct = KnS [Prp]            -- vocabulary
+                      Bdd              -- state law
+                      [(Agent,[Prp])]  -- observational variables
+                    deriving (Eq,Show)
 
-statesOf :: KnowStruct -> [KnState]
+type State = [Prp]
+
+type KnowScene = (KnowStruct,State)
+
+statesOf :: KnowStruct -> [State]
 statesOf (KnS props lawbdd _) = map (sort.translate) resultlists where
   resultlists :: [[(Prp, Bool)]]
   resultlists = map (map (first toEnum)) $ allSatsWith (map fromEnum props) lawbdd
@@ -49,20 +55,23 @@ instance HasAgents KnowStruct where
 instance HasVocab KnowStruct where
   vocabOf (KnS props _ _) = props
 
+instance HasAgents KnowScene where agentsOf = agentsOf . fst
+instance HasVocab  KnowScene where vocabOf  = vocabOf  . fst
+
 numberOfStates :: KnowStruct -> Int
 numberOfStates (KnS props lawbdd _) = satCountWith (map fromEnum props) lawbdd
 
-restrictState :: KnState -> [Prp] -> KnState
+restrictState :: State -> [Prp] -> State
 restrictState s props = filter (`elem` props) s
 
-shareknow :: KnowStruct -> [[Prp]] -> [(KnState,KnState)]
+shareknow :: KnowStruct -> [[Prp]] -> [(State,State)]
 shareknow kns sets = filter rel [ (s,t) | s <- statesOf kns, t <- statesOf kns ] where
   rel (x,y) = or [ seteq (restrictState x set) (restrictState y set) | set <- sets ]
 
-comknow :: KnowStruct -> [Agent] -> [(KnState,KnState)]
+comknow :: KnowStruct -> [Agent] -> [(State,State)]
 comknow kns@(KnS _ _ obs) ags = rtc $ shareknow kns (map (apply obs) ags)
 
-eval :: Scenario -> Form -> Bool
+eval :: KnowScene -> Form -> Bool
 eval _       Top           = True
 eval _       Bot           = False
 eval (_,s)   (PrpF p)      = p `elem` s
@@ -103,7 +112,7 @@ pubAnnounce :: KnowStruct -> Form -> KnowStruct
 pubAnnounce kns@(KnS props lawbdd obs) psi = KnS props newlawbdd obs where
   newlawbdd = con lawbdd (bddOf kns psi)
 
-pubAnnounceOnScn :: Scenario -> Form -> Scenario
+pubAnnounceOnScn :: KnowScene -> Form -> KnowScene
 pubAnnounceOnScn (kns,s) psi
   | eval (kns,s) psi = (pubAnnounce kns psi,s)
   | otherwise        = error "Liar!"
@@ -115,7 +124,7 @@ announce kns@(KnS props lawbdd obs) ags psi = KnS newprops newlawbdd newobs wher
   newlawbdd = con lawbdd (equ (var k) (bddOf kns psi))
   newobs    = [(i, apply obs i ++ [proppsi | i `elem` ags]) | i <- map fst obs]
 
-announceOnScn :: Scenario -> [Agent] -> Form -> Scenario
+announceOnScn :: KnowScene -> [Agent] -> Form -> KnowScene
 announceOnScn (kns@(KnS props _ _),s) ags psi
   | eval (kns,s) psi = (announce kns ags psi, sort $ freshp props : s)
   | otherwise        = error "Liar!"
@@ -158,13 +167,13 @@ bddOf kns (PubAnnounceW form1 form2) =
     newform2a = bddOf (pubAnnounce kns form1) form2
     newform2b = bddOf (pubAnnounce kns (Neg form1)) form2
 
-evalViaBdd :: Scenario -> Form -> Bool
+evalViaBdd :: KnowScene -> Form -> Bool
 evalViaBdd (kns,s) f = evaluateFun (bddOf kns f) (\n -> P n `elem` s)
 
 validViaBdd :: KnowStruct -> Form -> Bool
 validViaBdd kns@(KnS _ lawbdd _) f = top == lawbdd `imp` bddOf kns f
 
-whereViaBdd :: KnowStruct -> Form -> [KnState]
+whereViaBdd :: KnowStruct -> Form -> [State]
 whereViaBdd kns@(KnS props lawbdd _) f =
  map (sort . map (toEnum . fst) . filter snd) $
    allSatsWith (map fromEnum props) $ con lawbdd (bddOf kns f)
@@ -175,9 +184,9 @@ checkPropu :: Bdd -> KnowStruct -> KnowStruct -> Bool
 checkPropu = undefined
 
 data KnowTransf = KnT [Prp] Form [(Agent,[Prp])] deriving (Show)
-type Event = (KnowTransf,KnState)
+type Event = (KnowTransf,State)
 
-knowTransform :: Scenario -> Event -> Scenario
+knowTransform :: KnowScene -> Event -> KnowScene
 knowTransform (kns@(KnS props lawbdd obs),s) (KnT addprops addlaw eventobs, eventfacts) =
   (KnS (props ++ map snd shiftrel) newlawbdd newobs, s++shifteventfacts) where
     shiftrel = zip addprops [(freshp props)..]
@@ -196,7 +205,7 @@ texBddWith myShow b = unsafePerformIO $ do
 texBDD :: Bdd -> String
 texBDD = texBddWith show
 
-instance TexAble Scenario where
+instance TexAble KnowScene where
   tex (KnS props lawbdd obs, state) = concat
     [ " \\left( \n"
     , tex props ++ ", "
@@ -219,3 +228,31 @@ instance TexAble Event where
     , "\\end{array}\n"
     , " \\right) , "
     , tex actual ]
+
+pre :: Event -> Form
+pre (KnT addprops changelaw _, x) = substitOutOf x addprops changelaw
+
+reduce :: Event -> Form -> Maybe Form
+reduce _ Top          = Just Top
+reduce e Bot          = pure $ Neg (pre e)
+reduce e (PrpF p)     = Impl (pre e) <$> Just (PrpF p)
+reduce e (Neg f)      = Impl (pre e) <$> (Neg <$> reduce e f)
+reduce e (Conj fs)    = Conj <$> mapM (reduce e) fs
+reduce e (Disj fs)    = Disj <$> mapM (reduce e) fs
+reduce e (Xor fs)     = Impl (pre e) <$> (Xor <$> mapM (reduce e) fs)
+reduce e (Impl f1 f2) = Impl <$> reduce e f1 <*> reduce e f2
+reduce e (Equi f1 f2) = Equi <$> reduce e f1 <*> reduce e f2
+reduce _ (Forall _ _) = Nothing
+reduce _ (Exists _ _) = Nothing
+reduce e@(t@(KnT addprops _ obs), x) (K a f) =
+  Impl (pre e) <$> (Conj <$> sequence
+    [ K a <$> reduce (t,y) f | y <- powerset addprops -- FIXME is this a bit much?
+                             , seteq (restrictState x (obs ! a)) (restrictState y (obs ! a))
+    ])
+reduce e (Kw a f)     = reduce e (Disj [K a f, K a (Neg f)])
+reduce _ Ck  {}       = Nothing
+reduce _ Ckw {}       = Nothing
+reduce _ PubAnnounce  {} = Nothing
+reduce _ PubAnnounceW {} = Nothing
+reduce _ Announce     {} = Nothing
+reduce _ AnnounceW    {} = Nothing

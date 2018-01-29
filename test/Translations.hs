@@ -1,35 +1,35 @@
 
 module Main where
 import Data.List (sort)
-import Test.QuickCheck
 import Test.Hspec
+import Test.Hspec.QuickCheck
 import SMCDEL.Internal.Help (alleq)
 import SMCDEL.Language
-import SMCDEL.Symbolic.HasCacBDD as Sym
-import SMCDEL.Explicit.Simple as Exp
-import SMCDEL.Translations
+import SMCDEL.Symbolic.S5 as Sym
+import SMCDEL.Explicit.S5 as Exp
+import SMCDEL.Translations.S5
 import SMCDEL.Examples
 
 main :: IO ()
 main = hspec $
   describe "SMCDEL.Translations" $ do
-    it "semantic equivalence"     $ property semanticEquivTest
-    it "semantic validity"        $ property semanticValidTest
-    it "lemma equivalence Kripke" $ property lemmaEquivTestKr
-    it "number of states"         $ property numOfStatesTest
-    it "public announcement"      $ property pubAnnounceTest
-    it "group announcement"       $ property (\sf gl sg  -> alleq $ announceTest sf gl sg)
-    it "single action"            $ property (\am f -> alleq $ singleActionTest am f)
+    prop "semantic equivalence"     semanticEquivTest
+    prop "semantic validity"        semanticValidTest
+    prop "lemma equivalence Kripke" lemmaEquivTestKr
+    prop "number of states"         numOfStatesTest
+    prop "public announcement"      pubAnnounceTest
+    prop "group announcement"       (\sf gl sg  -> alleq $ announceTest sf gl sg)
+    prop "single action"            (\am f -> alleq $ singleActionTest am f)
 
-mymodel :: PointedModel
-mymodel = (KrM ws rel val, 0) where
+mymodel :: PointedModelS5
+mymodel = (KrMS5 ws rel val, 0) where
   buildTable partrows p = [ (p,v):pr | v <- [True,False], pr <- partrows ]
   table = foldl buildTable [[]] [P 0 .. P 4]
   val   = zip [0..] (map sort table)
   ws    = map fst val
   rel   = ("0", map (:[]) ws) : [ (show i,[ws]) | i <- [1..5::Int] ]
 
-myscn :: Scenario
+myscn :: KnowScene
 myscn = (KnS ps (boolBddOf Top) (("0",ps):[(show i,[]) | i<-[1..5::Int]]) , ps)
   where ps = [P 0 .. P 4]
 
@@ -51,13 +51,13 @@ semanticValidTest f = alleq
   , Sym.whereViaBdd (fst $ kripkeToKns mymodel) f == Sym.statesOf (fst $ kripkeToKns mymodel)
   ]
 
-numOfStatesTest :: KripkeModel -> Bool
-numOfStatesTest m@(KrM oldws _ _) = numberOfStates kns == length news where
+numOfStatesTest :: KripkeModelS5 -> Bool
+numOfStatesTest m@(KrMS5 oldws _ _) = numberOfStates kns == length news where
   scn@(kns, _) = kripkeToKns (m, head oldws)
-  (KrM news _ _, _) = knsToKripke scn
+  (KrMS5 news _ _, _) = knsToKripke scn
 
-lemmaEquivTestKr :: KripkeModel -> Bool
-lemmaEquivTestKr m@(KrM ws _ _) = equivalentWith pm kns g where
+lemmaEquivTestKr :: KripkeModelS5 -> Bool
+lemmaEquivTestKr m@(KrMS5 ws _ _) = equivalentWith pm kns g where
   pm = (m, head ws)
   (kns,g) = kripkeToKnsWithG pm
 
@@ -93,7 +93,10 @@ announceTest (SF f) (Group listeners) (SF g) =
   ]
 
 singleActionTest :: ActionModel -> Form -> [Bool]
-singleActionTest myact f = [a,b,c] where
+singleActionTest myact f = [a,b,c,d] where
   a = Exp.eval (productUpdate mymodel (myact,0)) f
   b = Sym.evalViaBdd (knowTransform (kripkeToKns mymodel) (actionToEvent (myact,0))) f
   c = Exp.eval (productUpdate mymodel (eventToAction (actionToEvent (myact,0)))) f
+  d = case reduce (actionToEvent (myact,0)) f of
+    Nothing -> c
+    Just g  -> Sym.evalViaBdd (kripkeToKns mymodel) g

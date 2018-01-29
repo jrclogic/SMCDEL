@@ -3,7 +3,7 @@ module Main (main) where
 import Data.List (groupBy,sortBy)
 import Data.Time (getCurrentTime, diffUTCTime)
 import SMCDEL.Explicit.DEMO_S5
-import SMCDEL.Examples (sapExplainState,sapSolutions)
+import SMCDEL.Examples.SumAndProduct
 
 runSMCDEL :: IO ()
 runSMCDEL = do

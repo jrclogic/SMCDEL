@@ -12,9 +12,9 @@ import qualified Data.Text.Lazy.IO as TIO
 import SMCDEL.Internal.Lex
 import SMCDEL.Internal.Parse
 import SMCDEL.Internal.Files
-import SMCDEL.Symbolic.HasCacBDD
+import SMCDEL.Symbolic.S5
 import SMCDEL.Internal.TexDisplay
-import SMCDEL.Translations
+import SMCDEL.Translations.S5
 import SMCDEL.Language
 import Data.HasCacBDD.Visuals (svgGraph)
 import qualified Language.Javascript.JQuery as JQuery

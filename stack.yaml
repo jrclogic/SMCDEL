@@ -1,10 +1,10 @@
-resolver: lts-9.13
+resolver: lts-10.4
 
 packages:
 - '.'
 - location:
     git: https://github.com/m4lvin/cudd.git
-    commit: afe615d8a40147daa527c49504a7644bf424beaf
+    commit: cc794dd2c7d9f6b6cc9560226a4fb9cbe5c4454c
   extra-dep: true
 - location:
     git: https://github.com/m4lvin/HasCacBDD.git

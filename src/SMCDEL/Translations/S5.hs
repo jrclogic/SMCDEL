@@ -1,19 +1,19 @@
 
-module SMCDEL.Translations where
+module SMCDEL.Translations.S5 where
 import Control.Arrow (second)
 import Data.List (groupBy,sort,(\\),elemIndex,intersect,nub)
 import Data.Maybe (listToMaybe)
 import SMCDEL.Language
-import SMCDEL.Symbolic.HasCacBDD
-import SMCDEL.Explicit.Simple
+import SMCDEL.Symbolic.S5
+import SMCDEL.Explicit.S5
 import SMCDEL.Internal.Help (anydiffWith,alldiff,alleqWith,apply,powerset,(!),seteq,subseteq)
 
 import Data.HasCacBDD hiding (Top,Bot)
 
-type StateMap = World -> KnState
+type StateMap = World -> State
 
-equivalentWith :: PointedModel -> Scenario -> StateMap -> Bool
-equivalentWith (KrM ws rel val, actw) (kns@(KnS _ _ obs), curs) g =
+equivalentWith :: PointedModelS5 -> KnowScene -> StateMap -> Bool
+equivalentWith (KrMS5 ws rel val, actw) (kns@(KnS _ _ obs), curs) g =
   c1 && c2 && c3 && g actw == curs where
     c1 = all (\l -> knsLink l == kriLink l) linkSet where
       linkSet = nub [ (i,w1,w2) | w1 <- ws, w2 <- ws, w1 <= w2, i <- map fst rel ]
@@ -22,8 +22,8 @@ equivalentWith (KrM ws rel val, actw) (kns@(KnS _ _ obs), curs) g =
     c2 = and [ (p `elem` g w) == ((val ! w) ! p) | w <- ws, p <- map fst (snd $ head val) ]
     c3 = statesOf kns `seteq` nub (map g ws)
 
-findStateMap :: PointedModel -> Scenario -> Maybe StateMap
-findStateMap pm@(KrM _ _ val, w) scn@(kns, s)
+findStateMap :: PointedModelS5 -> KnowScene -> Maybe StateMap
+findStateMap pm@(KrMS5 _ _ val, w) scn@(kns, s)
   | vocabOf pm `subseteq` vocabOf kns = listToMaybe goodMaps
   | otherwise = error "vocabOf pm not subseteq vocabOf kns"
   where
@@ -36,13 +36,13 @@ findStateMap pm@(KrM _ _ val, w) scn@(kns, s)
     allMaps  = [ \v -> baseMap v ++ restf v | restf <- allFuncs (worldsOf pm) (powerset extraProps) ]
     goodMaps = filter (\g -> g w == s && equivalentWith pm scn g) allMaps
 
-knsToKripke :: Scenario -> PointedModel
+knsToKripke :: KnowScene -> PointedModelS5
 knsToKripke = fst . knsToKripkeWithG
 
-knsToKripkeWithG :: Scenario -> (PointedModel, StateMap)
+knsToKripkeWithG :: KnowScene -> (PointedModelS5, StateMap)
 knsToKripkeWithG (kns@(KnS ps _ obs),curs) =
   if curs `elem` statesOf kns
-     then ((KrM worlds rel val, cur) , g)
+     then ((KrMS5 worlds rel val, cur) , g)
      else error "knsToKripke failed: Invalid state."
   where
     lav    = zip (statesOf kns) [0..(length (statesOf kns)-1)]
@@ -55,11 +55,11 @@ knsToKripkeWithG (kns@(KnS ps _ obs),curs) =
     cur    = lav ! curs
     g w    = statesOf kns !! w
 
-kripkeToKns :: PointedModel -> Scenario
+kripkeToKns :: PointedModelS5 -> KnowScene
 kripkeToKns = fst . kripkeToKnsWithG
 
-kripkeToKnsWithG :: PointedModel -> (Scenario, StateMap)
-kripkeToKnsWithG (KrM worlds rel val, cur) = ((KnS ps law obs, curs), g) where
+kripkeToKnsWithG :: PointedModelS5 -> (KnowScene, StateMap)
+kripkeToKnsWithG (KrMS5 worlds rel val, cur) = ((KnS ps law obs, curs), g) where
   v         = map fst (val ! cur)
   ags       = map fst rel
   newpstart = fromEnum $ freshp v -- start counting new propositions here
@@ -80,28 +80,25 @@ booloutof ps qs = conSet $
   [ var n | (P n) <- ps ] ++
   [ neg $ var n | (P n) <- qs \\ ps ]
 
-uniqueVals :: KripkeModel -> Bool
-uniqueVals (KrM _ _ val) = alldiff (map snd val)
-
-voc :: KripkeModel -> [Prp]
-voc (KrM _ _ val) = map fst . snd . head $ val
+uniqueVals :: KripkeModelS5 -> Bool
+uniqueVals (KrMS5 _ _ val) = alldiff (map snd val)
 
 -- | Get lists of variables which agent i does (not) observe
 -- in model m. This does *not* preserve all information, i.e.
 -- does not characterize every possible S5 relation!
-obsnobs :: KripkeModel -> Agent -> ([Prp],[Prp])
-obsnobs m@(KrM _ rel val) i = (obs,nobs) where
+obsnobs :: KripkeModelS5 -> Agent -> ([Prp],[Prp])
+obsnobs m@(KrMS5 _ rel val) i = (obs,nobs) where
   propsets = map (map (map fst . filter snd . apply val)) (apply rel i)
-  obs = filter (\p -> all (alleqWith (elem p)) propsets) (voc m)
-  nobs = filter (\p -> any (anydiffWith (elem p)) propsets) (voc m)
+  obs = filter (\p -> all (alleqWith (elem p)) propsets) (vocabOf m)
+  nobs = filter (\p -> any (anydiffWith (elem p)) propsets) (vocabOf m)
 
 -- | Test if all relations can be described using observariables.
-descableRels :: KripkeModel -> Bool
-descableRels m@(KrM ws rel val) = all descable (map fst rel) where
+descableRels :: KripkeModelS5 -> Bool
+descableRels m@(KrMS5 ws rel val) = all descable (map fst rel) where
   wpairs = [ (v,w) | v <- ws, w <- ws ]
   descable i = cover && correct where
     (obs,nobs) = obsnobs m i
-    cover = sort (voc m) == sort (obs ++ nobs) -- implies disjointness
+    cover = sort (vocabOf m) == sort (obs ++ nobs) -- implies disjointness
     correct = all (\pair -> oldrel pair == newrel pair) wpairs
     oldrel (v,w) = v `elem` head (filter (elem w) (apply rel i))
     newrel (v,w) = (factsAt v `intersect` obs) == (factsAt w `intersect` obs)
@@ -110,16 +107,16 @@ descableRels m@(KrM ws rel val) = all descable (map fst rel) where
 -- | Try to find an equivalent knowledge structure without
 -- additional propositions. Will succeed iff valuations are
 -- unique and relations can be described using observariables.
-smartKripkeToKns :: PointedModel -> Maybe Scenario
+smartKripkeToKns :: PointedModelS5 -> Maybe KnowScene
 smartKripkeToKns (m, cur) =
   if uniqueVals m && descableRels m
     then Just (smartKripkeToKnsWithoutChecks (m, cur))
     else Nothing
 
-smartKripkeToKnsWithoutChecks :: PointedModel -> Scenario
-smartKripkeToKnsWithoutChecks (m@(KrM worlds rel val), cur) =
+smartKripkeToKnsWithoutChecks :: PointedModelS5 -> KnowScene
+smartKripkeToKnsWithoutChecks (m@(KrMS5 worlds rel val), cur) =
   (KnS ps law obs, curs) where
-    ps = voc m
+    ps = vocabOf m
     g w = filter (apply (apply val w)) ps
     law = disSet [ booloutof (g w) ps | w <- worlds ]
     obs = map (\(i,_) -> (i,obsOf i) ) rel
