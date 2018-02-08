@@ -137,6 +137,7 @@ Benchmark bench-sumandproduct
   main-is:            sumandproduct.hs
   type:               exitcode-stdio-1.0
   build-depends:      base >= 4.8 && < 5,
+                      criterion,
                       smcdel,
                       time
 

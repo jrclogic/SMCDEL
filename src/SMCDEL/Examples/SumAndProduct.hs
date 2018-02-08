@@ -12,15 +12,16 @@ import SMCDEL.Symbolic.S5
 pairs :: [(Int, Int)]
 pairs = [(x,y) | x<-[2..100], y<-[2..100], x<y, x+y<=100]
 
--- 7 propositions are enough to label [2..100]
+-- 7 propositions to label [2..100], because 2^6 = 64 < 100 < 128 = 2^7
 xProps, yProps, sProps, pProps :: [Prp]
 xProps = [(P  1)..(P  7)]
 yProps = [(P  8)..(P 14)]
 sProps = [(P 15)..(P 21)]
-pProps = [(P 22)..(P (21+amount))] where amount = ceiling (logBase 2 (50*50) :: Double)
+-- 12 propositions for the product, because 2^11 = 2048 < 2500 < 4096 = 2^12
+pProps = [(P 22)..(P 33)]
 
 sapAllProps :: [Prp]
-sapAllProps = xProps ++ yProps ++ sProps ++ pProps
+sapAllProps = sort $ xProps ++ yProps ++ sProps ++ pProps
 
 xIs, yIs, sIs, pIs :: Int -> Form
 xIs n = booloutofForm (powerset xProps !! n) xProps
