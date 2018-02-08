@@ -2,7 +2,6 @@
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
 
 module SMCDEL.Symbolic.S5 where
-
 import Control.Arrow (first)
 import Data.HasCacBDD hiding (Top,Bot)
 import Data.HasCacBDD.Visuals
@@ -205,8 +204,8 @@ texBddWith myShow b = unsafePerformIO $ do
 texBDD :: Bdd -> String
 texBDD = texBddWith show
 
-instance TexAble KnowScene where
-  tex (KnS props lawbdd obs, state) = concat
+instance TexAble KnowStruct where
+  tex (KnS props lawbdd obs) = concat
     [ " \\left( \n"
     , tex props ++ ", "
     , " \\begin{array}{l} \\scalebox{0.4}{"
@@ -215,8 +214,10 @@ instance TexAble KnowScene where
     , ", \\begin{array}{l}\n"
     , intercalate " \\\\\n " (map (\(_,os) -> (tex os)) obs)
     , "\\end{array}\n"
-    , " \\right) , "
-    , tex state ]
+    , " \\right)" ]
+
+instance TexAble KnowScene where
+  tex (kns, state) = tex kns ++ " , " ++ tex state
 
 instance TexAble Event where
   tex (KnT props changelaw obs, actual) = concat

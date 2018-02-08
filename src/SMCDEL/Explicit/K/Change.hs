@@ -1,7 +1,7 @@
 
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
 
-module SMCDEL.Explicit.Change where
+module SMCDEL.Explicit.K.Change where
 
 import Control.Arrow ((&&&))
 import Control.Monad

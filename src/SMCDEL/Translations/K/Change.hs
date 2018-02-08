@@ -1,20 +1,20 @@
 
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
 
-module SMCDEL.Translations.Change where
+module SMCDEL.Translations.K.Change where
 
 import Data.HasCacBDD hiding (Top,Bot)
 import Data.List ((\\),nub,sort)
 import qualified Data.Map.Strict as M
 import Data.Map.Strict ((!),fromList)
 
-import SMCDEL.Explicit.Change
+import SMCDEL.Explicit.K.Change
 import SMCDEL.Internal.Help (apply,powerset)
 import SMCDEL.Language
 import SMCDEL.Translations.S5 (booloutof)
 import SMCDEL.Other.BDD2Form
-import SMCDEL.Symbolic.Change
 import SMCDEL.Symbolic.K
+import SMCDEL.Symbolic.K.Change
 import SMCDEL.Symbolic.S5 (boolBddOf)
 
 actionToEvent :: PointedChangeModel -> Event

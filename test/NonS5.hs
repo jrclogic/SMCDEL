@@ -9,9 +9,9 @@ import SMCDEL.Symbolic.S5 (boolBddOf)
 import SMCDEL.Explicit.K as ExpK
 import SMCDEL.Symbolic.K as SymK
 import SMCDEL.Translations.K as TransK
-import SMCDEL.Explicit.Change
-import SMCDEL.Symbolic.Change
-import SMCDEL.Translations.Change
+import SMCDEL.Explicit.K.Change
+import SMCDEL.Symbolic.K.Change
+import SMCDEL.Translations.K.Change
 import Data.Map.Strict (fromList)
 import Data.List (sort)
 
@@ -59,6 +59,6 @@ singleChangeTest myact (SF f) = [a,b,c,d,e] ++ h where
   c = ExpK.eval       (productChange              myMod  (eventToAction' (actionToEvent (myact,0)))) f
   d = ExpK.eval       (productChange (blsToKripke myScn) (eventToAction' (actionToEvent (myact,0)))) f
   e = SymK.evalViaBdd (transform                  myScn                  (actionToEvent (myact,0)) ) f
-  h = case SMCDEL.Symbolic.Change.reduce (actionToEvent (myact,0)) f of
+  h = case SMCDEL.Symbolic.K.Change.reduce (actionToEvent (myact,0)) f of
     Nothing -> []
     Just g  -> pure $ SymK.evalViaBdd (kripkeToBls myMod) (simplify g)

@@ -5,8 +5,8 @@ import Data.Map.Strict (fromList)
 
 import SMCDEL.Language
 import SMCDEL.Symbolic.K
+import SMCDEL.Symbolic.K.Change
 import SMCDEL.Symbolic.S5 (boolBddOf)
-import SMCDEL.Symbolic.Change
 
 pp, qq, tt :: Prp
 pp = P 0

@@ -1,4 +1,8 @@
-module SMCDEL.Internal.Help (alleq,alleqWith,anydiff,anydiffWith,alldiff,apply,powerset,restrict,rtc,tc,Erel,bl,fusion,seteq,subseteq,(!),lfp) where
+module SMCDEL.Internal.Help (
+  alleq,alleqWith,anydiff,anydiffWith,alldiff,
+  apply,applyPartial,(!),(!=),
+  powerset,restrict,rtc,tc,Erel,bl,fusion,seteq,subseteq,lfp
+  ) where
 import Data.List (nub,union,sort,foldl',(\\))
 
 type Rel a b = [(a,b)]
@@ -29,6 +33,14 @@ apply rel left = case lookup left rel of
 
 (!) :: Show a => Show b => Eq a => Rel a b -> a -> b
 (!) = apply
+
+applyPartial :: Eq a => [(a,a)] -> a -> a
+applyPartial rel left = case lookup left rel of
+  Nothing     -> left
+  (Just this) -> this
+
+(!=) :: Eq a => [(a,a)] -> a -> a
+(!=) = applyPartial
 
 powerset :: [a] -> [[a]]
 powerset []     = [[]]

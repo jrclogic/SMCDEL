@@ -25,9 +25,9 @@ Library
                       SMCDEL.Examples.SallyAnne
                       SMCDEL.Examples.SumAndProduct
                       SMCDEL.Examples.WhatSum
-                      SMCDEL.Explicit.Change
                       SMCDEL.Explicit.DEMO_S5
                       SMCDEL.Explicit.K
+                      SMCDEL.Explicit.K.Change
                       SMCDEL.Explicit.S5
                       SMCDEL.Internal.Files
                       SMCDEL.Internal.Help
@@ -39,12 +39,13 @@ Library
                       SMCDEL.Language
                       SMCDEL.Other.BDD2Form
                       SMCDEL.Other.MCTRIANGLE
-                      SMCDEL.Symbolic.Change
                       SMCDEL.Symbolic.K
+                      SMCDEL.Symbolic.K.Change
                       SMCDEL.Symbolic.S5
                       SMCDEL.Symbolic.S5_CUDD
-                      SMCDEL.Translations.Change
+                      SMCDEL.Symbolic.S5.Change
                       SMCDEL.Translations.K
+                      SMCDEL.Translations.K.Change
                       SMCDEL.Translations.S5
   build-depends:      base >= 4.8 && < 5,
                       array,

@@ -1,7 +1,7 @@
 
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
 
-module SMCDEL.Symbolic.Change where
+module SMCDEL.Symbolic.K.Change where
 
 import Control.Arrow ((&&&))
 import Control.Lens (over,both)

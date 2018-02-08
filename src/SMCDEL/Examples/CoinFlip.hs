@@ -7,7 +7,7 @@ import Data.List ((\\))
 import SMCDEL.Language
 import SMCDEL.Symbolic.S5 (boolBddOf)
 import SMCDEL.Symbolic.K
-import SMCDEL.Symbolic.Change
+import SMCDEL.Symbolic.K.Change
 
 coinStart :: BelScene
 coinStart = (BlS [P 0] law obs, actual) where
