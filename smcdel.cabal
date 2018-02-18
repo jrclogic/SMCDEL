@@ -39,6 +39,7 @@ Library
                       SMCDEL.Language
                       SMCDEL.Other.BDD2Form
                       SMCDEL.Other.MCTRIANGLE
+                      SMCDEL.Other.Planning
                       SMCDEL.Symbolic.K
                       SMCDEL.Symbolic.K.Change
                       SMCDEL.Symbolic.S5

@@ -5,9 +5,13 @@ module SMCDEL.Examples.RussianCards where
 
 import Control.Monad (replicateM)
 import Data.List (delete,intersect,nub,sort)
+import Data.Map.Strict (fromList)
+import Data.HasCacBDD hiding (Top,Bot)
 
 import SMCDEL.Language
+import SMCDEL.Other.Planning
 import SMCDEL.Symbolic.S5
+import qualified SMCDEL.Symbolic.K as K
 
 rcPlayers :: [Agent]
 rcPlayers = [alice,bob,carol]
@@ -136,27 +140,6 @@ testPlan (aSays,bSays) = all (evalViaBdd rusSCN) fs where
 rcSolutions :: [(Form, Form)]
 rcSolutions = filter testPlan allPlans
 
-type OfflinePlan = [(Form,Form)] -- list of (announcement,goal) tuples
-
-class Plan a where
-  succeeds :: a -> Form
-
-instance Plan OfflinePlan where
-  succeeds [] = Top
-  succeeds ((step,goal):rest) =
-    Conj [step, PubAnnounce step goal, PubAnnounce step (succeeds rest)]
-
-succeedsOn :: Plan a => a -> KnowScene -> Bool
-succeedsOn plan scn = evalViaBdd scn (succeeds plan)
-
-data OnlinePlan = Stop | DoAnnounce Form OnlinePlan | IfThenElse Form OnlinePlan OnlinePlan
-
-instance Plan OnlinePlan where
-  succeeds Stop = Top
-  succeeds (DoAnnounce step next) = Conj [step, PubAnnounce step (succeeds next)]
-  succeeds (IfThenElse check planA planB) =
-    Conj [ check `Impl` succeeds planA, Neg check `Impl` succeeds planB ]
-
 type RusCardProblem = (Int,Int,Int)
 
 distribute :: RusCardProblem -> Form
@@ -234,3 +217,26 @@ allCasesUpTo bound = [ (na,nb,nc) | na <- [1..bound]
                                   -- for two announcement plans!
                                   , nc < (na - 1)
                                   , nc < nb ]
+
+
+dontChange :: [Form] -> K.RelBDD
+dontChange fs = conSet <$> sequence [ equ <$> K.mvBdd b <*> K.cpBdd b | b <- map boolBddOf fs ]
+
+noDoubles :: Int -> Form
+noDoubles n = Conj [ notDOuble k | k <- nCards n ] where
+  notDOuble k = Neg $ Conj [alice `hasCard` k, bob `hasCard` k]
+
+rusBelScnfor :: RusCardProblem -> K.BelScene
+rusBelScnfor (na,nb,nc) = (K.BlS props law (fromList [ (i, obsbdd i) | i <- rcPlayers ]), defaultDeal) where
+  n = na + nb + nc
+  props   = [ P k | k <-[0..((2 * n)-1)] ]
+  law = boolBddOf $ Conj [ noDoubles n, distribute (na,nb,nc)  ]
+  obsbdd "Alice" = dontChange [ PrpF (P $ 2*k) | k <- [0..(n-1)] ]
+  obsbdd "Bob"   = dontChange [ PrpF (P $ (2*k) + 1) | k <- [0..(n-1)] ]
+  obsbdd "Carol" = dontChange [ Disj [PrpF (P $ 2*k), PrpF (P $ (2*k) + 1)] | k <- [0..(n-1)] ]
+  obsbdd _       = error "Unkown Agent"
+  defaultDeal =  [ let (PrpF p) = i `hasCard` k in p | i <- [alice,bob], k <- cardsFor i ] where
+    cardsFor "Alice" = [0..(na-1)]
+    cardsFor "Bob"   = [na..(na+nb-1)]
+    cardsFor "Carol" = [(na+nb)..(na+nb+nc-1)]
+    cardsFor _       = error "Unkown Agent"

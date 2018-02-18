@@ -169,6 +169,9 @@ bddOf kns (PubAnnounceW form1 form2) =
 evalViaBdd :: KnowScene -> Form -> Bool
 evalViaBdd (kns,s) f = evaluateFun (bddOf kns f) (\n -> P n `elem` s)
 
+instance Semantics KnowScene where
+  isTrue = evalViaBdd
+
 validViaBdd :: KnowStruct -> Form -> Bool
 validViaBdd kns@(KnS _ lawbdd _) f = top == lawbdd `imp` bddOf kns f
 

@@ -66,6 +66,9 @@ data Form
   | AnnounceW [Agent] Form Form -- ^ (Semi-)Private announcement whether
   deriving (Eq,Ord,Show)
 
+class Semantics a where
+  isTrue :: a -> Form -> Bool
+
 showSet :: Show a => [a] -> String
 showSet xs = intercalate "," (map show xs)
 
