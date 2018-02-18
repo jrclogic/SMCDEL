@@ -67,6 +67,8 @@ main = hspec $ do
         [(0,0),(1,0),(2,1)]
         (fst redundantModel)
         (fst minimizedModel `Exp.withoutProps` [P 2])
+    it "findStateMap works for modelB and knsB" $
+      let (Just g) = findStateMap modelB knsB in equivalentWith modelB knsB g
     it "findStateMap works for redundantModel and myKNS" $
       let (Just g) = findStateMap redundantModel myKNS in equivalentWith redundantModel myKNS g
     it "findStateMap works for minimizedModel and myKNS" $

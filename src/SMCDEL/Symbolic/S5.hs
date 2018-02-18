@@ -177,11 +177,6 @@ whereViaBdd kns@(KnS props lawbdd _) f =
  map (sort . map (toEnum . fst) . filter snd) $
    allSatsWith (map fromEnum props) $ con lawbdd (bddOf kns f)
 
-type Propulation = Bdd
-
-checkPropu :: Bdd -> KnowStruct -> KnowStruct -> Bool
-checkPropu = undefined
-
 data KnowTransf = KnT [Prp] Form [(Agent,[Prp])] deriving (Show)
 type Event = (KnowTransf,State)
 

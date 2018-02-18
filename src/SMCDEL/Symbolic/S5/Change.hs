@@ -16,10 +16,10 @@ import SMCDEL.Internal.Help (apply,applyPartial)
 import SMCDEL.Symbolic.S5 hiding (Event)
 
 data KnowChange = CTrf
-  [Prp] -- addprops
-  Form  -- event law
-  [Prp] -- changeprops, modified subset
-  (M.Map Prp Bdd) -- changelaw
+  [Prp]               -- addprops
+  Form                -- event law
+  [Prp]               -- changeprops, modified subset
+  (M.Map Prp Bdd)     -- changelaw
   (M.Map Agent [Prp]) -- eventObs
   deriving (Show)
 

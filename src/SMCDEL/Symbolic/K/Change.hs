@@ -93,9 +93,9 @@ transformMulti (kns,s) (trf@(Trf addprops addlaw _ _ _), eventsFacts) =
     [selectedEventFacts] = filter possible eventsFacts
 
 publicMakeFalse :: [Agent] -> Prp -> Event
-publicMakeFalse agents p = (Trf [] Top [p] mychangelaw myobs, []) where
-  mychangelaw = fromList [ (p,boolBddOf Bot) ]
-  myobs = fromList [ (i,totalRelBdd) | i <- agents ]
+publicMakeFalse agents p = (Trf [] Top [p] changelaw eventobs, []) where
+  changelaw = fromList [ (p,boolBddOf Bot) ]
+  eventobs  = fromList [ (i,totalRelBdd) | i <- agents ]
 
 myEvent :: Event
 myEvent = publicMakeFalse (agentsOf $ fst SMCDEL.Symbolic.K.exampleStart) (P 0)
@@ -104,13 +104,12 @@ tResult :: BelScene
 tResult = SMCDEL.Symbolic.K.exampleStart `transform` myEvent
 
 flipOverAndShowTo :: [Agent] -> Prp -> Agent -> Event
-flipOverAndShowTo everyone p i = (Trf [q] eventlaw [p] changelaw obs, [q]) where
-  q = freshp [p]
-  eventlaw = PrpF q `Equi` PrpF p
+flipOverAndShowTo everyone p i = (Trf [q] eventlaw [p] changelaw eventobs, [q]) where
+  q         = freshp [p]
+  eventlaw  = PrpF q `Equi` PrpF p
   changelaw = fromList [ (p, boolBddOf . Neg . PrpF $ p) ]
-  obs = fromList $
-    (i, allsamebdd  [q]) :
-    [ (j,totalRelBdd) | j <- everyone \\ [i] ]
+  eventobs  = fromList $ (i, allsamebdd [q])
+                       : [ (j,totalRelBdd) | j <- everyone \\ [i] ]
 
 myOtherEvent :: Event
 myOtherEvent = flipOverAndShowTo ["1","2"] (P 0) "1"
