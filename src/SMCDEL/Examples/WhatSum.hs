@@ -1,4 +1,3 @@
-
 module SMCDEL.Examples.WhatSum where
 
 import SMCDEL.Examples.SumAndProduct (nmbr)

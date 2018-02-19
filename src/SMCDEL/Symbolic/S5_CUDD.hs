@@ -1,4 +1,3 @@
-
 module SMCDEL.Symbolic.S5_CUDD where
 
 import SMCDEL.Internal.MyHaskCUDD

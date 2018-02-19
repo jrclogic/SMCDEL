@@ -1,4 +1,3 @@
-
 module SMCDEL.Examples.DrinkLogic where
 
 import SMCDEL.Language

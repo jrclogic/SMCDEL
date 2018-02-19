@@ -1,4 +1,3 @@
-
 module SMCDEL.Examples.MuddyChildren where
 
 import Data.List

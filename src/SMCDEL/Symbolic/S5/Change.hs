@@ -1,4 +1,3 @@
-
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
 
 module SMCDEL.Symbolic.S5.Change where

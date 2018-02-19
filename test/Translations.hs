@@ -1,5 +1,5 @@
-
 module Main where
+
 import Data.List (sort)
 import Test.Hspec
 import Test.Hspec.QuickCheck

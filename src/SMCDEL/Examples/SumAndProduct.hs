@@ -1,4 +1,3 @@
-
 module SMCDEL.Examples.SumAndProduct where
 
 import Data.List

@@ -1,4 +1,3 @@
-
 module Main (main) where
 import Control.Monad (when)
 import Data.Time (diffUTCTime,getCurrentTime,NominalDiffTime)

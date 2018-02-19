@@ -1,4 +1,3 @@
-
 module SMCDEL.Examples.SallyAnne where
 
 import Data.Map.Strict (fromList)

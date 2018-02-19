@@ -1,4 +1,3 @@
-
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances, MultiParamTypeClasses, AllowAmbiguousTypes #-}
 
 module SMCDEL.Other.Planning where

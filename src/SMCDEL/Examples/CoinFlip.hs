@@ -1,4 +1,3 @@
-
 module SMCDEL.Examples.CoinFlip where
 
 import Data.Map.Strict (fromList)

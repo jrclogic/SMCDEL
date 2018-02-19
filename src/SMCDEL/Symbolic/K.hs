@@ -1,4 +1,3 @@
-
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances, TypeOperators #-}
 
 module SMCDEL.Symbolic.K where

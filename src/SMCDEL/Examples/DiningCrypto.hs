@@ -1,4 +1,3 @@
-
 module SMCDEL.Examples.DiningCrypto where
 
 import Data.List (delete)

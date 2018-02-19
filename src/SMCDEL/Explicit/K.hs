@@ -1,4 +1,3 @@
-
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
 
 module SMCDEL.Explicit.K where

@@ -1,4 +1,3 @@
-
 module Main where
 import Criterion.Main
 import Data.Function

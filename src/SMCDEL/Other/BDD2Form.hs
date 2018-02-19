@@ -1,4 +1,3 @@
-
 module SMCDEL.Other.BDD2Form where
 import Data.HasCacBDD
 import SMCDEL.Language hiding (Bot,Top)

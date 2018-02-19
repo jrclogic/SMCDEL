@@ -1,5 +1,5 @@
-
 module SMCDEL.Translations.S5 where
+
 import Control.Arrow (second)
 import Data.List (groupBy,sort,(\\),elemIndex,intersect,nub)
 import Data.Maybe (listToMaybe)

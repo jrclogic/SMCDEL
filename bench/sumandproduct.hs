@@ -1,4 +1,3 @@
-
 module Main (main) where
 import Criterion.Main
 import Data.List (groupBy,sortBy)

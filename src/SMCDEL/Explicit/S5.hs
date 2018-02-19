@@ -1,4 +1,3 @@
-
 {-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, FlexibleContexts #-}
 
 module SMCDEL.Explicit.S5 where

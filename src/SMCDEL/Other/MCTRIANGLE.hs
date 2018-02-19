@@ -1,4 +1,3 @@
-
 module SMCDEL.Other.MCTRIANGLE where
 
 data Kind = Muddy | Clean
