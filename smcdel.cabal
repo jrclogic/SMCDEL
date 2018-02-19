@@ -20,7 +20,10 @@ Library
                       SMCDEL.Examples.CoinFlip
                       SMCDEL.Examples.DiningCrypto
                       SMCDEL.Examples.DrinkLogic
+                      SMCDEL.Examples.GossipKw
+                      SMCDEL.Examples.GossipS5
                       SMCDEL.Examples.MuddyChildren
+                      SMCDEL.Examples.Prisoners
                       SMCDEL.Examples.RussianCards
                       SMCDEL.Examples.SallyAnne
                       SMCDEL.Examples.SumAndProduct
