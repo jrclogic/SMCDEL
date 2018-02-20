@@ -3,6 +3,8 @@ module Main where
 import Control.Arrow (second)
 import Control.Monad (when,unless)
 import Data.List (intercalate)
+import Data.Version (showVersion)
+import Paths_smcdel (version)
 import System.Console.ANSI
 import System.Directory (getTemporaryDirectory)
 import System.Environment (getArgs,getProgName)
@@ -24,7 +26,7 @@ main = do
   tmpdir <- getTemporaryDirectory
   (texFilePath,texFileHandle) <- openTempFile tmpdir "smcdel.tex"
   let outHandle = if showMode then texFileHandle else stdout
-  unless texMode $ vividPutStrLn infoline
+  unless texMode $ putStrLn infoline
   when texMode $ hPutStrLn outHandle texPrelude
   let (CheckInput vocabInts lawform obs jobs) = parse $ alexScanTokens input
   let mykns = KnS (map P vocabInts) (boolBddOf lawform) (map (second (map P)) obs)
@@ -85,7 +87,7 @@ vividPutStrLn s = do
   setSGR []
 
 infoline :: String
-infoline = "SMCDEL 16.5 by Malvin Gattinger -- https://github.com/jrclogic/SMCDEL\n"
+infoline = "SMCDEL " ++ showVersion version ++ " -- https://github.com/jrclogic/SMCDEL\n"
 
 texPrelude, texEnd :: String
 texPrelude = unlines [ "\\documentclass[a4paper,12pt]{article}",

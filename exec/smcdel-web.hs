@@ -6,6 +6,8 @@ import Prelude
 import Control.Monad.IO.Class (liftIO)
 import Control.Arrow
 import Data.List (intercalate)
+import Data.Version (showVersion)
+import Paths_smcdel (version)
 import Web.Scotty
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.IO as TIO
@@ -21,6 +23,7 @@ import qualified Language.Javascript.JQuery as JQuery
 
 main :: IO ()
 main = do
+  putStrLn $ "SMCDEL " ++ showVersion version
   putStrLn "Please open this link: http://localhost:3000/index.html"
   scotty 3000 $ do
     get "" $ redirect "index.html"

@@ -1,13 +1,12 @@
 name:                smcdel
-version:             0.1.0.0
+version:             1.0.0
 synopsis:            Symbolic Model Checking for Dynamic Epistemic Logic
-description:         See README.md
+description:         See README.md and SMCDEL.pdf for references and documentation.
 homepage:            https://github.com/jrclogic/SMCDEL
 license:             GPL-2
 license-file:        LICENSE
 author:              Malvin Gattinger
 maintainer:          malvin@w4eg.eu
-copyright:           2016 Malvin Gattinger
 category:            Logic
 build-type:          Simple
 cabal-version:       >=1.10
@@ -70,6 +69,7 @@ Executable smcdel
   ghc-options:        -Wall
   default-language:   Haskell2010
   main-is:            exec/smcdel.hs
+  other-modules:      Paths_smcdel
   build-tools:        alex, happy
   build-depends:      base >= 4.8 && < 5,
                       ansi-terminal,
@@ -82,6 +82,7 @@ Executable smcdel-web
   ghc-options:        -Wall
   default-language:   Haskell2010
   main-is:            exec/smcdel-web.hs
+  other-modules:      Paths_smcdel
   build-tools:        alex, happy
   build-depends:      base >= 4.8 && < 5,
                       scotty,
