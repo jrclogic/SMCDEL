@@ -76,11 +76,12 @@ publicMakeFalseChM ags p = (ChM $ fromList [ (1::Action, Ch myPre myPost myRel) 
 instance Arbitrary ChangeModel where
   arbitrary = do
     let allactions = [0..3]
-    [BF f, BF g, BF h] <- replicateM 3 (sized $ randomboolformWith [P 0 .. P 4])
-    let myPres  = map simplify [Top,f,g,h]
+    [BF f, BF g, BF h, BF l] <- replicateM 4 (sized $ randomboolformWith [P 0 .. P 4])
+    let myPres  = map simplify [f,g,h,l]
     myPosts <- mapM (\_ -> do
-      cons <- elements [Top,Bot]
-      return $ fromList [ (P 1, cons) ]
+      proptochange <- elements [P 0 .. P 4]
+      postconcon <- elements $ [Top,Bot] ++ map PrpF [P 0 .. P 4]
+      return $ fromList [ (proptochange, postconcon) ]
       ) allactions
     myRels <- mapM (\k -> do
       reachList <- sublistOf allactions

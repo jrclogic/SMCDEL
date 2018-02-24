@@ -148,3 +148,50 @@ reduce _ PubAnnounce  {} = Nothing
 reduce _ PubAnnounceW {} = Nothing
 reduce _ Announce     {} = Nothing
 reduce _ AnnounceW    {} = Nothing
+
+bddReduce :: BelScene -> Event -> Form -> Bdd
+bddReduce scn@(oldBls,_) event@(Trf addprops _ changeprops changelaw _, eventFacts) f =
+  let
+    -- same as in 'transform', to ensure props and addprops are disjoint
+    shiftaddprops = [(freshp $ vocabOf scn)..]
+    shiftrel      = sort $ zip addprops shiftaddprops
+    relabelWith r = relabel (sort $ map (over both fromEnum) r)
+    -- apply the shifting to addlaw and changelaw:
+    changelawShifted = M.map (relabelWith shiftrel) changelaw
+    (newBlS,_) = transform scn event
+    -- the actual event, shifted
+    actualAss  = [ (shifted, P orig `elem` eventFacts) | (P orig, P shifted) <- shiftrel ]
+    postconrel = [ (n, changelawShifted ! P n) | (P n) <- changeprops ]
+    -- reversing V° to V
+    copychangeprops = [(freshp $ vocabOf scn ++ map snd shiftrel)..]
+    copyrelInverse  = zip copychangeprops changeprops
+  in
+    imp (bddOf oldBls (preOf event)) $ -- 0. check if precondition holds
+      relabelWith copyrelInverse $     -- 4. changepropscopies -> original changeprops
+        (`restrictSet` actualAss) $    -- 3. restrict to actual event x outof V+
+          bddSubstitSimul postconrel $ -- 2. replace changeprops with postconditions
+            bddOf newBlS f             -- 1. boolean equivalent wrt new structure
+
+evalViaBddReduce :: BelScene -> Event -> Form -> Bool
+evalViaBddReduce (kns,s) event f = evaluateFun (bddReduce (kns,s) event f) (\n -> P n `elem` s)
+
+-- replace variable n with a BDD psi in BDD b
+bddSubstit :: Int -> Bdd -> Bdd -> Bdd
+bddSubstit n psi b =
+  case firstVarOf b of
+    Nothing -> b
+    Just k  -> case compare n k of
+                  LT -> b
+                  EQ -> ifthenelse psi (thenOf b) (elseOf b)
+                  GT -> ifthenelse (var k) (bddSubstit n psi (thenOf b)) (bddSubstit n psi (elseOf b))
+
+-- *simultaneous* substitution of BDDs for variables
+-- (not the same as folding bddSubstit)
+bddSubstitSimul :: [(Int,Bdd)] -> Bdd -> Bdd
+bddSubstitSimul []    b = b
+bddSubstitSimul repls b =
+  case firstVarOf b of
+    Nothing -> b
+    Just k  -> case lookup k repls of
+      Nothing  -> ifthenelse (var k) (bddSubstitSimul repls $ thenOf b) (bddSubstitSimul repls $ elseOf b)
+      Just psi -> ifthenelse psi     (bddSubstitSimul repls $ thenOf b) (bddSubstitSimul repls $ elseOf b)

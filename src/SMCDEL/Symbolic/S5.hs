@@ -254,3 +254,12 @@ reduce _ PubAnnounce  {} = Nothing
 reduce _ PubAnnounceW {} = Nothing
 reduce _ Announce     {} = Nothing
 reduce _ AnnounceW    {} = Nothing
+
+bddReduce :: KnowScene -> Event -> Form -> Bdd
+bddReduce scn event f = restrictSet (bddOf newKns f) actualAss where
+  (newKns,_) = knowTransform scn event
+  (KnT eventprops _ _, actual) = event
+  actualAss = [(k, P k `elem` actual) | (P k) <- eventprops]
+
+evalViaBddReduce :: KnowScene -> Event -> Form -> Bool
+evalViaBddReduce (kns,s) event f = evaluateFun (bddReduce (kns,s) event f) (\n -> P n `elem` s)

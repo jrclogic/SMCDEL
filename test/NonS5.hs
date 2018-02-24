@@ -52,12 +52,19 @@ semanticEquivTest (SF f) =
   ]
 
 singleChangeTest :: ChangeModel -> SimplifiedForm -> [Bool]
-singleChangeTest myact (SF f) = [a,b,c,d,e] ++ h where
-  a = ExpK.eval       (productChange              myMod                                 (myact,0)  ) f
-  b = SymK.evalViaBdd (transform     (kripkeToBls myMod)                 (actionToEvent (myact,0)) ) f
-  c = ExpK.eval       (productChange              myMod  (eventToAction' (actionToEvent (myact,0)))) f
-  d = ExpK.eval       (productChange (blsToKripke myScn) (eventToAction' (actionToEvent (myact,0)))) f
-  e = SymK.evalViaBdd (transform                  myScn                  (actionToEvent (myact,0)) ) f
-  h = case SMCDEL.Symbolic.K.Change.reduce (actionToEvent (myact,0)) f of
-    Nothing -> []
-    Just g  -> pure $ SymK.evalViaBdd (kripkeToBls myMod) (simplify g)
+singleChangeTest myact (SF f) =
+  [ not (ExpK.eval                                   myMod  (preOf                                (myact,0::Action)))
+      || ExpK.eval       (productChange              myMod                                        (myact,0)  ) f
+  , not (SymK.evalViaBdd                (kripkeToBls myMod) (preOf                 (actionToEvent (myact,0))))
+      || SymK.evalViaBdd (transform     (kripkeToBls myMod)                        (actionToEvent (myact,0)))  f
+  , not (ExpK.eval                                   myMod  (preOf (eventToAction' (actionToEvent (myact,0)))))
+      || ExpK.eval       (productChange              myMod         (eventToAction' (actionToEvent (myact,0)))) f
+  , not (ExpK.eval                      (blsToKripke myScn) (preOf (eventToAction' (actionToEvent (myact,0)))))
+      || ExpK.eval       (productChange (blsToKripke myScn)        (eventToAction' (actionToEvent (myact,0)))) f
+  , not (SymK.evalViaBdd                             myScn  (preOf                 (actionToEvent (myact,0))))
+      || SymK.evalViaBdd (transform                  myScn                         (actionToEvent (myact,0)) ) f
+  ]
+  ++ case SMCDEL.Symbolic.K.Change.reduce (actionToEvent (myact,0)) f of
+      Nothing -> []
+      Just g  -> pure $ SymK.evalViaBdd (kripkeToBls myMod) (simplify g)
+  ++ [ SMCDEL.Symbolic.K.Change.evalViaBddReduce myScn (actionToEvent (myact,0)) f ]

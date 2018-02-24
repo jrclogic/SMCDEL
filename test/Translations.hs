@@ -93,10 +93,11 @@ announceTest (SF f) (Group listeners) (SF g) =
   ]
 
 singleActionTest :: ActionModel -> Form -> [Bool]
-singleActionTest myact f = [a,b,c,d] where
+singleActionTest myact f = [a,b,c,d,e] where
   a = Exp.eval (productUpdate mymodel (myact,0)) f
   b = Sym.evalViaBdd (knowTransform (kripkeToKns mymodel) (actionToEvent (myact,0))) f
   c = Exp.eval (productUpdate mymodel (eventToAction (actionToEvent (myact,0)))) f
   d = case reduce (actionToEvent (myact,0)) f of
     Nothing -> c
     Just g  -> Sym.evalViaBdd (kripkeToKns mymodel) g
+  e = Sym.evalViaBddReduce (kripkeToKns mymodel) (actionToEvent (myact,0)) f
