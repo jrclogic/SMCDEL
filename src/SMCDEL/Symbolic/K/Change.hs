@@ -30,6 +30,9 @@ instance HasAgents Transformer where
 
 type Event = (Transformer,State)
 
+instance HasPrecondition Event where
+  preOf (Trf addprops addlaw _ _ _, x) = simplify $ substitOutOf x addprops addlaw
+
 type MultiEvent = (Transformer,[State])
 
 instance TexAble Transformer where
@@ -116,9 +119,6 @@ myOtherEvent = flipOverAndShowTo ["1","2"] (P 0) "1"
 tResult2 :: BelScene
 tResult2 = SMCDEL.Symbolic.K.exampleStart `transform` myOtherEvent
 
-trfPre :: Event -> Form
-trfPre (Trf addprops addlaw _ _ _, x) = substitOutOf x addprops addlaw
-
 trfPost :: Event -> Prp -> Bdd
 trfPost (Trf addprops _ _ changelaw _, x) p
   | p `elem` M.keys changelaw = restrictLaw (changelaw ! p) (booloutof x addprops)
@@ -126,18 +126,18 @@ trfPost (Trf addprops _ _ changelaw _, x) p
 
 reduce :: Event -> Form -> Maybe Form
 reduce _ Top          = Just Top
-reduce e Bot          = Just $ Neg $ trfPre e
-reduce e (PrpF p)     = Impl (trfPre e) <$> Just (formOf $ trfPost e p)
-reduce e (Neg f)      = Impl (trfPre e) <$> (Neg <$> reduce e f)
+reduce e Bot          = Just $ Neg $ preOf e
+reduce e (PrpF p)     = Impl (preOf e) <$> Just (formOf $ trfPost e p)
+reduce e (Neg f)      = Impl (preOf e) <$> (Neg <$> reduce e f)
 reduce e (Conj fs)    = Conj <$> mapM (reduce e) fs
 reduce e (Disj fs)    = Disj <$> mapM (reduce e) fs
-reduce e (Xor fs)     = Impl (trfPre e) <$> (Xor <$> mapM (reduce e) fs)
+reduce e (Xor fs)     = Impl (preOf e) <$> (Xor <$> mapM (reduce e) fs)
 reduce e (Impl f1 f2) = Impl <$> reduce e f1 <*> reduce e f2
 reduce e (Equi f1 f2) = Equi <$> reduce e f1 <*> reduce e f2
 reduce _ (Forall _ _) = Nothing
 reduce _ (Exists _ _) = Nothing
 reduce e@(t@(Trf addprops _ _ _ eventObs), x) (K a f) =
-  Impl (trfPre e) <$> (Conj <$> sequence
+  Impl (preOf e) <$> (Conj <$> sequence
     [ K a <$> reduce (t,y) f | y <- powerset addprops -- FIXME is this a bit much?
                              , tagBddEval (mv x ++ cp y) (eventObs ! a)
     ])

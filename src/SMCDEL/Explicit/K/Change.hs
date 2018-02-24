@@ -38,6 +38,9 @@ instance HasAgents ChangeModel where
 instance HasAgents PointedChangeModel where
   agentsOf = agentsOf . fst
 
+instance HasPrecondition PointedChangeModel where
+  preOf (ChM cm, actual) = pre (cm ! actual)
+
 productChangeWithMap :: KripkeModel -> ChangeModel -> (KripkeModel, M.Map (World, Action) World)
 productChangeWithMap (KrM m) (ChM cm)
   | agentsOf (KrM m) /= agentsOf (ChM cm) = error "productChange failed: agentsOf differs!"

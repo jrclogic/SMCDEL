@@ -68,6 +68,9 @@ data Form
 class Semantics a where
   isTrue :: a -> Form -> Bool
 
+class HasPrecondition a where
+  preOf :: a -> Form
+
 showSet :: Show a => [a] -> String
 showSet xs = intercalate "," (map show xs)
 
