@@ -10,7 +10,9 @@ maintainer:           malvin@w4eg.eu
 category:             Logic
 build-type:           Simple
 cabal-version:        >=1.23
-extra-source-files:   static/index.html
+extra-source-files:   README.md
+                      stack.yaml
+                      static/index.html
                       static/viz-lite.js
                       Examples/DiningCryptographers.smcdel.txt
                       Examples/MuddyChildren.smcdel.txt
