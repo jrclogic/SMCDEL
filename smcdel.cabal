@@ -36,7 +36,6 @@ Library
                       SMCDEL.Explicit.K
                       SMCDEL.Explicit.K.Change
                       SMCDEL.Explicit.S5
-                      SMCDEL.Internal.Files
                       SMCDEL.Internal.Help
                       SMCDEL.Internal.Lex
                       SMCDEL.Internal.MyHaskCUDD
@@ -59,7 +58,6 @@ Library
                       array,
                       containers,
                       cudd == 0.1.0.0,
-                      file-embed,
                       graphviz,
                       HasCacBDD == 0.1.0.0,
                       lens,
@@ -90,10 +88,12 @@ Executable smcdel-web
   other-modules:      Paths_smcdel
   build-tools:        alex, happy
   build-depends:      base >= 4.8 && < 5,
+                      file-embed,
                       scotty,
                       HasCacBDD,
                       js-jquery >= 3,
                       smcdel,
+                      template-haskell,
                       text
 
 Test-Suite translations

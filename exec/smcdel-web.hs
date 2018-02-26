@@ -1,25 +1,27 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, TemplateHaskell #-}
 
 module Main where
 
 import Prelude
 import Control.Monad.IO.Class (liftIO)
 import Control.Arrow
+import Data.FileEmbed
 import Data.List (intercalate)
 import Data.Version (showVersion)
 import Paths_smcdel (version)
 import Web.Scotty
-import qualified Data.Text.Lazy as T
-import qualified Data.Text.Lazy.IO as TIO
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as E
+import qualified Data.Text.Lazy as TL
 import SMCDEL.Internal.Lex
 import SMCDEL.Internal.Parse
-import SMCDEL.Internal.Files
 import SMCDEL.Symbolic.S5
 import SMCDEL.Internal.TexDisplay
 import SMCDEL.Translations.S5
 import SMCDEL.Language
 import Data.HasCacBDD.Visuals (svgGraph)
 import qualified Language.Javascript.JQuery as JQuery
+import Language.Haskell.TH.Syntax
 
 main :: IO ()
 main = do
@@ -28,12 +30,12 @@ main = do
   scotty 3000 $ do
     get "" $ redirect "index.html"
     get "/" $ redirect "index.html"
-    get "/index.html" . html . T.fromStrict $ embeddedFile "index.html"
-    get "/jquery.js" $ liftIO (JQuery.file >>= TIO.readFile) >>= text
-    get "/viz-lite.js" . html . T.fromStrict $ embeddedFile "viz-lite.js"
+    get "/index.html"  . html . TL.fromStrict $ embeddedFile "index.html"
+    get "/jquery.js"   . html . TL.fromStrict $ embeddedFile "jquery.js"
+    get "/viz-lite.js" . html . TL.fromStrict $ embeddedFile "viz-lite.js"
     get "/getExample" $ do
       this <- param "filename"
-      html . T.fromStrict $ embeddedFile this
+      html . TL.fromStrict $ embeddedFile this
     post "/check" $ do
       smcinput <- param "smcinput"
       let (CheckInput vocabInts lawform obs jobs) = parse $ alexScanTokens smcinput
@@ -41,23 +43,23 @@ main = do
       knstring <- liftIO $ showStructure mykns
       let results = concatMap (\j -> "<p>" ++ doJobWeb mykns j ++ "</p>") jobs
       html $ mconcat
-        [ T.pack knstring
+        [ TL.pack knstring
         , "<hr />\n"
-        , T.pack results ]
+        , TL.pack results ]
     post "/knsToKripke" $ do
       smcinput <- param "smcinput"
       let (CheckInput vocabInts lawform obs _) = parse $ alexScanTokens smcinput
       let mykns = KnS (map P vocabInts) (boolBddOf lawform) (map (second (map P)) obs)
       _ <- liftIO $ showStructure mykns -- this moves parse errors to scotty
       if numberOfStates mykns > 32
-        then html . T.pack $ "Sorry, I will not draw " ++ show (numberOfStates mykns) ++ " states!"
+        then html . TL.pack $ "Sorry, I will not draw " ++ show (numberOfStates mykns) ++ " states!"
         else do
           let (myKripke, _) = knsToKripke (mykns, head $ statesOf mykns) -- ignore actual world
-          html $ T.concat
-            [ T.pack "<div id='here'></div>"
-            , T.pack "<script>document.getElementById('here').innerHTML += Viz('"
+          html $ TL.concat
+            [ TL.pack "<div id='here'></div>"
+            , TL.pack "<script>document.getElementById('here').innerHTML += Viz('"
             , textDot myKripke
-            , T.pack "');</script>" ]
+            , TL.pack "');</script>" ]
 
 doJobWeb :: KnowStruct -> Job -> String
 doJobWeb mykns (ValidQ f) = unlines
@@ -82,3 +84,13 @@ showStructure (KnS props lawbdd obs) = do
     ++ intercalate " \\\\\n " (map (\(i,os) -> ("O_{"++i++"}=" ++ tex os)) obs)
     ++ "\\end{array}\n"
     ++ " \\right) $$ \n <div class='lawbdd' style='display:none;'> where \\(\\theta\\) is this BDD:<br /><p align='center'>" ++ svgString ++ "</p></div>"
+
+embeddedFile :: String -> T.Text
+embeddedFile s = case s of
+  "index.html"           -> E.decodeUtf8 $(embedFile "static/index.html")
+  "viz-lite.js"          -> E.decodeUtf8 $(embedFile "static/viz-lite.js")
+  "jquery.js"            -> E.decodeUtf8 $(embedFile =<< runIO JQuery.file)
+  "MuddyChildren"        -> E.decodeUtf8 $(embedFile "Examples/MuddyChildren.smcdel.txt")
+  "DiningCryptographers" -> E.decodeUtf8 $(embedFile "Examples/DiningCryptographers.smcdel.txt")
+  "DrinkingLogicians"    -> E.decodeUtf8 $(embedFile "Examples/DrinkingLogicians.smcdel.txt")
+  _                      -> error "File not found."
