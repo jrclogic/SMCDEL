@@ -1,7 +1,9 @@
 # SMCDEL
 
 [![Release](https://img.shields.io/github/release/jrclogic/SMCDEL.svg)](https://github.com/jrclogic/SMCDEL/releases)
+[![Hackage](https://img.shields.io/hackage/v/smcdel.svg)](https://hackage.haskell.org/package/smcdel)
 [![Build Status](https://api.travis-ci.org/jrclogic/SMCDEL.svg?branch=master)](https://travis-ci.org/jrclogic/SMCDEL)
+[![DOI](https://zenodo.org/badge/36519077.svg)](https://zenodo.org/badge/latestdoi/36519077)
 
 A symbolic model checker for Dynamic Epistemic Logic.
 
@@ -24,6 +26,11 @@ Journal of Logic and Computation,
 *Towards Symbolic Factual Change in DEL.*
 ESSLLI 2017 student session,
 2017](https://w4eg.de/malvin/illc/2017-07-symbolicfactualchange.pdf).
+
+[Malvin Gattinger:
+*New Directions in Model Checking Dynamic Epistemic Logic.*
+PhD thesis, ILLC, Amsterdam,
+2018](https://malv.in/phdthesis/)
 
 ## Online
 
