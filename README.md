@@ -30,7 +30,7 @@ ESSLLI 2017 student session,
 [Malvin Gattinger:
 *New Directions in Model Checking Dynamic Epistemic Logic.*
 PhD thesis, ILLC, Amsterdam,
-2018](https://malv.in/phdthesis/)
+2018](https://malv.in/phdthesis/).
 
 ## Online
 
@@ -96,7 +96,10 @@ More example files are in the folder [Examples](https://github.com/jrclogic/SMCD
 
 To deal with more complex models and formulas, use SMCDEL as a Haskell module.
 
-Examples can be found in `Examples.hs` and the `Bench` folder.
+Examples can be found in the folders
+  [src/SMCDEL/Examples](https://github.com/jrclogic/SMCDEL/tree/master/src/SMCDEL/Examples)
+and
+  [bench](https://github.com/jrclogic/SMCDEL/tree/master/bench).
 
 
 ## Used BDD packages
@@ -106,9 +109,3 @@ run the benchmarks you will have to install all of them.
 
 - [Data.HasCacBDD](https://github.com/m4lvin/HasCacBDD) which runs CacBDD from <http://kailesu.net/CacBDD/>
 - [Cudd](https://github.com/davidcock/cudd) ([with some patches](https://github.com/m4lvin/cudd))
-
-
-## Experimental Stuff
-
-`SMCDEL.Other.NonS5` implements general knowledge structures. They are
-equivalent to Kripke models which are not based on equivalence relations.
