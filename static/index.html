@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<title>SMCDEL web</title>
+<title>SMCDEL <!-- VERSION NUMBER --></title>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
 <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0" />
 <style type="text/css">
@@ -35,6 +35,11 @@ textarea, #output {
   box-sizing:border-box;
   overflow-y:scroll;
 }
+textarea {
+  background-color: #fff;
+  color: #000;
+  font-family:monospace;
+}
 .expbut {
   padding:5px;
   margin:0px;
@@ -51,7 +56,7 @@ textarea, #output {
 </style>
 </head>
 <body>
-<h1>SMCDEL web</h1>
+<h1>SMCDEL <!-- VERSION NUMBER --></h1>
 <p>This is the web interface of <a href="https://github.com/jrclogic/SMCDEL">SMCDEL</a>, a symbolic model checker for Dynamic Epistemic Logic.
 See <a href="https://homepages.cwi.nl/~jve/papers/16/pdfs/2016-05-23-del-bdd-lori-journal.pdf">this paper</a>
 and <a href="https://github.com/jrclogic/SMCDEL/raw/master/SMCDEL.pdf">this technical report</a> for more information.</p>
@@ -66,7 +71,7 @@ and <a href="https://github.com/jrclogic/SMCDEL/raw/master/SMCDEL.pdf">this tech
   <input id="kripkebutton" type="submit" value="Show Kripke!" onclick="myRequest('knsToKripke');" />
 </div>
 <div id="left">
-  <textarea name="smcinput" id="smcinput" placeholder="Enter your code here."></textarea>
+  <textarea name="smcinput" id="smcinput" placeholder="Enter your code here." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
 </div>
 <div id="right">
   <div id="output"></div>

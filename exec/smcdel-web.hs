@@ -13,24 +13,25 @@ import Web.Scotty
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as E
 import qualified Data.Text.Lazy as TL
+import Data.HasCacBDD.Visuals (svgGraph)
+import qualified Language.Javascript.JQuery as JQuery
+import Language.Haskell.TH.Syntax
+
 import SMCDEL.Internal.Lex
 import SMCDEL.Internal.Parse
 import SMCDEL.Symbolic.S5
 import SMCDEL.Internal.TexDisplay
 import SMCDEL.Translations.S5
 import SMCDEL.Language
-import Data.HasCacBDD.Visuals (svgGraph)
-import qualified Language.Javascript.JQuery as JQuery
-import Language.Haskell.TH.Syntax
 
 main :: IO ()
 main = do
-  putStrLn $ "SMCDEL " ++ showVersion version
+  putStrLn $ "SMCDEL " ++ showVersion version ++ " -- https://github.com/jrclogic/SMCDEL"
   putStrLn "Please open this link: http://localhost:3000/index.html"
   scotty 3000 $ do
     get "" $ redirect "index.html"
     get "/" $ redirect "index.html"
-    get "/index.html"  . html . TL.fromStrict $ embeddedFile "index.html"
+    get "/index.html"  . html . TL.fromStrict $ addVersionNumber $ embeddedFile "index.html"
     get "/jquery.js"   . html . TL.fromStrict $ embeddedFile "jquery.js"
     get "/viz-lite.js" . html . TL.fromStrict $ embeddedFile "viz-lite.js"
     get "/getExample" $ do
@@ -94,3 +95,6 @@ embeddedFile s = case s of
   "DiningCryptographers" -> E.decodeUtf8 $(embedFile "Examples/DiningCryptographers.smcdel.txt")
   "DrinkingLogicians"    -> E.decodeUtf8 $(embedFile "Examples/DrinkingLogicians.smcdel.txt")
   _                      -> error "File not found."
+
+addVersionNumber :: T.Text -> T.Text
+addVersionNumber = T.replace "<!-- VERSION NUMBER -->" (T.pack $ showVersion version)
