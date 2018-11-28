@@ -44,15 +44,15 @@ eval m@(McM _ _ (curc,_)) (KnowSelf    Clean) = curc==0 || length (posFor m Clea
 eval m@(McM _ _ (_,curm)) (NotKnowSelf Muddy) = curm==0 || length (posFor m Muddy) == 2
 eval m@(McM _ _ (curc,_)) (NotKnowSelf Clean) = curc==0 || length (posFor m Clean) == 2
 
-update :: McModel -> McFormula -> McModel
-update (McM ostates fstates cur) f =
+mcUpdate :: McModel -> McFormula -> McModel
+mcUpdate (McM ostates fstates cur) f =
   McM ostates' fstates' cur where
     fstates' = filter (\s -> eval (McM ostates fstates s) f) fstates
     ostates' = filter (not . null . posFrom (McM [] fstates' cur)) ostates
 
 step :: State -> Int -> McModel
-step s 0 = update (mcModel s) (Qf some)
-step s n = update (step s (n-1)) nobodyknows
+step s 0 = mcUpdate (mcModel s) (Qf some)
+step s n = mcUpdate (step s (n-1)) nobodyknows
 
 showme :: State -> IO ()
 showme s@(_,m) = mapM_ (\n -> putStrLn $ show n ++ ": " ++ show (step s n)) [0..(m-1)]

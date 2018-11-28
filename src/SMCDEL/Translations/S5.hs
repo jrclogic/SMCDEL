@@ -1,14 +1,13 @@
 module SMCDEL.Translations.S5 where
 
 import Control.Arrow (second)
+import Data.HasCacBDD hiding (Top,Bot)
 import Data.List (groupBy,sort,(\\),elemIndex,intersect,nub)
 import Data.Maybe (listToMaybe)
 import SMCDEL.Language
 import SMCDEL.Symbolic.S5
 import SMCDEL.Explicit.S5
 import SMCDEL.Internal.Help (anydiffWith,alldiff,alleqWith,apply,powerset,(!),seteq,subseteq)
-
-import Data.HasCacBDD hiding (Top,Bot)
 
 type StateMap = World -> State
 

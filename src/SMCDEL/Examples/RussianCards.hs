@@ -3,10 +3,11 @@
 module SMCDEL.Examples.RussianCards where
 
 import Control.Monad (replicateM)
+import Data.HasCacBDD hiding (Top,Bot)
 import Data.List (delete,intersect,nub,sort)
 import Data.Map.Strict (fromList)
-import Data.HasCacBDD hiding (Top,Bot)
 
+import SMCDEL.Internal.Help (powerset)
 import SMCDEL.Language
 import SMCDEL.Other.Planning
 import SMCDEL.Symbolic.S5
@@ -30,9 +31,11 @@ rcProps   = [ P k | k <-[0..((length rcPlayers * length rcCards)-1)] ]
 hasCard :: Agent -> Int -> Form
 hasCard i n = PrpF (P (3 * n + rcNumOf i))
 
--- use this in ppFormWith
+hasHand :: Agent -> [Int] -> Form
+hasHand i ns = Conj $ map (i `hasCard`) ns
+
 rcExplain :: Prp -> String
-rcExplain (P k) = show (rcPlayers !! i) ++ " `hasCard` " ++ show n where (n,i) = divMod k 3
+rcExplain (P k) = (rcPlayers !! i) ++ " has card " ++ show n where (n,i) = divMod k 3
 
 allCardsGiven, allCardsUnique :: Form
 allCardsGiven  = Conj [ Disj [ i `hasCard` n | i <- rcPlayers ] | n <- rcCards ]
@@ -60,8 +63,8 @@ bAnnounce :: Form
 bAnnounce = K bob (carol `hasCard` 6)
 
 aKnowsBs, bKnowsAs, cIgnorant :: Form
-aKnowsBs = Conj [ alice `Kw` (bob `hasCard` k) | k<-rcCards ]
-bKnowsAs = Conj [ bob `Kw` (alice `hasCard` k) | k<-rcCards ]
+aKnowsBs = Conj [ alice `Kw` (bob   `hasCard` k) | k<-rcCards ]
+bKnowsAs = Conj [ bob   `Kw` (alice `hasCard` k) | k<-rcCards ]
 cIgnorant = Conj $ concat [ [ Neg $ K carol $ alice `hasCard` i
                             , Neg $ K carol $ bob   `hasCard` i ] | i<-rcCards ]
 
@@ -147,12 +150,8 @@ distribute (na,nb,nc) = Conj [ alice `hasAtLeast` na, bob `hasAtLeast` nb, carol
   hasAtLeast :: Agent -> Int -> Form
   hasAtLeast _ 0 = Top
   hasAtLeast i 1 = Disj [ i `hasCard` k | k <- nCards n ]
-  hasAtLeast i 2 = Disj [ Conj (map (i `hasCard`) [x, y]) | x <- nCards n, y <- nCards n, x/=y ]
-  hasAtLeast i 3 = Disj [ Conj (map (i `hasCard`) [x, y, z]) | x<-nCards n, y<-nCards n, z<-nCards n, x/=y, x/=z, y/=z ]
-  hasAtLeast i k = Disj [ Conj (map (i `hasCard`) set) | set <- sets ] where
-    sets = filter alldiff $ nub $ map sort $ replicateM k (nCards n) where
-      alldiff [] = True
-      alldiff (x:xs) = x `notElem` xs && alldiff xs
+  hasAtLeast i k = Disj [ Conj (map (i `hasCard`) (sort set))
+                        | set <- powerset (nCards n), length set == k ]
 
 nCards :: Int -> [Int]
 nCards n = [0..(n-1)]
@@ -216,7 +215,6 @@ allCasesUpTo bound = [ (na,nb,nc) | na <- [1..bound]
                                   -- for two announcement plans!
                                   , nc < (na - 1)
                                   , nc < nb ]
-
 
 dontChange :: [Form] -> K.RelBDD
 dontChange fs = conSet <$> sequence [ equ <$> K.mvBdd b <*> K.cpBdd b | b <- map boolBddOf fs ]

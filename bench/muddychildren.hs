@@ -2,7 +2,6 @@ module Main where
 import Criterion.Main
 import Data.Function
 import Data.List
-import Data.Ord (comparing)
 import SMCDEL.Language
 import SMCDEL.Examples.MuddyChildren
 import SMCDEL.Internal.Help (apply)
@@ -49,7 +48,7 @@ mudKrpInit n m = (SMCDEL.Explicit.S5.KrMS5 ws rel val, cur) where
   rel   = [ (show i, erelFor i) | i <- [1..n] ] where
     erelFor i = sort $ map sort $
       groupBy ((==) `on` setForAt i) $
-      sortBy (comparing (setForAt i)) ws
+      sortOn (setForAt i) ws
     setForAt i s = delete (P i) $ setAt s
     setAt s = map fst $ filter snd (apply val s)
   val         = zip ws table
@@ -85,12 +84,12 @@ findNumberDemoLoop n m count curMod =
 
 findNumberTriangle :: Int -> Int -> Int
 findNumberTriangle n m = findNumberTriangleLoop 0 start where
-  start = SMCDEL.Other.MCTRIANGLE.update (SMCDEL.Other.MCTRIANGLE.mcModel (n-m,m)) (SMCDEL.Other.MCTRIANGLE.Qf SMCDEL.Other.MCTRIANGLE.some)
+  start = SMCDEL.Other.MCTRIANGLE.mcUpdate (SMCDEL.Other.MCTRIANGLE.mcModel (n-m,m)) (SMCDEL.Other.MCTRIANGLE.Qf SMCDEL.Other.MCTRIANGLE.some)
 
 findNumberTriangleLoop :: Int -> SMCDEL.Other.MCTRIANGLE.McModel -> Int
 findNumberTriangleLoop count curMod =
   if SMCDEL.Other.MCTRIANGLE.eval curMod SMCDEL.Other.MCTRIANGLE.nobodyknows
-    then findNumberTriangleLoop (count+1) (SMCDEL.Other.MCTRIANGLE.update curMod SMCDEL.Other.MCTRIANGLE.nobodyknows)
+    then findNumberTriangleLoop (count+1) (SMCDEL.Other.MCTRIANGLE.mcUpdate curMod SMCDEL.Other.MCTRIANGLE.nobodyknows)
     else count
 
 main :: IO ()
