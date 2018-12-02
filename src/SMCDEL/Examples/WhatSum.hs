@@ -34,15 +34,8 @@ wsKnowSelfA = Disj [ K alice $ aIs x | x <- [1..wsBound] ]
 wsKnowSelfB = Disj [ K bob   $ bIs x | x <- [1..wsBound] ]
 wsKnowSelfC = Disj [ K carol $ cIs x | x <- [1..wsBound] ]
 
-pubAnnounceSeq :: [Form] -> KnowStruct -> KnowStruct
-pubAnnounceSeq [] = id
-pubAnnounceSeq (f:fs) = \kns -> pubAnnounceSeq fs (pubAnnounce kns f)
-
 wsResult :: KnowStruct
-wsResult =
-  pubAnnounceSeq
-    [ Neg wsKnowSelfA, Neg wsKnowSelfB, Neg wsKnowSelfC ]
-    wsKnStruct
+wsResult = foldl update wsKnStruct [ Neg wsKnowSelfA, Neg wsKnowSelfB, Neg wsKnowSelfC ]
 
 wsSolutions :: [State]
 wsSolutions = statesOf wsResult

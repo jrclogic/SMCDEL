@@ -1,9 +1,13 @@
 {-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, FlexibleContexts #-}
 
 module SMCDEL.Explicit.S5 where
+
 import Control.Arrow (second,(&&&))
+import Control.Monad (replicateM)
 import Data.GraphViz
 import Data.List
+import Data.Maybe (fromMaybe)
+
 import SMCDEL.Language
 import SMCDEL.Internal.TexDisplay
 import SMCDEL.Internal.Help (alleqWith,fusion,apply,(!),lfp)
@@ -14,29 +18,27 @@ type World = Int
 class HasWorlds a where
   worldsOf :: a -> [World]
 
+instance (HasWorlds a, Pointed a b) => HasWorlds (a,b) where worldsOf = worldsOf . fst
+
 type Partition = [[World]]
 type Assignment = [(Prp,Bool)]
 
 data KripkeModelS5 = KrMS5 [World] [(Agent,Partition)] [(World,Assignment)] deriving (Eq,Ord,Show)
+
+instance Pointed KripkeModelS5 World
 type PointedModelS5 = (KripkeModelS5,World)
+
+instance Pointed KripkeModelS5 [World]
+type MultipointedModelS5 = (KripkeModelS5,[World])
 
 instance HasAgents KripkeModelS5 where
   agentsOf (KrMS5 _ rel _) = map fst rel
 
-instance HasAgents PointedModelS5 where
-  agentsOf = agentsOf . fst
-
 instance HasVocab KripkeModelS5 where
   vocabOf (KrMS5 _ _ val) = map fst $ snd (head val)
 
-instance HasVocab PointedModelS5 where
-  vocabOf = vocabOf . fst
-
 instance HasWorlds KripkeModelS5 where
   worldsOf (KrMS5 ws _ _) = ws
-
-instance HasWorlds PointedModelS5 where
-  worldsOf = worldsOf . fst
 
 newtype PropList = PropList [Prp]
 
@@ -106,11 +108,11 @@ eval (m@(KrMS5 _ rel _),w) (Ckw ags form) = alleqWith (\w' -> eval (m,w') form) 
   vs    = concat $ filter (elem w) ckrel
   ckrel = fusion $ concat [ apply rel i | i <- ags ]
 eval pm (PubAnnounce form1 form2) =
-  not (eval pm form1) || eval (pubAnnounce pm form1) form2
+  not (eval pm form1) || eval (update pm form1) form2
 eval pm (PubAnnounceW form1 form2) =
   if eval pm form1
-    then eval (pubAnnounce pm form1) form2
-    else eval (pubAnnounce pm (Neg form1)) form2
+    then eval (update pm form1) form2
+    else eval (update pm (Neg form1)) form2
 eval pm (Announce ags form1 form2) =
   not (eval pm form1) || eval (announce pm ags form1) form2
 eval pm (AnnounceW ags form1 form2) =
@@ -121,15 +123,28 @@ eval pm (AnnounceW ags form1 form2) =
 valid :: KripkeModelS5 -> Form -> Bool
 valid m@(KrMS5 worlds _ _) f = all (\w -> eval (m,w) f) worlds
 
-pubAnnounce :: PointedModelS5 -> Form -> PointedModelS5
-pubAnnounce pm@(m@(KrMS5 sts rel val), cur) form =
-  if eval pm form then (KrMS5 newsts newrel newval, cur)
-                  else error "pubAnnounce failed: Liar!"
-  where
+instance Semantics KripkeModelS5 where
+  isTrue m f = all (\w -> isTrue (m,w) f) (worldsOf m)
+
+instance Semantics PointedModelS5 where
+  isTrue = eval
+
+instance Semantics MultipointedModelS5 where
+  isTrue (m,ws) f = all (\w -> isTrue (m,w) f) ws
+
+instance Update KripkeModelS5 Form where
+  unsafeUpdate m@(KrMS5 sts rel val) form = KrMS5 newsts newrel newval where
     newsts = filter (\s -> eval (m,s) form) sts
     newrel = map (second relfil) rel
     relfil = filter ([]/=) . map (filter (`elem` newsts))
     newval = filter (\p -> fst p `elem` newsts) val
+
+instance Update PointedModelS5 Form where
+  unsafeUpdate (m,w) f = (unsafeUpdate m f, w)
+
+instance Update MultipointedModelS5 Form where
+  unsafeUpdate (m,ws) f =
+    let newm = unsafeUpdate m f in (newm, ws `intersect` worldsOf newm)
 
 announce :: PointedModelS5 -> [Agent] -> Form -> PointedModelS5
 announce pm@(m@(KrMS5 sts rel val), cur) ags form =
@@ -148,6 +163,11 @@ instance KripkeLike KripkeModelS5 where
   getEdges (KrMS5 _ rel _) =
     nub [ (a,show x,show y) | a <- map fst rel, part <- apply rel a, x <- part, y <- part, x < y ]
 
+instance TexAble KripkeModelS5 where
+  tex           = tex.ViaDot
+  texTo         = texTo.ViaDot
+  texDocumentTo = texDocumentTo.ViaDot
+
 instance KripkeLike PointedModelS5 where
   directed = directed . fst
   getNodes = getNodes . fst
@@ -155,8 +175,19 @@ instance KripkeLike PointedModelS5 where
   getActuals (_, cur) = [show cur]
 
 instance TexAble PointedModelS5 where
-  tex = tex.ViaDot
-  texTo = texTo.ViaDot
+  tex           = tex.ViaDot
+  texTo         = texTo.ViaDot
+  texDocumentTo = texDocumentTo.ViaDot
+
+instance KripkeLike MultipointedModelS5 where
+  directed = directed . fst
+  getNodes = getNodes . fst
+  getEdges = getEdges . fst
+  getActuals (_, curs) = map show curs
+
+instance TexAble MultipointedModelS5 where
+  tex           = tex.ViaDot
+  texTo         = texTo.ViaDot
   texDocumentTo = texDocumentTo.ViaDot
 
 type Bisimulation = [(World,World)]
@@ -164,11 +195,16 @@ type Bisimulation = [(World,World)]
 checkBisim :: Bisimulation -> KripkeModelS5 -> KripkeModelS5 -> Bool
 checkBisim [] _                   _                     = False
 checkBisim z  m1@(KrMS5 _ rel1 val1) m2@(KrMS5 _ rel2 val2) =
-     all (\(w1,w2) -> val1 ! w1 == val2 ! w2) z -- same props
-  && and [ any (\v2 -> (v1,v2) `elem` z) (concat $ filter (elem w2) (rel2 ! ag)) -- forth
-         | (w1,w2) <- z, ag <- agentsOf m1, v1 <- concat $ filter (elem w1) (rel1 ! ag) ]
-  && and [ any (\v1 -> (v1,v2) `elem` z) (concat $ filter (elem w1) (rel1 ! ag)) -- back
-         | (w1,w2) <- z, ag <- agentsOf m2, v2 <- concat $ filter (elem w2) (rel2 ! ag) ]
+  all (\(w1,w2) ->
+        (val1 ! w1 == val2 ! w2)  -- same props
+    && and [ any (\v2 -> (v1,v2) `elem` z) (concat $ filter (elem w2) (rel2 ! ag)) -- forth
+           | ag <- agentsOf m1, v1 <- concat $ filter (elem w1) (rel1 ! ag) ]
+    && and [ any (\v1 -> (v1,v2) `elem` z) (concat $ filter (elem w1) (rel1 ! ag)) -- back
+           | ag <- agentsOf m2, v2 <- concat $ filter (elem w2) (rel2 ! ag) ]
+      ) z
+
+checkBisimPointed :: Bisimulation -> PointedModelS5 -> PointedModelS5 -> Bool
+checkBisimPointed z (m1,w1) (m2,w2) = (w1,w2) `elem` z && checkBisim z m1 m2
 
 generatedSubmodel :: PointedModelS5 -> PointedModelS5
 generatedSubmodel (KrMS5 _ rel val, cur) = (KrMS5 newWorlds newrel newval, cur) where
@@ -179,48 +215,127 @@ generatedSubmodel (KrMS5 _ rel val, cur) = (KrMS5 newWorlds newrel newval, cur) 
   newval = filter (\p -> fst p `elem` newWorlds) val
 
 type Action = Int
-data ActionModel = ActM [Action] [(Action,Form)] [(Agent,Partition)]
-  deriving (Eq,Ord,Show)
-type PointedActionModel = (ActionModel,Action)
+type PostCondition = [(Prp,Form)]
 
-instance KripkeLike PointedActionModel where
+data ActionModel = ActMS5 [(Action,(Form,PostCondition))] [(Agent,Partition)]
+  deriving (Eq,Ord,Show)
+
+instance HasAgents ActionModel where
+  agentsOf (ActMS5 _ rel) = map fst rel
+
+-- | A safe way to `lookup` all postconditions
+safepost :: PostCondition -> Prp -> Form
+safepost posts p = fromMaybe (PrpF p) (lookup p posts)
+
+instance Pointed ActionModel Action
+type PointedActionModel = (ActionModel, Action)
+
+instance HasPrecondition ActionModel where
+  preOf _ = Top
+
+instance HasPrecondition PointedActionModel where
+  preOf (ActMS5 acts _, actual) = fst (acts ! actual)
+
+instance Pointed ActionModel [World]
+type MultipointedActionModel = (ActionModel,[Action])
+
+instance HasPrecondition MultipointedActionModel where
+  preOf (am, actuals) = Disj [ preOf (am, a) | a <- actuals ]
+
+instance KripkeLike ActionModel where
   directed = const False
-  getNodes (ActM as actval _, _) = map (show &&& labelOf) as where
-    labelOf w = " $ ? " ++ tex (apply actval w) ++ " $ "
-  getEdges (ActM _ _ rel, _) =
-    nub [ (a, show x, show y) | a <- map fst rel, part <- apply rel a, x <- part, y <- part, x < y ]
-  getActuals (ActM {}, cur) = [show cur]
+  getNodes (ActMS5 acts _) = map labelOf acts where
+    labelOf (a,(pre,posts)) = (show a, concat
+      [ "$\\begin{array}{c} ? " , tex pre, "\\\\"
+      , intercalate "\\\\" (map showPost posts)
+      , "\\end{array}$" ])
+    showPost (p,f) = tex p ++ " := " ++ tex f
+  getEdges am@(ActMS5 _ rel) =
+    nub [ (a, show x, show y) | a <- agentsOf am, part <- rel ! a, x <- part, y <- part, x < y ]
+  getActuals _ = [ ]
   nodeAts _ True  = [shape BoxShape, style solid]
   nodeAts _ False = [shape BoxShape, style dashed]
 
-instance TexAble PointedActionModel where tex = tex.ViaDot
+instance TexAble ActionModel where
+  tex           = tex.ViaDot
+  texTo         = texTo.ViaDot
+  texDocumentTo = texDocumentTo.ViaDot
+
+instance KripkeLike PointedActionModel where
+  directed = directed . fst
+  getNodes = getNodes . fst
+  getEdges = getEdges . fst
+  getActuals (_, cur) = [show cur]
+
+instance TexAble PointedActionModel where
+  tex           = tex.ViaDot
+  texTo         = texTo.ViaDot
+  texDocumentTo = texDocumentTo.ViaDot
+
+instance KripkeLike MultipointedActionModel where
+  directed = directed . fst
+  getNodes = getNodes . fst
+  getEdges = getEdges . fst
+  getActuals (_, curs) = map show curs
+
+instance TexAble MultipointedActionModel where
+  tex           = tex.ViaDot
+  texTo         = texTo.ViaDot
+  texDocumentTo = texDocumentTo.ViaDot
 
 instance Arbitrary ActionModel where
   arbitrary = do
-    f <- arbitrary
-    g <- arbitrary
-    h <- arbitrary
+    [BF f, BF g, BF h] <- replicateM 3 (sized $ randomboolformWith [P 0 .. P 4])
+    myPost <- (\_ -> do
+      proptochange <- elements [P 0 .. P 4]
+      postconcon <- elements $ [Top,Bot] ++ map PrpF [P 0 .. P 4]
+      return [ (proptochange, postconcon) ]
+      ) (0::Action)
     return $
-      ActM [0..3] [(0,Top),(1,f),(2,g),(3,h)] ( ("0",[[0],[1],[2],[3]]):[(show k,[[0..3::Int]]) | k<-[1..5::Int] ])
+      ActMS5
+        [ (0,(Top,[]))
+        , (1,(f  ,[]))
+        , (2,(g  ,myPost))
+        , (3,(h  ,[]))     ]
+        ( ("0",[[0],[1],[2],[3]]):[(show k,[[0..3::Int]]) | k<-[1..5::Int] ])
 
-productUpdate :: PointedModelS5 -> PointedActionModel -> PointedModelS5
-productUpdate pm@(m@(KrMS5 oldWorlds oldrel oldval), oldcur) (ActM actions precon actrel, faction) =
-  let
-    startcount        = maximum oldWorlds + 1
-    copiesOf (s,a)    = [ (s, a, a * startcount + s) | eval (m, s) (apply precon a) ]
-    newWorldsTriples  = concat [ copiesOf (s,a) | s <- oldWorlds, a <- actions ]
-    newWorlds         = map (\(_,_,x) -> x) newWorldsTriples
-    newval            = map (\(s,_,t) -> (t, apply oldval s)) newWorldsTriples
-    listFor ag        = cartProd (apply oldrel ag) (apply actrel ag)
-    newPartsFor ag    = [ cartProd as bs | (as,bs) <- listFor ag ]
-    translSingle pair = filter (`elem` newWorlds) $ map (\(_,_,x) -> x) $ copiesOf pair
-    transEqClass      = concatMap translSingle
-    nTransPartsFor ag = filter (\x-> x/=[]) $ map transEqClass (newPartsFor ag)
-    newrel            = [ (a, nTransPartsFor a)  | a <- map fst oldrel ]
-    ((_,_,newcur):_)  = copiesOf (oldcur,faction)
-    factTest          = apply precon faction
-    cartProd xs ys    = [ (x,y) | x <- xs, y <- ys ]
-  in case ( map fst oldrel == map fst actrel, eval pm factTest ) of
-    (False, _) -> error "productUpdate failed: Agents of KrMS5 and ActM are not the same!"
-    (_, False) -> error "productUpdate failed: Actual precondition is false!"
-    _          -> (KrMS5 newWorlds newrel newval, newcur)
+instance Update KripkeModelS5 ActionModel where
+  checks = [haveSameAgents]
+  unsafeUpdate m am@(ActMS5 acts _) =
+    let (newModel,_) = unsafeUpdate (m, worldsOf m) (am, map fst acts) in newModel
+
+instance Update PointedModelS5 PointedActionModel where
+  checks = [haveSameAgents,preCheck]
+  unsafeUpdate (m, w) (actm, a) =
+    let (newModel,[newWorld]) = unsafeUpdate (m, [w]) (actm, [a]) in (newModel,newWorld)
+
+instance Update PointedModelS5 MultipointedActionModel where
+  checks = [haveSameAgents,preCheck]
+  unsafeUpdate (m, w) mpactm =
+    let (newModel,[newWorld]) = unsafeUpdate (m, [w]) mpactm in (newModel,newWorld)
+
+instance Update MultipointedModelS5 PointedActionModel where
+  checks = [haveSameAgents] -- do not check precondition!
+  unsafeUpdate mpm (actm, a) = unsafeUpdate mpm (actm, [a])
+
+instance Update MultipointedModelS5 MultipointedActionModel where
+  checks = [haveSameAgents] -- do not check precondition!
+  unsafeUpdate (m@(KrMS5 oldWorlds oldrel oldval), oldcurs) (ActMS5 acts actrel, factions) =
+    (KrMS5 newWorlds newrel newval, newcurs) where
+      startcount        = maximum oldWorlds + 1
+      copiesOf (s,a)    = [ (s, a, a * startcount + s) | eval (m, s) (fst $ acts ! a) ]
+      newWorldsTriples  = concat [ copiesOf (s,a) | s <- oldWorlds, (a,_) <- acts ]
+      newWorlds         = map (\(_,_,x) -> x) newWorldsTriples
+      newval            = map (\(s,a,t) -> (t, newValAt (s,a))) newWorldsTriples where
+        newValAt sa = [ (p, newValAtFor sa p) | p <- vocabOf m ]
+        newValAtFor (s,a) p = case lookup p (snd (acts ! a)) of
+          Just postOfP -> eval (m, s) postOfP
+          Nothing      -> (oldval ! s) ! p
+      listFor ag        = cartProd (apply oldrel ag) (apply actrel ag)
+      newPartsFor ag    = [ cartProd as bs | (as,bs) <- listFor ag ]
+      translSingle pair = filter (`elem` newWorlds) $ map (\(_,_,x) -> x) $ copiesOf pair
+      transEqClass      = concatMap translSingle
+      nTransPartsFor ag = filter (\x-> x/=[]) $ map transEqClass (newPartsFor ag)
+      newrel            = [ (a, nTransPartsFor a)  | a <- map fst oldrel ]
+      newcurs           = concat [ map (\(_,_,x) -> x) $ copiesOf (s,a) | s <- oldcurs, a <- factions ]
+      cartProd xs ys    = [ (x,y) | x <- xs, y <- ys ]

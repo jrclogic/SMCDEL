@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, MultiParamTypeClasses  #-}
 
 module SMCDEL.Language where
 import Data.List (nub,intercalate,(\\))
@@ -37,6 +37,12 @@ instance Arbitrary AgAgent where
 class HasAgents a where
   agentsOf :: a -> [Agent]
 
+class Pointed a b
+
+instance (HasVocab a, Pointed a b) => HasVocab (a,b) where vocabOf = vocabOf . fst
+
+instance (HasAgents a, Pointed a b) => HasAgents (a,b) where agentsOf = agentsOf . fst
+
 newtype Group = Group [Agent] deriving (Eq,Ord,Show)
 
 -- generate a non-empty group of up to 5 agents
@@ -70,6 +76,26 @@ class Semantics a where
 
 class HasPrecondition a where
   preOf :: a -> Form
+
+-- | Formulas used as public announcements are their own precondition.
+instance HasPrecondition Form where
+  preOf = id
+
+class (HasAgents a, Semantics a, HasPrecondition b) => Update a b where
+  {-# MINIMAL unsafeUpdate #-}
+  unsafeUpdate :: a -> b -> a
+  checks :: [a -> b -> Bool]
+  checks = [preCheck]
+  preCheck :: a -> b -> Bool
+  preCheck x y = isTrue x (preOf y)
+  update :: a -> b -> a
+  update x y = if and checkResults
+                 then unsafeUpdate x y
+                 else error $ "Update failed. Checks: " ++ show checkResults
+               where checkResults = [ c x y | c <- checks ]
+
+haveSameAgents :: (HasAgents a, HasAgents b) => a -> b -> Bool
+haveSameAgents x y = agentsOf x == agentsOf y
 
 showSet :: Show a => [a] -> String
 showSet xs = intercalate "," (map show xs)

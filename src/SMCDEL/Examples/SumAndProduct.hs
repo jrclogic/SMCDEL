@@ -50,7 +50,7 @@ sapProtocol = Conj [ sapForm1
                    , PubAnnounce sapForm1 (PubAnnounce sapForm2 sapForm3) ]
 
 sapSolutions :: [[Prp]]
-sapSolutions = SMCDEL.Symbolic.S5.whereViaBdd sapKnStruct sapProtocol
+sapSolutions = whereViaBdd sapKnStruct sapProtocol
 
 sapExplainState :: [Prp] -> String
 sapExplainState truths = concat

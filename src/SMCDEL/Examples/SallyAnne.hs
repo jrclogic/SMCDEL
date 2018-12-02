@@ -4,7 +4,6 @@ import Data.Map.Strict (fromList)
 
 import SMCDEL.Language
 import SMCDEL.Symbolic.K
-import SMCDEL.Symbolic.K.Change
 import SMCDEL.Symbolic.S5 (boolBddOf)
 
 pp, qq, tt :: Prp
@@ -24,7 +23,7 @@ sallyPutsMarbleInBasket = (Trf [] Top [tt]
   (fromList [ (i,totalRelBdd) | i <- ["Anne","Sally"] ]), [])
 
 sallyIntermediate1 :: BelScene
-sallyIntermediate1 = sallyInit `transform` sallyPutsMarbleInBasket
+sallyIntermediate1 = sallyInit `update` sallyPutsMarbleInBasket
 
 sallyLeaves :: Event
 sallyLeaves = (Trf [] Top [pp]
@@ -32,7 +31,7 @@ sallyLeaves = (Trf [] Top [pp]
   (fromList [ (i,totalRelBdd) | i <- ["Anne","Sally"] ]), [])
 
 sallyIntermediate2 :: BelScene
-sallyIntermediate2 = sallyIntermediate1 `transform` sallyLeaves
+sallyIntermediate2 = sallyIntermediate1 `update` sallyLeaves
 
 annePutsMarbleInBox :: Event
 annePutsMarbleInBox = (Trf [qq] Top [tt]
@@ -40,7 +39,7 @@ annePutsMarbleInBox = (Trf [qq] Top [tt]
   (fromList [ ("Anne", allsamebdd [qq]), ("Sally", cpBdd $ boolBddOf $ Neg (PrpF qq))  ]), [qq])
 
 sallyIntermediate3 :: BelScene
-sallyIntermediate3 = sallyIntermediate2 `transform` annePutsMarbleInBox
+sallyIntermediate3 = sallyIntermediate2 `update` annePutsMarbleInBox
 
 sallyComesBack :: Event
 sallyComesBack = (Trf [] Top [pp]
@@ -48,14 +47,14 @@ sallyComesBack = (Trf [] Top [pp]
   (fromList [ (i,totalRelBdd) | i <- ["Anne","Sally"] ]), [])
 
 sallyIntermediate4 :: BelScene
-sallyIntermediate4 = sallyIntermediate3 `transform` sallyComesBack
+sallyIntermediate4 = sallyIntermediate3 `update` sallyComesBack
 
 sallyFinal :: BelScene
 sallyFinal = sallyInit
-              `transform` sallyPutsMarbleInBasket
-              `transform` sallyLeaves
-              `transform` annePutsMarbleInBox
-              `transform` sallyComesBack
+              `update` sallyPutsMarbleInBasket
+              `update` sallyLeaves
+              `update` annePutsMarbleInBox
+              `update` sallyComesBack
 
 sallyFinalCheck :: (Bool,Bool)
 sallyFinalCheck =

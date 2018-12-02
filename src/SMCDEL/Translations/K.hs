@@ -3,23 +3,25 @@
 module SMCDEL.Translations.K where
 
 import Data.HasCacBDD hiding (Top,Bot)
-import Data.Map.Strict (Map,fromList,(!))
+import Data.List ((\\),nub,sort)
+import Data.Map.Strict ((!))
+import qualified Data.Map.Strict as M
 
 import SMCDEL.Language
-import SMCDEL.Symbolic.S5 (State)
 import SMCDEL.Explicit.S5 (worldsOf)
-
-import SMCDEL.Symbolic.K
 import SMCDEL.Explicit.K
+import SMCDEL.Internal.Help (apply,powerset)
+import SMCDEL.Symbolic.K
+import SMCDEL.Symbolic.S5 (boolBddOf)
 import SMCDEL.Translations.S5 (booloutof)
-import SMCDEL.Internal.Help (apply)
+import SMCDEL.Other.BDD2Form
 
 blsToKripke :: BelScene -> PointedModel
 blsToKripke (f@(BlS _ _ obdds), curs) = (m, cur) where
   links = zip (statesOf f) [0..]
-  m = KrM $ fromList
-    [ (w, ( fromList [(p, p `elem` s) | p <- vocabOf f]
-          , fromList [(a, map (apply links) $ reachFromFor s a) | a <- agentsOf f] ) )
+  m = KrM $ M.fromList
+    [ (w, ( M.fromList [(p, p `elem` s) | p <- vocabOf f]
+          , M.fromList [(a, map (apply links) $ reachFromFor s a) | a <- agentsOf f] ) )
     | (s,w) <- links ]
   reachFromFor s a = filter (\t -> tagBddEval (mv s ++ cp t) (obdds ! a)) (statesOf f)
   (Just cur) = lookup curs links
@@ -28,13 +30,34 @@ kripkeToBls :: PointedModel -> BelScene
 kripkeToBls (m, cur) = (BlS vocab lawbdd obdds, truthsInAt m cur) where
   vocab  = vocabOf m
   lawbdd = disSet [ booloutof (truthsInAt m w) vocab | w <- worldsOf m ]
-  obdds  :: Map Agent RelBDD
-  obdds  = fromList [ (i, restrictLaw <$> relBddOfIn i m <*> (con <$> mvBdd lawbdd <*> cpBdd lawbdd)) | i <- agents ]
+  obdds  :: M.Map Agent RelBDD
+  obdds  = M.fromList [ (i, restrictLaw <$> relBddOfIn i m <*> (con <$> mvBdd lawbdd <*> cpBdd lawbdd)) | i <- agents ]
   agents = agentsOf m
 
-exampleBelScn :: BelScene
-exampleBelScn = kripkeToBls examplePointedModel
+actionToEvent :: PointedActionModel -> Event
+actionToEvent (ActM am, faction) = (Trf addprops addlaw changeprops changelaw eventObs, efacts) where
+  actions      = M.keys am
+  (P fstnewp)  = freshp $ concatMap -- avoid props in pre and postconditions
+                 (\c -> propsInForms (pre c : M.elems (post c)) ++ M.keys (post c)) (M.elems am)
+  addprops     = [P fstnewp..P maxactprop] -- new props to distinguish all actions
+  maxactprop   = fstnewp + ceiling (logBase 2 (fromIntegral $ length actions) :: Float) - 1
+  ell          = apply $ zip actions (powerset addprops) -- injectively label actions with sets of propositions
+  addlaw       = simplify $ Disj [ Conj [ booloutofForm (ell a) addprops, pre $ am ! a ] | a <- actions ]
+  changeprops  = sort $ nub $ concatMap M.keys . M.elems $ M.map post am -- propositions to be changed
+  changelaw    = M.fromList [ (p, changeFor p) | p <- changeprops ] -- encode postconditions
+  changeFor p  = disSet [ booloutof (ell k) addprops `con` boolBddOf (safepost (am ! k) p) | k <- actions ]
+  eventObs     = M.fromList [ (i, obsLawFor i) | i <- agentsOf (ActM am) ]
+  obsLawFor i  = pure $ disSet (M.elems $ M.mapWithKey (link i) am)
+  link i k ch  = booloutof (mv $ ell k) (mv addprops) `con` -- encode relations
+                 disSet [ booloutof (cp $ ell there) (cp addprops) | there <- rel ch ! i ]
+  efacts       = ell faction
 
-exampleBelStruct :: BelStruct
-exampleBelState :: State
-(exampleBelStruct,exampleBelState) = exampleBelScn
+eventToAction :: Event -> PointedActionModel
+eventToAction (t@(Trf addprops addlaw changeprops changelaw eventObs), efacts) = (ActM am, faction) where
+  actlist    = zip (powerset addprops) [0..]
+  am         = M.fromList [ (a, Act (preFor ps) (postFor ps) (relFor ps)) | (ps,a) <- actlist, preFor ps /= Bot ]
+  preFor ps  = simplify $ substitSet (zip ps (repeat Top) ++ zip (addprops \\ ps) (repeat Bot)) addlaw
+  postFor ps = M.fromList [ (q, formOf $ (changelaw ! q) `restrictSet` [(p, P p `elem` ps) | (P p) <- addprops]) | q <- changeprops ]
+  relFor ps  = M.fromList [(i,rFor i) | i <- agentsOf t] where
+    rFor i   = concatMap (\(qs,b) -> [ b | tagBddEval (mv ps ++ cp qs) (eventObs ! i), preFor qs /= Bot ]) actlist
+  faction    = apply actlist efacts

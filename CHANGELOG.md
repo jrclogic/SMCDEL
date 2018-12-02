@@ -2,7 +2,12 @@
 
 ## upcoming
 
+- multipointed models, action models, structures and events
+- polymorphic `update` replaces `productUpdate`, `transform`, `pubAnnounce` etc.
+- factual change per default: merge `Symbolic.S5.Change` into `Symbolic.S5` etc.
+- avoid `Data.Map` in S5 modules, no longer depend on `lens`
 - replace `.cabal` file with a `package.yml` for `hpack`
+- new module `Internal.TaggedBDD`
 
 
 ## v1.0.0  (2018-02-26)

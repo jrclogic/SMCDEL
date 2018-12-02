@@ -4,11 +4,9 @@ import Data.HasCacBDD hiding (Top,Bot)
 import Data.Map.Strict (fromList)
 
 import SMCDEL.Explicit.K
-import SMCDEL.Explicit.K.Change
 import SMCDEL.Internal.TexDisplay
 import SMCDEL.Language
 import SMCDEL.Symbolic.K
-import SMCDEL.Symbolic.K.Change
 import SMCDEL.Symbolic.S5 (boolBddOf)
 
 -- P 0 -- light is on
@@ -23,36 +21,37 @@ prisonGoal :: Form
 prisonGoal = Disj [ K i everyoneWasInTheRoom | i <- ["1"] ] where
   everyoneWasInTheRoom = Conj [ PrpF $ P k | k <- [1,2,3] ]
 
-prisonAction :: ChangeModel
-prisonAction = ChM $ fromList actions where
+prisonAction :: ActionModel
+prisonAction = ActM $ fromList actions where
   p = PrpF (P 0)
   [p2,p3] = map (PrpF . P) [2,3]
   actions =
-    [ (1, Ch p       (fromList [(P 0, Bot), (P 1, Top)                ]) (fromList [("1",[1    ])]))
-    , (2, Ch (Neg p) (fromList [            (P 1, Top)                ]) (fromList [("1",[2    ])]))
-    , (3, Ch Top     (fromList [(P 0, p2 `Impl` p), (P 2, p `Impl` p2)]) (fromList [("1",[3,4,5])])) -- interview 2
-    , (4, Ch Top     (fromList [(P 0, p3 `Impl` p), (P 3, p `Impl` p3)]) (fromList [("1",[3,4,5])])) -- interview 3
+    [ (1, Act p       (fromList [(P 0, Bot), (P 1, Top)                ]) (fromList [("1",[1  ])]))
+    , (2, Act (Neg p) (fromList [            (P 1, Top)                ]) (fromList [("1",[2  ])]))
+    , (3, Act Top     (fromList [(P 0, p2 `Impl` p), (P 2, p `Impl` p2)]) (fromList [("1",[3,4])])) -- interview 2
+    , (4, Act Top     (fromList [(P 0, p3 `Impl` p), (P 3, p `Impl` p3)]) (fromList [("1",[3,4])])) -- interview 3
     -- , (5, Ch Top  (fromList [ ]) (fromList [("1",[3,4,5])])) -- nothing happens, ignored for now
     ]
 
-prisonInterview :: Integer -> MultipointedChangeModel
+prisonInterview :: Integer -> MultipointedActionModel
 prisonInterview 1 = (prisonAction, [1,2])
 prisonInterview 2 = (prisonAction, [3])
 prisonInterview 3 = (prisonAction, [4])
 prisonInterview _ = undefined
 
-newtype KripkeStory = KrpStory (PointedModel,[MultipointedChangeModel])
+newtype KripkeStory = KrpStory (PointedModel,[MultipointedActionModel])
 
-endOfStory :: KripkeStory -> PointedModel
-endOfStory (KrpStory (start,actions)) = foldl productChangeMulti start actions
+endOfKripkeStory :: KripkeStory -> PointedModel
+endOfKripkeStory (KrpStory (start,actions)) = foldl update start actions
 
 instance TexAble KripkeStory where
   tex (KrpStory (start,actions)) = adjust (tex start) ++ loop start actions where
     adjust thing = "\\raisebox{-.5\\height}{\\begin{adjustbox}{max height=4cm, max width=7cm}" ++ thing ++ "\\end{adjustbox}}"
-    loop _       [] = ""
+    loop :: PointedModel -> [MultipointedActionModel] -> String
+    loop _       []     = ""
     loop current (a:as) =
       let
-        new = generatedSubmodel $ current `productChangeMulti` a
+        new = generatedSubmodel $ current `update` a
       in
         " \\times " ++ adjust (tex a) ++ " = " ++ adjust (tex new) ++ "\\] \\[ " ++ loop new as
 
@@ -60,7 +59,7 @@ prisonExp :: KripkeStory
 prisonExp = KrpStory ((prisonExpStart,1), map prisonInterview [2,1,3,1])
 
 prisonExpResult :: PointedModel
-prisonExpResult = endOfStory prisonExp
+prisonExpResult = endOfKripkeStory prisonExp
 
 prisonSymStart :: BelScene
 prisonSymStart = (BlS (map P [0..3]) law obs, actual) where
@@ -69,7 +68,7 @@ prisonSymStart = (BlS (map P [0..3]) law obs, actual) where
   obs    = fromList [ ("1", pure top), ("2", pure top), ("3", pure top) ]
   actual = []
 
-prisonSymInterview :: Int -> MultiEvent
+prisonSymInterview :: Int -> MultipointedEvent
 prisonSymInterview 1 = (prisonSymEvent, [undefined])
 prisonSymInterview 2 = (prisonSymEvent, [undefined])
 prisonSymInterview 3 = (prisonSymEvent, [undefined])
@@ -109,7 +108,7 @@ prisonSymEvent' = Trf -- agent 2 or 3 is interviewd
             ]) -- changelaw
   (fromList [("1", pure top), ("2", allsamebdd [P 7]), ("3", allsamebdd [P 7])]) -- agent 2 and 3 observe
 
-type Story = (BelScene,[MultiEvent])
+type Story = (BelScene,[MultipointedEvent])
 
 prisonSym :: Story
 prisonSym = (prisonSymStart, map prisonSymInterview [2,1,3,1])

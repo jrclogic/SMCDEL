@@ -1,9 +1,7 @@
 module SMCDEL.Examples.GossipS5 where
 
 import SMCDEL.Language
-import SMCDEL.Symbolic.S5 hiding (Event)
-import SMCDEL.Symbolic.S5.Change
-import Data.Map.Strict (fromList,keys)
+import SMCDEL.Symbolic.S5
 import Data.List ((\\))
 
 gossipers :: Int -> [Int]
@@ -37,8 +35,8 @@ thisCallProp (i,j) | i < j     = P (100 + 10*i + j)
 call :: Int -> (Int,Int) -> Event
 call n (a,b) = (callTrf n, [thisCallProp (a,b)])
 
-callTrf :: Int -> KnowChange
-callTrf n = CTrf eventprops eventlaw changeprops changelaws eventobs where
+callTrf :: Int -> KnowTransformer
+callTrf n = KnTrf eventprops eventlaw changeprops changelaws eventobs where
   thisCallHappens (i,j) = PrpF $ thisCallProp (i,j)
   isInCallForm k = Disj $ [ thisCallHappens (i,k) | i <- gossipers n \\ [k], i < k ]
                        ++ [ thisCallHappens (k,j) | j <- gossipers n \\ [k], k < j ]
@@ -51,9 +49,9 @@ callTrf n = CTrf eventprops eventlaw changeprops changelaws eventobs where
                       | c1 <- allCalls, c2 <- allCalls \\ [c1] ] ]
   callPropsWith k = [ thisCallProp (i,k) | i <- gossipers n, i < k ]
                  ++ [ thisCallProp (k,j) | j <- gossipers n, k < j ]
-  eventobs = fromList [(show k, callPropsWith k) | k <- gossipers n]
-  changeprops = keys changelaws
-  changelaws = fromList
+  eventobs = [(show k, callPropsWith k) | k <- gossipers n]
+  changeprops = map fst changelaws
+  changelaws =
     [(hasSof n i j, boolBddOf $              -- after a call, i has the secret of j iff
         Disj [ has n i j                     -- i already knew j, or
              , Conj (map isInCallForm [i,j]) -- i and j are both in the call or
@@ -64,7 +62,7 @@ callTrf n = CTrf eventprops eventlaw changeprops changelaws eventobs where
     | i <- gossipers n, j <- gossipers n, i /= j ]
 
 doCall :: KnowScene -> (Int,Int) -> KnowScene
-doCall start (a,b) = knowChange start (call (length $ agentsOf start) (a,b)) -- TODO optimize here!
+doCall start (a,b) = start `update` call (length $ agentsOf start) (a,b)
 
 after :: Int -> [(Int,Int)] -> KnowScene
 after n = foldl doCall (gossipInit n)

@@ -1,16 +1,14 @@
-module Main where
+module Main (main) where
 
 import Test.Hspec
 import Test.Hspec.QuickCheck
 import SMCDEL.Internal.Help (alleq)
 import SMCDEL.Language
+import SMCDEL.Explicit.S5 (Action)
 import SMCDEL.Symbolic.S5 (boolBddOf)
 import SMCDEL.Explicit.K as ExpK
 import SMCDEL.Symbolic.K as SymK
 import SMCDEL.Translations.K as TransK
-import SMCDEL.Explicit.K.Change
-import SMCDEL.Symbolic.K.Change
-import SMCDEL.Translations.K.Change
 import Data.Map.Strict (fromList)
 import Data.List (sort)
 
@@ -51,20 +49,20 @@ semanticEquivTest (SF f) =
   , SymK.evalViaBdd (TransK.kripkeToBls myMod) f  -- evaluate on corresponding BlS
   ]
 
-singleChangeTest :: ChangeModel -> SimplifiedForm -> [Bool]
+singleChangeTest :: ActionModel -> SimplifiedForm -> [Bool]
 singleChangeTest myact (SF f) =
-  [ not (ExpK.eval                                   myMod  (preOf                                (myact,0::Action)))
-      || ExpK.eval       (productChange              myMod                                        (myact,0)  ) f
-  , not (SymK.evalViaBdd                (kripkeToBls myMod) (preOf                 (actionToEvent (myact,0))))
-      || SymK.evalViaBdd (transform     (kripkeToBls myMod)                        (actionToEvent (myact,0)))  f
-  , not (ExpK.eval                                   myMod  (preOf (eventToAction' (actionToEvent (myact,0)))))
-      || ExpK.eval       (productChange              myMod         (eventToAction' (actionToEvent (myact,0)))) f
-  , not (ExpK.eval                      (blsToKripke myScn) (preOf (eventToAction' (actionToEvent (myact,0)))))
-      || ExpK.eval       (productChange (blsToKripke myScn)        (eventToAction' (actionToEvent (myact,0)))) f
-  , not (SymK.evalViaBdd                             myScn  (preOf                 (actionToEvent (myact,0))))
-      || SymK.evalViaBdd (transform                  myScn                         (actionToEvent (myact,0)) ) f
+  [ not (ExpK.eval                            myMod  (preOf                               (myact,0::Action)))
+      || ExpK.eval       (update              myMod                                       (myact,0::Action)  ) f
+  , not (SymK.evalViaBdd         (kripkeToBls myMod) (preOf                (actionToEvent (myact,0))))
+      || SymK.evalViaBdd (update (kripkeToBls myMod)                       (actionToEvent (myact,0)))  f
+  , not (ExpK.eval                            myMod  (preOf (eventToAction (actionToEvent (myact,0)))))
+      || ExpK.eval       (update              myMod         (eventToAction (actionToEvent (myact,0)))) f
+  , not (ExpK.eval               (blsToKripke myScn) (preOf (eventToAction (actionToEvent (myact,0)))))
+      || ExpK.eval       (update (blsToKripke myScn)        (eventToAction (actionToEvent (myact,0)))) f
+  , not (SymK.evalViaBdd                      myScn  (preOf                (actionToEvent (myact,0))))
+      || SymK.evalViaBdd (update              myScn                        (actionToEvent (myact,0)) ) f
   ]
-  ++ case SMCDEL.Symbolic.K.Change.reduce (actionToEvent (myact,0)) f of
+  ++ case SymK.reduce (actionToEvent (myact,0)) f of
       Nothing -> []
       Just g  -> pure $ SymK.evalViaBdd (kripkeToBls myMod) (simplify g)
-  ++ [ SMCDEL.Symbolic.K.Change.evalViaBddReduce myScn (actionToEvent (myact,0)) f ]
+  ++ [ SymK.evalViaBddReduce myScn (actionToEvent (myact,0)) f ]

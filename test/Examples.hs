@@ -1,4 +1,4 @@
-module Main where
+module Main (main) where
 
 import Data.List
 import Test.Hspec
@@ -99,12 +99,12 @@ main = hspec $ do
   let ags = map show [1::Int,2,3]
   describe "SMCDEL.Explicit.K" $ do
     it "3MC genKrp: Top is Ck and Bot is not Ck" $
-      ExpK.eval ExpK.myMudGenKrpInit $ Conj [Ck ags Top, Neg (Ck ags Bot)]
+      ExpK.eval myMudGenKrpInit $ Conj [Ck ags Top, Neg (Ck ags Bot)]
     it "3MC genKrp: It is not common knowledge that someone is muddy" $
-      ExpK.eval ExpK.myMudGenKrpInit $
+      ExpK.eval myMudGenKrpInit $
         Neg $ Ck (map show [1::Int,2,3]) $ Disj (map (PrpF . P) [1,2,3])
     it "3MC genKrp: after announcing makes it common knowledge that someone is muddy" $
-      ExpK.eval ExpK.myMudGenKrpInit $
+      ExpK.eval myMudGenKrpInit $
         PubAnnounce (Disj (map (PrpF . P) [1,2,3])) $ Ck (map show [1::Int,2,3]) $ Disj (map (PrpF . P) [1,2,3])
   describe "SMCDEL.Symbolic.K" $ do
     it "3MC genScn: Top is Ck and Bot is not Ck" $

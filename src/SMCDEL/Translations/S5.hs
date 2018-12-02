@@ -4,10 +4,12 @@ import Control.Arrow (second)
 import Data.HasCacBDD hiding (Top,Bot)
 import Data.List (groupBy,sort,(\\),elemIndex,intersect,nub)
 import Data.Maybe (listToMaybe)
+
 import SMCDEL.Language
 import SMCDEL.Symbolic.S5
 import SMCDEL.Explicit.S5
 import SMCDEL.Internal.Help (anydiffWith,alldiff,alleqWith,apply,powerset,(!),seteq,subseteq)
+import SMCDEL.Other.BDD2Form
 
 type StateMap = World -> State
 
@@ -39,20 +41,18 @@ knsToKripke :: KnowScene -> PointedModelS5
 knsToKripke = fst . knsToKripkeWithG
 
 knsToKripkeWithG :: KnowScene -> (PointedModelS5, StateMap)
-knsToKripkeWithG (kns@(KnS ps _ obs),curs) =
-  if curs `elem` statesOf kns
-     then ((KrMS5 worlds rel val, cur) , g)
-     else error "knsToKripke failed: Invalid state."
-  where
+knsToKripkeWithG (kns@(KnS ps _ obs),currentState) =
+  ((KrMS5 worlds rel val, cur), g) where
+    g w    = statesOf kns !! w
     lav    = zip (statesOf kns) [0..(length (statesOf kns)-1)]
     val    = map ( \(s,n) -> (n,state2kripkeass s) ) lav where
       state2kripkeass s = map (\p -> (p, p `elem` s)) ps
     rel    = [(i,rfor i) | i <- map fst obs]
     rfor i = map (map snd) (groupBy ( \ (x,_) (y,_) -> x==y ) (sort pairs)) where
-      pairs = map (\s -> (restrictState s (obs ! i), lav ! s)) (statesOf kns)
+      pairs = map (\s -> (s `intersect` (obs ! i), lav ! s)) (statesOf kns)
     worlds = map snd lav
-    cur    = lav ! curs
-    g w    = statesOf kns !! w
+    cur    | currentState `elem` statesOf kns = lav ! currentState
+           | otherwise = error "knsToKripke failed: Invalid state."
 
 kripkeToKns :: PointedModelS5 -> KnowScene
 kripkeToKns = fst . kripkeToKnsWithG
@@ -123,16 +123,17 @@ smartKripkeToKnsWithoutChecks (m@(KrMS5 worlds rel val), cur) =
     curs = map fst $ filter snd $ apply val cur
 
 actionToEvent :: PointedActionModel -> Event
-actionToEvent (ActM actions precon actrel, faction) = (KnT eprops elaw eobs, efacts) where
+actionToEvent (ActMS5 acts actrel, faction) = (KnTrf addprops addlaw changeprops changelaw addobs, efacts) where
+  actions = map fst acts
   ags          = map fst actrel
-  eprops       = actionprops ++ actrelprops
-  (P fstnewp)  = freshp $ propsInForms (map snd precon)
+  addprops     = actionprops ++ actrelprops
+  (P fstnewp)  = freshp $ propsInForms (map (fst.snd) acts)
   actionprops  = [P fstnewp..P maxactprop] -- new props to distinguish all actions
   maxactprop   = fstnewp + ceiling (logBase 2 (fromIntegral $ length actions) :: Float) -1
-  copyactprops = zip actions (powerset actionprops)
-  ell          = apply copyactprops -- label actions with subsets of actionprops
+  actpropsRel  = zip actions (powerset actionprops)
+  ell          = apply actpropsRel -- label actions with subsets of actionprops
   happens a    = booloutofForm (ell a) actionprops -- boolean formula to say that a happens
-  actform      = Disj [ Conj [ happens a, apply precon a ] | a <- actions ] -- connect new propositions to preconditions
+  actform      = Disj [ Conj [ happens a, pre ] | (a,(pre,_)) <- acts ] -- connect new propositions to preconditions
   actrelprops  = concat [ newps i | i <- ags ] -- new props to distinguish actions for i
   actrelpstart = maxactprop + 1
   newps i      = map (\k -> P (actrelpstart + (newpstep * inum) +k)) [0..(amount i - 1)]
@@ -143,25 +144,28 @@ actionToEvent (ActM actions precon actrel, faction) = (KnT eprops elaw eobs, efa
   actrelfs i   = [ Equi (booloutofForm (apply (copyactrel i) as) (newps i)) (Disj (map happens as)) | as <- apply actrel i ]
   actrelforms  = concatMap actrelfs ags
   factsFor i   = snd $ head $ filter (\(as,_) -> elem faction as) (copyactrel i)
-  efacts       = apply copyactprops faction ++ concatMap factsFor ags
-  elaw         = simplify $ Conj (actform : actrelforms)
-  eobs         = [ (i,newps i) | i<- ags ]
+  efacts       = ell faction ++ concatMap factsFor ags
+  addlaw       = simplify $ Conj (actform : actrelforms)
+  changeprops  = sort $ nub $ concatMap (\(_,(_,posts)) -> map fst posts) acts -- propositions to be changed
+  changelaw    = [ (p, changeFor p) | p <- changeprops ] -- encode postconditions
+  changeFor p  = disSet [ boolBddOf $ Conj [ happens a, safepost posts p ] | (a,(_,posts)) <- acts ]
+  addobs       = [ (i,newps i) | i<- ags ]
 
 eventToAction' :: Event -> PointedActionModel
-eventToAction' (KnT eprops eform eobs, efacts) = (ActM actions precon actrel, faction) where
-  actions   = [0..(2 ^ length eprops - 1)]
-  actlist   = zip (powerset eprops) actions
-  precon    = [ (a, simplify $ preFor ps) | (ps,a) <- actlist ] where
-    preFor ps = substitSet (zip ps (repeat Top) ++ zip (eprops\\ps) (repeat Bot)) eform
-  actrel    = [(i,rFor i) | i <- map fst eobs] where
+eventToAction' event@(KnTrf addprops addlaw changeprops changelaw addobs, efacts) = (ActMS5 acts actrel, faction) where
+  actlist = zip (powerset addprops) [0..(2 ^ length addprops - 1)]
+  acts    = [ (a, (simplify $ preFor ps, postsFor ps)) | (ps,a) <- actlist ] where
+    preFor ps = substitSet (zip ps (repeat Top) ++ zip (addprops\\ps) (repeat Bot)) addlaw
+    postsFor ps =
+      [ (q, formOf $ restrictSet (changelaw ! q) [(p, P p `elem` ps) | (P p) <- addprops]) | q <- changeprops ]
+  actrel    = [(i,rFor i) | i <- agentsOf event] where
     rFor i  = map (map snd) (groupBy ( \ (x,_) (y,_) -> x==y ) (pairs i))
-    pairs i = sort $ map (\(set,a) -> (restrictState set $ apply eobs i,a)) actlist
+    pairs i = sort $ map (\(set,a) -> (intersect set $ addobs ! i,a)) actlist
   faction   = apply actlist efacts
 
 eventToAction :: Event -> PointedActionModel
-eventToAction (KnT eprops eform eobs, efacts) = (ActM actions precon actrel, faction) where
-  (ActM _ precon' actrel', faction) = eventToAction' (KnT eprops eform eobs, efacts)
-  precon  = filter (\(_,f) -> f/=Bot) precon' -- remove actions w/ contradictory precon
-  actions = map fst precon
-  actrel  = map (second fltr) actrel'
-  fltr r  = filter ([]/=) $ map (filter (`elem` actions)) r
+eventToAction e = (ActMS5 acts actrel, faction) where
+  (ActMS5 acts' actrel', faction) = eventToAction' e
+  acts    = filter (\(_,(pre,_)) -> pre /= Bot) acts' -- remove actions w/ contradictory precon
+  actrel  = map (second restrictRel) actrel' where
+    restrictRel r  = filter ([]/=) $ map (filter (`elem` map fst acts)) r

@@ -23,8 +23,8 @@ willExchangeT :: (Int,Int) -> Int -> Form
 willExchangeT (a,b) k | k `elem` [a,b] = PrpF (P k)
                       | otherwise      = Disj [ K (show i) $ PrpF (P k) | i <- [a,b] ]
 
-call :: (Int,Int) -> [Int] -> GenEvent
-call (a,b) secSetT = (BlT vocplus lawplus obsplus, actualSet) where
+call :: (Int,Int) -> [Int] -> Event
+call (a,b) secSetT = (Trf vocplus lawplus [] (fromList []) obsplus, actualSet) where
   vocplus = sort $ map inCall [1..n] ++ map inSecT [1..n]
   inCall k = P (100+k) -- k participates in the call
   inSecT k = P (200+(k*2)) -- secret k is being exchanged (as true)
@@ -45,7 +45,7 @@ toBeExchangedT :: BelScene -> (Int,Int) -> [Int]
 toBeExchangedT scn (a,b) = filter (evalViaBdd scn . willExchangeT (a,b)) [1..n]
 
 doCall :: BelScene -> (Int,Int) -> BelScene
-doCall start (a,b) = cleanupObsLaw $ belTransform start (call (a,b) (toBeExchangedT start (a,b)))
+doCall start (a,b) = cleanupObsLaw $ start `update` call (a,b) (toBeExchangedT start (a,b))
 
 doCalls :: BelScene -> [(Int,Int)] -> BelScene
 doCalls = foldl doCall

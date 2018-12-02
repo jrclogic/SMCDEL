@@ -3,12 +3,14 @@ module Main where
 import Data.List (sort)
 import Test.Hspec
 import Test.Hspec.QuickCheck
+
 import SMCDEL.Internal.Help (alleq)
 import SMCDEL.Language
 import SMCDEL.Symbolic.S5 as Sym
 import SMCDEL.Explicit.S5 as Exp
 import SMCDEL.Translations.S5
 import SMCDEL.Examples
+import SMCDEL.Internal.TaggedBDD
 
 main :: IO ()
 main = hspec $
@@ -20,6 +22,7 @@ main = hspec $
     prop "public announcement"      pubAnnounceTest
     prop "group announcement"       (\sf gl sg  -> alleq $ announceTest sf gl sg)
     prop "single action"            (\am f -> alleq $ singleActionTest am f)
+    prop "propulations"             propulationTest
 
 mymodel :: PointedModelS5
 mymodel = (KrMS5 ws rel val, 0) where
@@ -61,8 +64,8 @@ lemmaEquivTestKr m@(KrMS5 ws _ _) = equivalentWith pm kns g where
   pm = (m, head ws)
   (kns,g) = kripkeToKnsWithG pm
 
-lemmaEquivTestKns :: KnowStruct -> Bool
-lemmaEquivTestKns kns = equivalentWith pm scn g where
+lemmaEquivTestKnS :: KnowStruct -> Bool
+lemmaEquivTestKnS kns = equivalentWith pm scn g where
   scn = (kns, head $ statesOf kns)
   (pm,g) = knsToKripkeWithG scn
 
@@ -71,7 +74,7 @@ pubAnnounceTest prp (SF g) = alleq
   [ Exp.eval mymodel (PubAnnounce f g)
   , Sym.eval (kripkeToKns mymodel) (PubAnnounce f g)
   , Sym.evalViaBdd (kripkeToKns mymodel) (PubAnnounce f g)
-  , Sym.eval (knowTransform (kripkeToKns mymodel) (actionToEvent (pubAnnounceAction (agentsOf mymodel) f))) g
+  , Sym.eval (update (kripkeToKns mymodel) (actionToEvent (pubAnnounceAction (agentsOf mymodel) f))) g
   ] where
       f = PrpF prp
 
@@ -81,23 +84,27 @@ announceTest (SF f) (Group listeners) (SF g) =
   , let -- apply action model to Kripke
       precon   = Exp.eval mymodel f
       action   = groupAnnounceAction (agentsOf mymodel) listeners f
-      newModel = productUpdate mymodel action
+      newModel = update mymodel action
     in not precon || Exp.eval newModel g
   , Sym.eval (kripkeToKns mymodel) (Announce listeners f g) -- on equivalent kns
   , Sym.evalViaBdd (kripkeToKns mymodel) (Announce listeners f g) -- BDD on equivalent kns
   , let -- apply equivalent transformer to equivalent kns
       precon  = Sym.eval (kripkeToKns mymodel) f
       equiTrf = actionToEvent (groupAnnounceAction (agentsOf mymodel) listeners f)
-      newKns  = knowTransform (kripkeToKns mymodel) equiTrf
+      newKns  = update (kripkeToKns mymodel) equiTrf
     in not precon || Sym.eval newKns g
   ]
 
 singleActionTest :: ActionModel -> Form -> [Bool]
-singleActionTest myact f = [a,b,c,d,e] where
-  a = Exp.eval (productUpdate mymodel (myact,0)) f
-  b = Sym.evalViaBdd (knowTransform (kripkeToKns mymodel) (actionToEvent (myact,0))) f
-  c = Exp.eval (productUpdate mymodel (eventToAction (actionToEvent (myact,0)))) f
-  d = case reduce (actionToEvent (myact,0)) f of
+singleActionTest myact f = [a,b,c,d] where
+  a = Exp.eval (update mymodel (myact,0::Action)) f
+  b = Sym.evalViaBdd (update (kripkeToKns mymodel) (actionToEvent (myact,0::Action))) f
+  c = Exp.eval (update mymodel (eventToAction (actionToEvent (myact,0::Action)))) f
+  d = case reduce (actionToEvent (myact,0::Action)) f of
     Nothing -> c
     Just g  -> Sym.evalViaBdd (kripkeToKns mymodel) g
-  e = Sym.evalViaBddReduce (kripkeToKns mymodel) (actionToEvent (myact,0)) f
+
+propulationTest :: KripkeModelS5 -> Bool
+propulationTest m = checkPropu (allsamebdd (vocabOf kns1)) (fst kns1) (fst kns2) (vocabOf kns1) where
+  kns1 = kripkeToKns (m,head $ worldsOf m)
+  kns2 = kripkeToKns (knsToKripke kns1)

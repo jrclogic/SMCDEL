@@ -1,3 +1,5 @@
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
+
 module SMCDEL.Symbolic.S5_CUDD where
 
 import SMCDEL.Internal.MyHaskCUDD
@@ -22,7 +24,7 @@ boolBddOf _             = error "boolBddOf failed: Not a boolean formula."
 
 data KnowStruct = KnS [Prp] Bdd [(Agent,[Prp])] deriving (Eq,Show)
 type KnState = [Prp]
-type Scenario = (KnowStruct,KnState)
+type KnowScene = (KnowStruct,KnState)
 
 pubAnnounce :: KnowStruct -> Form -> KnowStruct
 pubAnnounce kns@(KnS props lawbdd obs) psi = KnS props newlawbdd obs where
@@ -73,13 +75,16 @@ bddOf kns (PubAnnounceW form1 form2) =
     newform2a = bddOf (pubAnnounce kns form1) form2
     newform2b = bddOf (pubAnnounce kns (Neg form1)) form2
 
-evalViaBdd :: Scenario -> Form -> Bool
+evalViaBdd :: KnowScene -> Form -> Bool
 evalViaBdd (kns@(KnS allprops _ _),s) f = bool where
   bool | b==top = True
        | b==bot = False
        | otherwise = error ("evalViaBdd failed: BDD leftover:\n" ++ show b)
   b    = restrictSet (bddOf kns f) list
   list = [ (n, P n `elem` s) | (P n) <- allprops ]
+
+instance Semantics KnowScene where
+  isTrue = evalViaBdd
 
 validViaBdd :: KnowStruct -> Form -> Bool
 validViaBdd kns@(KnS _ lawbdd _) f = top == lawbdd `imp` bddOf kns f

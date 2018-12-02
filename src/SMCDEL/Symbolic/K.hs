@@ -1,30 +1,22 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, TypeOperators #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, TypeOperators, MultiParamTypeClasses #-}
 
 module SMCDEL.Symbolic.K where
 
 import Data.Tagged
 
-import Control.Arrow ((&&&),(***),first)
+import Control.Arrow ((&&&),first)
 import Data.HasCacBDD hiding (Top,Bot)
-import Data.List (intercalate,sort)
-import Data.Map.Strict (Map,fromList,toList,elems,(!))
-import qualified Data.Map.Strict
+import Data.List (intercalate,sort,intersect,(\\))
+import qualified Data.Map.Strict as M
+import Data.Map.Strict ((!))
 
-import SMCDEL.Language
-import SMCDEL.Symbolic.S5 (KnowScene,State,texBDD,boolBddOf,texBddWith)
-import SMCDEL.Explicit.S5 (PointedModelS5,KripkeModelS5(KrMS5),World)
 import SMCDEL.Explicit.K
-import SMCDEL.Translations.S5
-import SMCDEL.Internal.Help (apply,lfp)
+import SMCDEL.Internal.Help (apply,lfp,powerset)
 import SMCDEL.Internal.TexDisplay
-
-problemPM :: PointedModelS5
-problemPM = ( KrMS5 [0,1,2,3] [ (alice,[[0],[1,2,3]]), (bob,[[0,1,2],[3]]) ]
-  [ (0,[(P 1,True ),(P 2,True )]), (1,[(P 1,True ),(P 2,False)])
-  , (2,[(P 1,False),(P 2,True )]), (3,[(P 1,False),(P 2,False)]) ], 1::World )
-
-problemKNS :: KnowScene
-problemKNS = kripkeToKns problemPM
+import SMCDEL.Language
+import SMCDEL.Other.BDD2Form
+import SMCDEL.Symbolic.S5 (State,texBDD,boolBddOf,texBddWith,bddEval,relabelWith)
+import SMCDEL.Translations.S5 (booloutof)
 
 mvP, cpP :: Prp -> Prp
 mvP (P n) = P  (2*n)      -- represent p  in the double vocabulary
@@ -63,28 +55,23 @@ class TagBdd a where
 instance TagBdd Dubbel
 
 cpBdd :: Bdd -> RelBDD
-cpBdd b = pure $ case maxVarOf b of
-  Nothing -> b
-  Just m  -> relabel [ (n, (2*n) + 1) | n <- [0..m] ] b
+cpBdd b = Tagged $ relabelFun (\n -> (2*n) + 1) b
 
 mvBdd :: Bdd -> RelBDD
-mvBdd b = pure $ case maxVarOf b of
-  Nothing -> b
-  Just m  -> relabel [ (n, 2*n) | n <- [0..m] ] b
+mvBdd b = Tagged $ relabelFun (\n -> 2*n) b
 
 unmvBdd :: RelBDD -> Bdd
-unmvBdd (Tagged b) = case maxVarOf b of
-  Nothing -> b
-  Just m  -> relabel [ (2 * n, n) | n <- [0..m] ] b
+unmvBdd (Tagged b) =
+  relabelFun (\n -> if even n then n `div` 2 else error ("Not even: " ++ show n)) b
 
-propRel2bdd :: [Prp] -> Map State [State] -> RelBDD
-propRel2bdd props rel = pure $ disSet (elems $ Data.Map.Strict.mapWithKey linkbdd rel) where
+propRel2bdd :: [Prp] -> M.Map State [State] -> RelBDD
+propRel2bdd props relation = pure $ disSet (M.elems $ M.mapWithKey linkbdd relation) where
   linkbdd here theres =
     con (booloutof (mv here) (mv props))
         (disSet [ booloutof (cp there) (cp props) | there <- theres ] )
 
-samplerel ::  Map State [State]
-samplerel = fromList [
+samplerel ::  M.Map State [State]
+samplerel = M.fromList [
   ( []        , [ [],[P 1],[P 2],[P 1, P 2] ] ),
   ( [P 1]     , [    [P 1],      [P 1, P 2] ] ),
   ( [P 2]     , [    [P 2],      [P 1, P 2] ] ),
@@ -93,34 +80,32 @@ samplerel = fromList [
 relBddOfIn :: Agent -> KripkeModel -> RelBDD
 relBddOfIn i (KrM m)
   | not (distinctVal (KrM m)) = error "m does not have distinct valuations."
-  | otherwise = pure $ disSet (elems $ Data.Map.Strict.map linkbdd m) where
+  | otherwise = pure $ disSet (M.elems $ M.map linkbdd m) where
     linkbdd (mapPropBool,mapAgentReach)  =
       con
         (booloutof (mv here) (mv props))
         (disSet [ booloutof (cp there) (cp props) | there<-theres ] )
       where
-        props = Data.Map.Strict.keys mapPropBool
-        here = Data.Map.Strict.keys (Data.Map.Strict.filter id mapPropBool)
+        props = M.keys mapPropBool
+        here = M.keys (M.filter id mapPropBool)
         theres = map (truthsInAt (KrM m)) (mapAgentReach ! i)
 
 data BelStruct = BlS [Prp]              -- vocabulary
                      Bdd                -- state law
-                     (Map Agent RelBDD) -- observation laws
+                     (M.Map Agent RelBDD) -- observation laws
                   deriving (Eq,Show)
 
+instance Pointed BelStruct State
 type BelScene = (BelStruct,State)
+
+instance Pointed BelStruct Bdd
+type MultipointedBelScene = (BelStruct,Bdd)
 
 instance HasVocab BelStruct where
   vocabOf (BlS voc _ _) = voc
 
-instance HasVocab BelScene where
-  vocabOf = vocabOf . fst
-
 instance HasAgents BelStruct where
-  agentsOf (BlS _ _ obdds) = Data.Map.Strict.keys obdds
-
-instance HasAgents BelScene where
-  agentsOf = agentsOf . fst
+  agentsOf (BlS _ _ obdds) = M.keys obdds
 
 bddOf :: BelStruct -> Form -> Bdd
 bddOf _   Top           = top
@@ -195,6 +180,9 @@ evalViaBdd (kns@(BlS allprops _ _),s) f = let
         ++ "  list: " ++ show list ++ "\n"
         ++ "  b:    " ++ show b ++ "\n"
 
+instance Semantics BelScene where
+  isTrue = evalViaBdd
+
 pubAnnounce :: BelStruct -> Form -> BelStruct
 pubAnnounce kns@(BlS allprops lawbdd obs) f =
   BlS allprops (con lawbdd (bddOf kns f)) obs
@@ -209,7 +197,7 @@ announce kns@(BlS props lawbdd obdds) ags psi = BlS newprops newlawbdd newobdds 
   (P k)     = freshp props
   newprops  = sort $ P k : props
   newlawbdd = con lawbdd (imp (var k) (bddOf kns psi))
-  newobdds  = Data.Map.Strict.mapWithKey newOfor obdds
+  newobdds  = M.mapWithKey newOfor obdds
   newOfor i oi | i `elem` ags = con <$> oi <*> (equ <$> mvBdd (var k) <*> cpBdd (var k))
                | otherwise    = con <$> oi <*> (neg <$> cpBdd (var k)) -- p_psi'
 
@@ -239,16 +227,25 @@ instance TexAble BelStruct where
     , intercalate ", " obddstrings
     , " \\right) \n"
     ] where
-        obddstrings = map (bddstring . (fst &&& (texRelBDD . snd))) (toList obdds)
+        obddstrings = map (bddstring . (fst &&& (texRelBDD . snd))) (M.toList obdds)
         bddstring (i,os) = "\\Omega_{\\text{" ++ i ++ "}} = " ++ bddprefix ++ os ++ bddsuffix
 
 instance TexAble BelScene where
   tex (kns, state) = concat
     [ " \\left( \n", tex kns, ", ", tex state, " \\right) \n" ]
 
+instance TexAble MultipointedBelScene where
+  tex (kns, statesBdd) = concat
+    [ " \\left( \n"
+    , tex kns ++ ", "
+    , " \\begin{array}{l} \\scalebox{0.4}{"
+    , texBDD statesBdd
+    , "} \\end{array}\n "
+    , " \\right)" ]
+
 cleanupObsLaw :: BelScene -> BelScene
 cleanupObsLaw (BlS vocab law obs, s) = (BlS vocab law newobs, s) where
-  newobs = Data.Map.Strict.map optimize obs
+  newobs = M.map optimize obs
   optimize relbdd = restrictLaw <$> relbdd <*> (con <$> cpBdd law <*> mvBdd law)
 
 determinedVocabOf :: BelStruct -> [Prp]
@@ -260,48 +257,148 @@ nonobsVocabOf (BlS vocab _law obs) = filter (`notElem` usedVars) vocab where
     map unmvcpP
     $ sort
     $ concatMap (map P . Data.HasCacBDD.allVarsOf . untag . snd)
-    $ Data.Map.Strict.toList obs
+    $ M.toList obs
 
-data BelTransf = BlT [Prp] Form (Map Agent RelBDD) deriving (Eq,Show)
-type GenEvent = (BelTransf,State)
+data Transformer = Trf
+  [Prp] -- addprops
+  Form  -- event law
+  [Prp] -- changeprops, modified subset
+  (M.Map Prp Bdd) -- changelaw
+  (M.Map Agent RelBDD) -- eventObs
+  deriving (Eq,Show)
 
-belTransform :: BelScene -> GenEvent -> BelScene
-belTransform (kns@(BlS props lawbdd obdds),s) (BlT addprops addlaw eventObs, eventFacts) =
-  (BlS (props ++ map snd shiftrel) newlawbdd newobs, sort $ s ++ shiftedEventFacts) where
-    shiftrel = zip addprops [(freshp props)..]
-    doubleShiftrel = map (mvP *** mvP) shiftrel ++ map (cpP *** cpP) shiftrel
-    doubleShiftrelVars = sort $ map (fromEnum *** fromEnum) doubleShiftrel
-    shiftEventObsBDD o = relabel doubleShiftrelVars <$> o
-    newobs = fromList [ (i , con <$> (obdds ! i) <*> shiftEventObsBDD (eventObs ! i)) | i <- Data.Map.Strict.keys obdds ]
-    shiftaddlaw = replPsInF shiftrel addlaw
-    newlawbdd = con lawbdd (bddOf kns shiftaddlaw)
-    shiftedEventFacts = map (apply shiftrel) eventFacts
+instance HasAgents Transformer where
+  agentsOf (Trf _ _ _ _ obdds) = M.keys obdds
 
-instance TexAble BelTransf where
-  tex (BlT addprops addlaw eventObs) = concat
+instance Pointed Transformer State
+type Event = (Transformer,State)
+
+instance HasPrecondition Event where
+  preOf (Trf addprops addlaw _ _ _, x) = simplify $ substitOutOf x addprops addlaw
+
+instance Pointed Transformer [State]
+type MultipointedEvent = (Transformer,[State]) -- TODO replace [State] with Bdd
+
+instance HasPrecondition MultipointedEvent where
+  preOf (Trf addprops addlaw _ _ _, xs) = simplify $ Disj [ substitOutOf x addprops addlaw | x <- xs ]
+
+instance TexAble Transformer where
+  tex (Trf addprops addlaw changeprops changelaw eventObs) = concat
     [ " \\left( \n"
     , tex addprops, ", "
-    , tex addlaw , ", "
+    , tex addlaw, ", "
+    , tex changeprops, ", "
+    , intercalate ", " $ map snd . M.toList $ M.mapWithKey texChange changelaw, ", "
     , intercalate ", " eobddstrings
     , " \\right) \n"
     ] where
-        eobddstrings = map (bddstring . (fst &&& (texRelBDD . snd))) (toList eventObs)
+        texChange prop changebdd = tex prop ++ " := " ++ tex (formOf changebdd)
+        eobddstrings = map (bddstring . (fst &&& (texRelBDD . snd))) (M.toList eventObs)
         bddstring (i,os) = "\\Omega^+_{\\text{" ++ i ++ "}} = " ++ bddprefix ++ os ++ bddsuffix
 
-instance TexAble GenEvent where
-  tex (blt, eventFacts) = concat
-    [ " \\left( \n", tex blt, ", ", tex eventFacts, " \\right) \n" ]
+instance TexAble Event where
+  tex (trf, eventFacts) = concat
+    [ " \\left( \n", tex trf, ", ", tex eventFacts, " \\right) \n" ]
 
-exampleStart :: BelScene
-exampleStart = (BlS [P 0] law obs, actual) where
-  law    = boolBddOf Top
-  obs    = fromList [ ("1", mvBdd $ boolBddOf Top), ("2", allsamebdd [P 0]) ]
-  actual = [P 0]
+instance TexAble MultipointedEvent where
+  tex (trf, eventStates) = concat
+    [ " \\left( \n"
+    , tex trf ++ ", \\ "
+    , " \\begin{array}{l} \\scalebox{0.4}{"
+    , tex (intercalate "," $ map show eventStates)
+    , "} \\end{array}\n "
+    , " \\right)" ]
 
-exampleEvent :: GenEvent
-exampleEvent = (BlT [P 1] addlaw eventObs, [P 1]) where
-  addlaw = PrpF (P 1) `Impl` PrpF (P 0)
-  eventObs = fromList [ ("1", allsamebdd [P 1]), ("2", cpBdd . boolBddOf $ Neg (PrpF $ P 1)) ]
+instance Update BelScene Event where
+  unsafeUpdate (kns@(BlS props law obdds),s) (Trf addprops addlaw changeprops changelaw addObs, eventFacts) = (BlS newprops newlaw newobs, news) where
+    -- PART 1: SHIFTING addprops to ensure props and newprops are disjoint
+    shiftaddprops = [(freshp props)..]
+    shiftrel = sort $ zip addprops shiftaddprops
+    -- apply the shifting to addlaw and changelaw:
+    addlawShifted = replPsInF shiftrel addlaw
+    changelawShifted = M.map (relabelWith shiftrel) changelaw
+    -- to apply the shifting to addObs we need shiftrel for the double vocabulary:
+    shiftrelMVCP = sort $ zip (mv addprops) (mv shiftaddprops)
+                       ++ zip (cp addprops) (cp shiftaddprops)
+    addObsShifted = M.map (fmap $ relabelWith shiftrelMVCP) addObs
+    -- the actual event:
+    x = map (apply shiftrel) eventFacts
+    -- PART 2: COPYING the modified propositions
+    copychangeprops = [(freshp $ props ++ map snd shiftrel)..]
+    copyrel = zip changeprops copychangeprops
+    copyrelMVCP = sort $ zip (mv changeprops) (mv copychangeprops)
+    -- PART 3: actual transformation
+    newprops = sort $ props ++ map snd shiftrel ++ map snd copyrel
+    newlaw = conSet $ relabelWith copyrel (con law (bddOf kns addlawShifted))
+                    : [var (fromEnum q) `equ` relabelWith copyrel (changelawShifted ! q) | q <- changeprops]
+    newobs = M.mapWithKey (\i oldobs -> con <$> (relabelWith copyrelMVCP <$> oldobs) <*> (addObsShifted ! i)) obdds
+    news | bddEval (s ++ x) (con law (bddOf kns addlawShifted)) = sort $ concat -- FIXME check should already be done with preOf?
+            [ s \\ changeprops
+            , map (apply copyrel) $ s `intersect` changeprops
+            , x
+            , filter (\ p -> bddEval (s ++ x) (changelawShifted ! p)) changeprops ]
+         | otherwise = error "Transformer is not applicable!"
 
-exampleBlTresult :: BelScene
-exampleBlTresult = belTransform exampleStart exampleEvent
+instance Update BelScene MultipointedEvent where
+  unsafeUpdate (kns,s) (trf@(Trf addprops addlaw _ _ _), eventsFacts) =
+    update (kns,s) (trf,selectedEventFacts) where
+      possible :: State -> Bool
+      possible eventFact = evalViaBdd (kns,s) (substitSet subs addlaw) where
+        subs = [ (p, if p `elem` eventFact then Top else Bot) |  p <- addprops ]
+      selectedEventFacts :: State
+      [selectedEventFacts] = filter possible eventsFacts
+
+trfPost :: Event -> Prp -> Bdd
+trfPost (Trf addprops _ _ changelaw _, x) p
+  | p `elem` M.keys changelaw = restrictLaw (changelaw ! p) (booloutof x addprops)
+  | otherwise                 = boolBddOf $ PrpF p
+
+reduce :: Event -> Form -> Maybe Form
+reduce _ Top          = Just Top
+reduce e Bot          = Just $ Neg $ preOf e
+reduce e (PrpF p)     = Impl (preOf e) <$> Just (formOf $ trfPost e p)
+reduce e (Neg f)      = Impl (preOf e) <$> (Neg <$> reduce e f)
+reduce e (Conj fs)    = Conj <$> mapM (reduce e) fs
+reduce e (Disj fs)    = Disj <$> mapM (reduce e) fs
+reduce e (Xor fs)     = Impl (preOf e) <$> (Xor <$> mapM (reduce e) fs)
+reduce e (Impl f1 f2) = Impl <$> reduce e f1 <*> reduce e f2
+reduce e (Equi f1 f2) = Equi <$> reduce e f1 <*> reduce e f2
+reduce _ (Forall _ _) = Nothing
+reduce _ (Exists _ _) = Nothing
+reduce e@(t@(Trf addprops _ _ _ eventObs), x) (K a f) =
+  Impl (preOf e) <$> (Conj <$> sequence
+    [ K a <$> reduce (t,y) f | y <- powerset addprops -- FIXME is this a bit much?
+                             , tagBddEval (mv x ++ cp y) (eventObs ! a)
+    ])
+reduce e (Kw a f)     = reduce e (Disj [K a f, K a (Neg f)])
+reduce _ Ck  {}       = Nothing
+reduce _ Ckw {}       = Nothing
+reduce _ PubAnnounce  {} = Nothing
+reduce _ PubAnnounceW {} = Nothing
+reduce _ Announce     {} = Nothing
+reduce _ AnnounceW    {} = Nothing
+
+bddReduce :: BelScene -> Event -> Form -> Bdd
+bddReduce scn@(oldBls,_) event@(Trf addprops _ changeprops changelaw _, eventFacts) f =
+  let
+    -- same as in 'transform', to ensure props and addprops are disjoint
+    shiftaddprops = [(freshp $ vocabOf scn)..]
+    shiftrel      = sort $ zip addprops shiftaddprops
+    -- apply the shifting to addlaw and changelaw:
+    changelawShifted = M.map (relabelWith shiftrel) changelaw
+    (newBlS,_) = update scn event
+    -- the actual event, shifted
+    actualAss  = [ (shifted, P orig `elem` eventFacts) | (P orig, P shifted) <- shiftrel ]
+    postconrel = [ (n, changelawShifted ! P n) | (P n) <- changeprops ]
+    -- reversing V° to V
+    copychangeprops = [(freshp $ vocabOf scn ++ map snd shiftrel)..]
+    copyrelInverse  = zip copychangeprops changeprops
+  in
+    imp (bddOf oldBls (preOf event)) $ -- 0. check if precondition holds
+      relabelWith copyrelInverse $     -- 4. changepropscopies -> original changeprops
+        (`restrictSet` actualAss) $    -- 3. restrict to actual event x outof V+
+          substitSimul postconrel $    -- 2. replace changeprops with postconditions
+            bddOf newBlS f             -- 1. boolean equivalent wrt new structure
+
+evalViaBddReduce :: BelScene -> Event -> Form -> Bool
+evalViaBddReduce (kns,s) event f = evaluateFun (bddReduce (kns,s) event f) (\n -> P n `elem` s)

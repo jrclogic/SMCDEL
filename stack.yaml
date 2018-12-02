@@ -7,4 +7,4 @@ extra-deps:
 - git: https://github.com/m4lvin/cudd.git
   commit: 32f7d6b764a80bbf8f84c07e2c1d691469aaaba0
 - git: https://github.com/m4lvin/HasCacBDD.git
-  commit: 29a40f1a94b2b9579c5c3bfb9f4df9038ba1ff65
+  commit: bd80e01ba8c387aa5c58f44cfc300155c04c7af9

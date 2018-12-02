@@ -33,7 +33,7 @@ reveal 2 = Xor (map PrpF [P 2, P 4, P 6])
 reveal _ = Xor (map PrpF [P 3, P 5, P 6])
 
 dcScn2 :: KnowScene
-dcScn2 = pubAnnounceOnScn dcScn1 (Conj [reveal 1, reveal 2, reveal 3])
+dcScn2 = update dcScn1 (Conj [reveal 1, reveal 2, reveal 3])
 
 everyoneKnowsWhetherNSApaid :: Form
 everyoneKnowsWhetherNSApaid = Conj [ Kw (show i) (PrpF $ P 0) | i <- [1..3]::[Int] ]

@@ -1,44 +1,45 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, MultiParamTypeClasses #-}
 
 module SMCDEL.Explicit.K where
 
 import Control.Arrow ((&&&))
-import Data.GraphViz
-import Data.List (nub,sort,(\\),delete,elemIndex)
-import Data.Map.Strict (Map,fromList,elems,(!),mapMaybeWithKey)
-import qualified Data.Map.Strict
+import Control.Monad
+import Data.List (nub,sort,(\\),delete,intercalate,intersect)
+import qualified Data.Map.Strict as M
+import Data.Map.Strict ((!))
+import Test.QuickCheck
 
 import SMCDEL.Language
 import SMCDEL.Explicit.S5 (World,HasWorlds,worldsOf,Action)
-import SMCDEL.Internal.Help (alleqWith,lfp,seteq)
+import SMCDEL.Internal.Help (alleqWith,lfp)
 import SMCDEL.Internal.TexDisplay
 
-newtype KripkeModel = KrM (Map World (Map Prp Bool, Map Agent [World]))
+newtype KripkeModel = KrM (M.Map World (M.Map Prp Bool, M.Map Agent [World]))
   deriving (Eq,Ord,Show)
 
+instance Pointed KripkeModel World
 type PointedModel = (KripkeModel, World)
 
+instance Pointed KripkeModel [World]
+type MultipointedModel = (KripkeModel,[World])
+
 distinctVal :: KripkeModel -> Bool
-distinctVal (KrM m) = Data.Map.Strict.size m == length (nub (map fst (elems m)))
+distinctVal (KrM m) = M.size m == length (nub (map fst (M.elems m)))
 
 instance HasWorlds KripkeModel where
-  worldsOf (KrM m) = Data.Map.Strict.keys m
+  worldsOf (KrM m) = M.keys m
 
 instance HasVocab KripkeModel where
-  vocabOf (KrM m) = Data.Map.Strict.keys $ fst (head (Data.Map.Strict.elems m))
+  vocabOf (KrM m) = M.keys $ fst (head (M.elems m))
 
 instance HasAgents KripkeModel where
-  agentsOf (KrM m) = Data.Map.Strict.keys $ snd (head (Data.Map.Strict.elems m))
+  agentsOf (KrM m) = M.keys $ snd (head (M.elems m))
 
-instance HasWorlds PointedModel where worldsOf = worldsOf . fst
-instance HasVocab PointedModel  where vocabOf  = vocabOf  . fst
-instance HasAgents PointedModel where agentsOf = agentsOf . fst
-
-relOfIn :: Agent -> KripkeModel -> Map World [World]
-relOfIn i (KrM m) = Data.Map.Strict.map (\x -> snd x ! i) m
+relOfIn :: Agent -> KripkeModel -> M.Map World [World]
+relOfIn i (KrM m) = M.map (\x -> snd x ! i) m
 
 truthsInAt :: KripkeModel -> World -> [Prp]
-truthsInAt (KrM m) w = Data.Map.Strict.keys (Data.Map.Strict.filter id (fst (m ! w)))
+truthsInAt (KrM m) w = M.keys (M.filter id (fst (m ! w)))
 
 instance KripkeLike KripkeModel where
   directed = const True
@@ -54,23 +55,26 @@ instance KripkeLike PointedModel where
   getEdges = getEdges . fst
   getActuals = return . show . fromEnum . snd
 
-instance TexAble KripkeModel where
-  tex = tex.ViaDot
-  texTo = texTo.ViaDot
+instance KripkeLike MultipointedModel where
+  directed = directed . fst
+  getNodes = getNodes . fst
+  getEdges = getEdges . fst
+  getActuals = map (show . fromEnum) . snd
+
+instance TexAble KripkeModel       where
+  tex           = tex.ViaDot
+  texTo         = texTo.ViaDot
   texDocumentTo = texDocumentTo.ViaDot
 
-instance TexAble PointedModel where
-  tex = tex.ViaDot
-  texTo = texTo.ViaDot
+instance TexAble PointedModel      where
+  tex           = tex.ViaDot
+  texTo         = texTo.ViaDot
   texDocumentTo = texDocumentTo.ViaDot
 
-exampleModel :: KripkeModel
-exampleModel = KrM $ fromList
-  [ (1, (fromList [(P 0,True ),(P 1,True )], fromList [(alice,[1]), (bob,[1])] ) )
-  , (2, (fromList [(P 0,False),(P 1,True )], fromList [(alice,[1]), (bob,[2])] ) ) ]
-
-examplePointedModel :: PointedModel
-examplePointedModel = (exampleModel,1)
+instance TexAble MultipointedModel where
+  tex           = tex.ViaDot
+  texTo         = texTo.ViaDot
+  texDocumentTo = texDocumentTo.ViaDot
 
 eval :: PointedModel -> Form -> Bool
 eval _     Top           = True
@@ -90,101 +94,180 @@ eval (KrM m,w) (K   i f) = all (\w' -> eval (KrM m,w') f) (snd (m ! w) ! i)
 eval (KrM m,w) (Kw  i f) = alleqWith (\w' -> eval (KrM m,w') f) (snd (m ! w) ! i)
 eval (m,w) (Ck ags form) = all (\w' -> eval (m,w') form) (groupRel m ags w)
 eval (m,w) (Ckw ags form) = alleqWith (\w' -> eval (m,w') form) (groupRel m ags w)
-eval (m,w) (PubAnnounce f g) = not (eval (m,w) f) || eval (pubAnnounceNonS5 m f,w) g
-eval (m,w) (PubAnnounceW f g) = eval (pubAnnounceNonS5 m aform, w) g where
+eval (m,w) (PubAnnounce f g) = not (eval (m,w) f) || eval (update (m,w) f) g
+eval (m,w) (PubAnnounceW f g) = eval (update m aform, w) g where
   aform | eval (m,w) f = f
         | otherwise     = Neg f
 eval (m,w) (Announce listeners f g) = not (eval (m,w) f) || eval newm g where
-  newm = (m,w) `productUpdate` announceActionNonS5 (agentsOf m) listeners f
+  newm = (m,w) `update` announceAction (agentsOf m) listeners f
 eval (m,w) (AnnounceW listeners f g) = eval newm g where
-  newm = (m,w) `productUpdate` announceActionNonS5 (agentsOf m) listeners aform
+  newm = (m,w) `update` announceAction (agentsOf m) listeners aform
   aform | eval (m,w) f = f
         | otherwise    = Neg f
+
+instance Semantics PointedModel where
+  isTrue = eval
+
+instance Semantics KripkeModel where
+  isTrue m = isTrue (m, worldsOf m)
+
+instance Semantics MultipointedModel where
+  isTrue (m,ws) f = all (\w -> isTrue (m,w) f) ws
 
 groupRel :: KripkeModel -> [Agent] -> World -> [World]
 groupRel (KrM m) ags w = lfp extend (oneStepReachFrom w) where
   oneStepReachFrom x = concat [ snd (m ! x) ! a | a <- ags ]
   extend xs = sort . nub $ xs ++ concatMap oneStepReachFrom xs
 
-pubAnnounceNonS5 :: KripkeModel -> Form -> KripkeModel
-pubAnnounceNonS5 (KrM m) f = KrM newm where
-  newm = mapMaybeWithKey isin m
-  isin w' (v,rs) | eval (KrM m,w') f = Just (v,Data.Map.Strict.map newr rs)
-                 | otherwise         = Nothing
-  newr = filter (`elem` Data.Map.Strict.keys newm)
+instance Update KripkeModel Form where
+  checks = [ ] -- unpointed models can always be updated with any formula
+  unsafeUpdate (KrM m) f = KrM newm where
+    newm = M.mapMaybeWithKey isin m
+    isin w' (v,rs) | eval (KrM m,w') f = Just (v, M.map newr rs)
+                   | otherwise         = Nothing
+    newr = filter (`elem` M.keys newm)
 
-announceActionNonS5 :: [Agent] -> [Agent] -> Form -> PointedActionModel
-announceActionNonS5 everyone listeners f = (AM am, 1) where
-  am = fromList
-    [ (1, (f  , fromList $ [(i,[1]) | i <- listeners] ++ [(i,[2]) | i <- everyone \\ listeners]))
-    , (2, (Top, fromList   [(i,[2]) | i <- everyone]) ) ]
+instance Update PointedModel Form where
+  unsafeUpdate (m,w) f = (unsafeUpdate m f, w)
 
-mudGenKrpInit :: Int -> Int -> PointedModel
-mudGenKrpInit n m = (KrM $ fromList wlist, cur) where
-  wlist = [ (w, (fromList (vals !! w), fromList $ relFor w)) | w <- ws ]
-  ws    = [0..(2^n-1)]
-  vals  = map sort (foldl buildTable [[]] [P k | k<- [1..n]])
-  buildTable partrows p = [ (p,v):pr | v <-[True,False], pr <- partrows ]
-  relFor w = [ (show i, seesFrom i w) | i <- [1..n] ]
-  seesFrom i w = filter (\v -> samefor i (vals !! w) (vals !! v)) ws
-  samefor i ps qs = seteq (delete (P i) (map fst $ filter snd ps)) (delete (P i) (map fst $ filter snd qs))
-  (Just cur) = elemIndex curVal vals
-  curVal = sort $ [(p,True) | p <- [P 1 .. P m]] ++ [(p,True) | p <- [P (m+1) .. P n]]
+instance Update MultipointedModel Form where
+  unsafeUpdate (m,ws) f =
+    let newm = unsafeUpdate m f in (newm, ws `intersect` worldsOf newm)
 
-myMudGenKrpInit :: PointedModel
-myMudGenKrpInit = mudGenKrpInit 3 3
+announceAction :: [Agent] -> [Agent] -> Form -> PointedActionModel
+announceAction everyone listeners f = (ActM am, 1) where
+  am = M.fromList
+    [ (1, Act { pre = f,   post = M.fromList [], rel = M.fromList $ [(i,[1]) | i <- listeners] ++ [(i,[2]) | i <- everyone \\ listeners] } )
+    , (2, Act { pre = Top, post = M.fromList [], rel = M.fromList [(i,[2]) | i <- everyone] } )
+    ]
 
 generatedSubmodel :: PointedModel -> PointedModel
 generatedSubmodel (KrM m, cur) = (KrM newm, cur) where
-  newm = mapMaybeWithKey isin m
-  isin w' (v,rs) | w' `elem` reachable = Just (v, Data.Map.Strict.map newr rs)
+  newm = M.mapMaybeWithKey isin m
+  isin w' (v,rs) | w' `elem` reachable = Just (v, M.map newr rs)
                  | otherwise           = Nothing
-  newr = filter (`elem` Data.Map.Strict.keys newm)
+  newr = filter (`elem` M.keys newm)
   reachable = lfp follow [cur] where
     follow xs = sort . nub $ concat [ snd (m ! x) ! a | x <- xs, a <- agentsOf (KrM m) ]
 
-newtype ActionModel = AM (Map Action (Form, Map Agent [Action]))
-  deriving (Eq,Ord,Show)
-type PointedActionModel = (ActionModel, Action)
+type PostCondition = M.Map Prp Form
 
-eventsOf :: ActionModel -> [Action]
-eventsOf (AM am) = Data.Map.Strict.keys am
+data Act = Act {pre :: Form, post :: PostCondition, rel :: M.Map Agent [Action]}
+  deriving (Eq,Ord,Show)
+
+-- | Extend `post` to all propositions
+safepost :: Act -> Prp -> Form
+safepost ch p | p `elem` M.keys (post ch) = post ch ! p
+              | otherwise = PrpF p
+
+newtype ActionModel = ActM (M.Map Action Act)
+  deriving (Eq,Ord,Show)
 
 instance HasAgents ActionModel where
-  agentsOf (AM am) = Data.Map.Strict.keys $ snd (head (Data.Map.Strict.elems am))
+  agentsOf (ActM am) = M.keys $ rel (head (M.elems am))
 
-relOfInAM :: Agent -> ActionModel -> Map Action [Action]
-relOfInAM i (AM am) = Data.Map.Strict.map (\x -> snd x ! i) am
+instance HasPrecondition ActionModel where
+  preOf _ = Top
+
+instance Pointed ActionModel Action
+type PointedActionModel = (ActionModel, Action)
+
+instance HasPrecondition PointedActionModel where
+  preOf (ActM am, actual) = pre (am ! actual)
+
+instance Pointed ActionModel [Action]
+type MultipointedActionModel = (ActionModel, [Action])
+
+instance HasPrecondition MultipointedActionModel where
+  preOf (ActM am, as) = Disj [ pre (am ! a) | a <- as ]
+
+instance Update KripkeModel ActionModel where
+  checks = [haveSameAgents]
+  unsafeUpdate m (ActM am) =
+    let (newModel,_) = unsafeUpdate (m, worldsOf m) (ActM am, M.keys am) in newModel
+
+instance Update PointedModel PointedActionModel where
+  checks = [haveSameAgents,preCheck]
+  unsafeUpdate (m, w) (actm, a) =
+    let (newModel,[newWorld]) = unsafeUpdate (m, [w]) (actm, [a]) in (newModel,newWorld)
+
+instance Update PointedModel MultipointedActionModel where
+  checks = [haveSameAgents,preCheck]
+  unsafeUpdate (m, w) mpactm =
+    let (newModel,[newWorld]) = unsafeUpdate (m, [w]) mpactm in (newModel,newWorld)
+
+instance Update MultipointedModel PointedActionModel where
+  checks = [haveSameAgents] -- do not check precondition!
+  unsafeUpdate mpm (actm, a) = unsafeUpdate mpm (actm, [a])
+
+instance Update MultipointedModel MultipointedActionModel where
+  checks = [haveSameAgents]
+  unsafeUpdate (KrM m, ws) (ActM am, facts) =
+    (KrM $ M.fromList (map annotate worldPairs), newActualWorlds) where
+      worldPairs = zip (concat [ [ (s, a) | eval (KrM m, s) (pre $ am ! a) ] | s <- M.keys m, a <- M.keys am ]) [0..]
+      newActualWorlds = [ k | ((w,a),k) <- worldPairs, w `elem` ws, a `elem` facts ]
+      annotate ((s,a),news) = (news , (newval, M.fromList (map reachFor (agentsOf (KrM m))))) where
+        newval = M.mapWithKey applyPC (fst $ m ! s)
+        applyPC p oldbit
+          | p `elem` M.keys (post (am ! a)) = eval (KrM m,s) (post (am ! a) ! p)
+          | otherwise = oldbit
+        reachFor i = (i, [ news' | ((s',a'),news') <- worldPairs, s' `elem` snd (m !  s) ! i, a' `elem` rel (am ! a) ! i ])
+
+instance Arbitrary ActionModel where
+  arbitrary = do
+    let allactions = [0..3]
+    [BF f, BF g, BF h] <- replicateM 3 (sized $ randomboolformWith [P 0 .. P 4])
+    let myPres  = Top : map simplify [f,g,h]
+    myPosts <- mapM (\_ -> do
+      proptochange <- elements [P 0 .. P 4]
+      postconcon <- elements $ [Top,Bot] ++ map PrpF [P 0 .. P 4]
+      return $ M.fromList [ (proptochange, postconcon) ]
+      ) allactions
+    myRels <- mapM (\k -> do
+      reachList <- sublistOf allactions
+      return $ M.fromList $ ("0",[k]) : [(show i,reachList) | i <- [1..5::Int]]
+      ) allactions
+    return $ ActM $ M.fromList
+      [ (k::Action, Act (myPres !! k) (myPosts !! k) (myRels !! k)) | k <- allactions ]
+  shrink (ActM am) = [ ActM $ removeFromRels k $ M.delete k am | k <- M.keys am, k /= 0 ] where
+    removeFromRels = M.map . removeFrom where
+      removeFrom k c = c { rel = M.map (delete k) (rel c) }
+
+instance KripkeLike ActionModel where
+  directed = const True
+  getNodes (ActM am) = map (show &&& labelOf) (M.keys am) where
+    labelOf a = concat
+      [ "$\\begin{array}{c} ? " , tex (pre (am ! a)) , "\\\\"
+      , intercalate "\\\\" (map showPost (M.toList $ post (am ! a)))
+      , "\\end{array}$" ]
+    showPost (p,f) = tex p ++ " := " ++ tex f
+  getEdges (ActM am) =
+    concat [ [ (i, show a, show b) | b <- rel (am ! a) ! i ] | a <- M.keys am, i <- agentsOf (ActM am) ]
+  getActuals = const [ ]
+
+instance TexAble ActionModel where
+  tex = tex.ViaDot
+  texTo = texTo.ViaDot
+  texDocumentTo = texDocumentTo.ViaDot
 
 instance KripkeLike PointedActionModel where
-  directed = const True
-  getNodes (AM am, _) = map (show &&& labelOf) (eventsOf (AM am)) where
-    labelOf a = "$" ++ tex (fst $ am ! a) ++ "$"
-  getEdges (AM am, _) = concat [ [ (a,show w,show v) | v <- relOfInAM a (AM am) ! w ] | w <- eventsOf (AM am), a <- agentsOf (AM am) ]
-  getActuals (_, cur) = [show cur]
-  nodeAts _ True  = [shape BoxShape, style solid]
-  nodeAts _ False = [shape BoxShape, style dashed]
+  directed = directed . fst
+  getNodes = getNodes . fst
+  getEdges = getEdges . fst
+  getActuals (_, a) = [show a]
 
-instance TexAble PointedActionModel where tex = tex.ViaDot
+instance TexAble PointedActionModel where
+  tex = tex.ViaDot
+  texTo = texTo.ViaDot
+  texDocumentTo = texDocumentTo.ViaDot
 
-productUpdate :: PointedModel -> PointedActionModel -> PointedModel
-productUpdate (KrM m, oldcur) (AM am, act)
-  | agentsOf (KrM m) /= agentsOf (AM am)    = error "productUpdate failed: Agents of KrM and GAM are not the same!"
-  | not $ eval (KrM m, oldcur) (fst $ am ! act) = error "productUpdate failed: Actual precondition is false!"
-  | otherwise = (KrM $ fromList (map annotate statePairs), newcur) where
-    statePairs = zip [ (s, a) | s <- worldsOf (KrM m), a <- eventsOf (AM am), eval (KrM m, s) (fst $ am ! a) ] [0..]
-    annotate ((s,a),news) = (news , (fst $ m ! s, fromList (map reachFor (agentsOf (KrM m))))) where
-      reachFor i = (i, [ news' | ((s',a'),news') <- statePairs, s' `elem` snd (m !  s) ! i, a' `elem` snd (am ! a) ! i ])
-    (Just newcur) = lookup (oldcur,act) statePairs
+instance KripkeLike MultipointedActionModel where
+  directed = directed . fst
+  getNodes = getNodes . fst
+  getEdges = getEdges . fst
+  getActuals (_, as) = map show as
 
--- Privately tell alice that P 0, while bob thinks nothing happens.
-exampleGenActM :: ActionModel
-exampleGenActM = AM $ fromList
-  [ (1, (PrpF (P 0), fromList [(alice,[1]), (bob,[2])] ) )
-  , (2, (Top       , fromList [(alice,[2]), (bob,[2])] ) ) ]
-
-examplePointedActM :: PointedActionModel
-examplePointedActM = (exampleGenActM,1)
-
-exampleResult :: PointedModel
-exampleResult = productUpdate examplePointedModel examplePointedActM
+instance TexAble MultipointedActionModel where
+  tex = tex.ViaDot
+  texTo = texTo.ViaDot
+  texDocumentTo = texDocumentTo.ViaDot

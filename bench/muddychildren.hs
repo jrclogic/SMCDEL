@@ -13,7 +13,6 @@ import qualified SMCDEL.Translations.S5
 import qualified SMCDEL.Translations.K
 import qualified SMCDEL.Other.MCTRIANGLE
 import qualified SMCDEL.Symbolic.K
-import qualified SMCDEL.Explicit.K
 
 checkForm :: Int -> Int -> Form
 checkForm n 0 = nobodyknows n
@@ -61,7 +60,7 @@ findNumberNonS5 = findNumberWith (mudBelScnInit, SMCDEL.Symbolic.K.evalViaBdd)
 
 findNumberNonS5Trans :: Int -> Int -> Int
 findNumberNonS5Trans = findNumberWith (start,SMCDEL.Symbolic.K.evalViaBdd) where
-  start n m = SMCDEL.Translations.K.kripkeToBls $ SMCDEL.Explicit.K.mudGenKrpInit n m
+  start n m = SMCDEL.Translations.K.kripkeToBls $ mudGenKrpInit n m
 
 mudDemoKrpInit :: Int -> Int -> DEMO_S5.EpistM [Bool]
 mudDemoKrpInit n m = DEMO_S5.Mo states agents [] rels points where
