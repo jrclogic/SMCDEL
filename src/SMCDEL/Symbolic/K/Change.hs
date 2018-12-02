@@ -2,8 +2,7 @@
 
 module SMCDEL.Symbolic.K.Change where
 
-import Control.Arrow ((&&&))
-import Control.Lens (over,both)
+import Control.Arrow ((&&&),(***))
 import Data.HasCacBDD hiding (Top,Bot)
 import Data.List ((\\),intersect,intercalate,sort)
 import qualified Data.Map.Strict as M
@@ -59,7 +58,7 @@ transform (kns@(BlS props law obdds),s) (Trf addprops addlaw changeprops changel
     -- PART 1: SHIFTING addprops to ensure props and newprops are disjoint
     shiftaddprops = [(freshp props)..]
     shiftrel = sort $ zip addprops shiftaddprops
-    relabelWith r = relabel (sort $ map (over both fromEnum) r)
+    relabelWith r = relabel (sort $ map (fromEnum *** fromEnum) r)
     -- apply the shifting to addlaw and changelaw:
     addlawShifted = replPsInF shiftrel addlaw
     changelawShifted = M.map (relabelWith shiftrel) changelaw
@@ -155,7 +154,7 @@ bddReduce scn@(oldBls,_) event@(Trf addprops _ changeprops changelaw _, eventFac
     -- same as in 'transform', to ensure props and addprops are disjoint
     shiftaddprops = [(freshp $ vocabOf scn)..]
     shiftrel      = sort $ zip addprops shiftaddprops
-    relabelWith r = relabel (sort $ map (over both fromEnum) r)
+    relabelWith r = relabel (sort $ map (fromEnum *** fromEnum) r)
     -- apply the shifting to addlaw and changelaw:
     changelawShifted = M.map (relabelWith shiftrel) changelaw
     (newBlS,_) = transform scn event

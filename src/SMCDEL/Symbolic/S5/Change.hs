@@ -2,7 +2,7 @@
 
 module SMCDEL.Symbolic.S5.Change where
 
-import Control.Lens (over,both)
+import Control.Arrow ((***))
 import Data.HasCacBDD hiding (Top,Bot)
 import Data.List
 import qualified Data.Map.Strict as M
@@ -53,7 +53,7 @@ instance TexAble Event where
 knowChange :: KnowScene -> Event -> KnowScene
 knowChange (kns@(KnS props law obs),s) (CTrf addprops addlaw changeprops changelaw eventObs, eventFacts) =
   (KnS newprops newlaw newobs, news) where
-    relabelWith r = relabel (sort $ map (over both fromEnum) r)
+    relabelWith r = relabel (sort $ map (fromEnum *** fromEnum) r)
     -- PART 1: SHIFTING addprops to ensure props and newprops are disjoint
     shiftrel = sort $ zip addprops [(freshp props)..]
     shiftaddprops = map snd shiftrel

@@ -1,0 +1,110 @@
+name:                 smcdel
+version:              1.0.0
+synopsis:             Symbolic Model Checking for Dynamic Epistemic Logic
+description:          See README.md and SMCDEL.pdf for references and documentation.
+maintainer:           Malvin Gattinger <malvin@w4eg.eu>
+license:              GPL-2
+github:               jrclogic/SMCDEL
+category:             Logic
+
+ghc-options:          -Wall
+
+extra-source-files:
+  - README.md
+  - stack.yaml
+  - package.yaml
+  - static/index.html
+  - static/viz-lite.js
+  - Examples/DiningCryptographers.smcdel.txt
+  - Examples/MuddyChildren.smcdel.txt
+  - Examples/DrinkingLogicians.smcdel.txt
+
+library:
+  source-dirs:
+    - src
+  dependencies:
+    - base >= 4.8 && < 5
+    - array
+    - containers
+    - cudd == 0.1.0.0
+    - graphviz
+    - HasCacBDD == 0.1.0.0
+    - process
+    - QuickCheck
+    - tagged
+    - temporary
+    - text
+    - time
+
+executables:
+  smcdel:
+    source-dirs: exec
+    main: smcdel.hs
+    other-modules: Paths_smcdel
+    dependencies:
+      - base >= 4.8 && < 5
+      - ansi-terminal
+      - directory
+      - filepath
+      - process
+      - smcdel
+  smcdel-web:
+    source-dirs: exec
+    main: smcdel-web.hs
+    dependencies:
+      - base >= 4.8 && < 5
+      - file-embed
+      - scotty
+      - HasCacBDD
+      - js-jquery >= 3
+      - smcdel
+      - template-haskell
+      - text
+
+tests:
+  examples:
+    main: test/Examples.hs
+    dependencies:
+      - base >= 4.8 && < 5
+      - hspec
+      - QuickCheck
+      - smcdel
+  translations:
+    main: test/Translations.hs
+    dependencies:
+      - base >= 4.8 && < 5
+      - hspec
+      - smcdel
+  nonS5:
+    main: test/NonS5.hs
+    dependencies:
+      - base >= 4.8 && < 5
+      - containers
+      - hspec
+      - smcdel
+
+benchmarks:
+  bench-diningcrypto:
+    source-dirs:     bench
+    main:            diningcrypto.hs
+    dependencies:
+      - base >= 4.8 && < 5
+      - smcdel
+      - time
+
+  bench-sumandproduct:
+    source-dirs:     bench
+    main:            sumandproduct.hs
+    dependencies:
+      - base >= 4.8 && < 5
+      - criterion
+      - smcdel
+      - time
+
+  bench-muddychildren:
+     source-dirs:     bench
+     main:            muddychildren.hs
+     dependencies:
+       - base >= 4.8 && < 5
+       - smcdel
+       - criterion
