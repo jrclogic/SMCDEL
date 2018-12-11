@@ -3,7 +3,9 @@
 module SMCDEL.Language where
 import Data.List (nub,intercalate,(\\))
 import Data.Maybe (fromMaybe)
+
 import Test.QuickCheck
+import SMCDEL.Internal.Help (powerset)
 import SMCDEL.Internal.TexDisplay
 
 newtype Prp = P Int deriving (Eq,Ord,Show)
@@ -162,8 +164,19 @@ subformulas (Announce  is f g) = Announce  is f g : nub (subformulas f ++ subfor
 subformulas (AnnounceW is f g) = AnnounceW is f g : nub (subformulas f ++ subformulas g)
 
 shrinkform :: Form -> [Form]
-shrinkform f | f == simplify f = subformulas f \\ [f]
-             | otherwise       = let g = simplify f in subformulas g \\ [g]
+shrinkform f =
+  if f /= simplify f
+    then [simplify f]
+    else (subformulas f \\ [f]) ++ otherShrinks f
+  where
+    otherShrinks (Conj     fs) = [Conj     gs | gs <- powerset fs \\ [fs]]
+    otherShrinks (Disj     fs) = [Disj     gs | gs <- powerset fs \\ [fs]]
+    otherShrinks (Xor      fs) = [Xor      gs | gs <- powerset fs \\ [fs]]
+    otherShrinks (Ck     is g) = [Ck     js g | js <- powerset is \\ [is]]
+    otherShrinks (Ckw    is g) = [Ckw    js g | js <- powerset is \\ [is]]
+    otherShrinks (Forall ps g) = [Forall qs g | qs <- powerset ps \\ [ps]]
+    otherShrinks (Exists ps g) = [Exists qs g | qs <- powerset ps \\ [ps]]
+    otherShrinks _ = []
 
 substit :: Prp -> Form -> Form -> Form
 substit _ _   Top           = Top

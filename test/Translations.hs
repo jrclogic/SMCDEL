@@ -1,4 +1,4 @@
-module Main where
+module Main (main) where
 
 import Data.List (sort)
 import Test.Hspec
@@ -18,6 +18,7 @@ main = hspec $
     prop "semantic equivalence"     semanticEquivTest
     prop "semantic validity"        semanticValidTest
     prop "lemma equivalence Kripke" lemmaEquivTestKr
+    prop "lemma equivalence KnS"    lemmaEquivTestKnS
     prop "number of states"         numOfStatesTest
     prop "public announcement"      pubAnnounceTest
     prop "group announcement"       (\sf gl sg  -> alleq $ announceTest sf gl sg)

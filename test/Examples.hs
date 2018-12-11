@@ -3,6 +3,7 @@ module Main (main) where
 import Data.List
 import Test.Hspec
 import Test.Hspec.QuickCheck
+import Test.QuickCheck (expectFailure,(===))
 import SMCDEL.Examples
 import SMCDEL.Examples.DiningCrypto
 import SMCDEL.Examples.DrinkLogic
@@ -40,13 +41,17 @@ main = hspec $ do
         [ " \\forall \\{ p_{3} \\} ( \\bigvee \\{"
         , " \\bot , p_{3} ,\\bot \\} \\leftrightarrow \\bigwedge \\{"
         , "\\top , ( \\top \\oplus K^?_{\\text{Alice}} p_{4} ) ,[Alice,Bob?! p_{5} ] K^?_{\\text{Bob}} p_{5} \\} ) " ]
+    it "svgViaTex works for modelA" $
+        isInfixOf "stroke-linecap:butt" (svgViaTex modelA)
+    prop "svgViaTex can yield strings of different length" $
+      expectFailure (\m1 m2 ->
+            length (svgViaTex (m1::Exp.KripkeModelS5,0::Exp.World))
+        === length (svgViaTex (m2::Exp.KripkeModelS5,0::Exp.World)) )
   describe "SMCDEL.Symbolic.S5" $
     prop "boolEvalViaBdd agrees on simplified formulas" $
       \(BF bf) props -> let truths = nub props in
         boolEvalViaBdd truths bf == boolEvalViaBdd truths (simplify bf)
   describe "SMCDEL.Other.BDD2Form" $ do
-    prop "boolBddOf . formOf . boolBddOf == boolBddOf" $
-      \(BF bf) -> (boolBddOf . formOf . boolBddOf) bf == boolBddOf bf
     prop "boolBddOf . formOf == id" $
       \b -> b == boolBddOf (formOf b)
     prop "boolBddOf (Equi bf (formOf (boolBddOf bf))) == boolBddOf Top" $
@@ -91,6 +96,8 @@ main = hspec $ do
       SMCDEL.Examples.RussianCards.rcAllChecks
     it "Russian Cards: 102 solutions" $
       length (filter checkSet allHandLists) == 102
+    it "Russian Cards: rusSCNfor (3,3,1) == rusSCN" $
+      rusSCNfor (3,3,1) == rusSCN
     it "Sum and Product: There is exactly one solution." $
       length sapSolutions == 1
     it "Sum and Product: (4,13) is a solution." $

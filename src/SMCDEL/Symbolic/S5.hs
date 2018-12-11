@@ -10,6 +10,7 @@ import Data.Tagged
 import System.IO (hPutStr, hGetContents, hClose)
 import System.IO.Unsafe (unsafePerformIO)
 import System.Process (runInteractiveCommand)
+import Test.QuickCheck
 
 import SMCDEL.Internal.Help ((!),alleqWith,apply,applyPartial,lfp,rtc,seteq,powerset) -- remove apply?
 import SMCDEL.Internal.TaggedBDD
@@ -430,3 +431,15 @@ bddReduce scn event f = restrictSet (bddOf newKns f) actualAss where
 
 evalViaBddReduce :: KnowScene -> Event -> Form -> Bool
 evalViaBddReduce (kns,s) event f = evaluateFun (bddReduce (kns,s) event f) (\n -> P n `elem` s)
+
+instance Arbitrary KnowStruct where
+  arbitrary = do
+    let props = map P [0..4]
+    (BF statelaw) <- sized (randomboolformWith props) `suchThat` (\(BF bf) -> boolBddOf bf /= bot)
+    let agents = map show [1..(5::Int)]
+    obs <- mapM (\i -> do
+      obsVars <- sublistOf props
+      return (i,obsVars)
+      ) agents
+    return $ KnS props (boolBddOf statelaw) obs
+  shrink kns = [ withoutProps [p] kns | p <- vocabOf kns, length (vocabOf kns) > 1 ]
