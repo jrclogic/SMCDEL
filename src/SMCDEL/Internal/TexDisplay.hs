@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances, UndecidableInstances, MultiParamTypeClasses, AllowAmbiguousTypes, OverloadedStrings #-}
+{-# LANGUAGE FlexibleInstances, UndecidableInstances, MultiParamTypeClasses, AllowAmbiguousTypes, OverloadedStrings, BangPatterns #-}
 
 module SMCDEL.Internal.TexDisplay where
 import Control.Monad
@@ -26,9 +26,9 @@ removeDoubleSpaces [            ] = [ ]
 class TexAble a where
   tex :: a -> String
   texTo :: a -> String -> IO ()
-  texTo x filename = writeFile (filename++".tex") (tex x)
+  texTo !x filename = writeFile (filename++".tex") (tex x)
   texDocumentTo :: a -> String -> IO ()
-  texDocumentTo x filename =
+  texDocumentTo !x filename =
     writeFile (filename++".tex") (pre ++ tex x ++ post) where
       pre = concat [ "\\documentclass{standalone}"
                    , "\\usepackage[utf8]{inputenc}"
@@ -39,17 +39,17 @@ class TexAble a where
                    ]
       post= "\\end{document}"
   pdfTo :: a -> String -> IO ()
-  pdfTo x filename = do
+  pdfTo !x filename = do
     texDocumentTo x filename
     runAndWait $ "cd " ++ filename ++ "/../; /usr/bin/pdflatex -interaction=nonstopmode "++filename++".tex"
   disp :: a -> IO ()
-  disp x = withSystemTempDirectory "smcdel" $ \tmpdir -> do
+  disp !x = withSystemTempDirectory "smcdel" $ \tmpdir -> do
     ts <- round <$> getPOSIXTime
     let filename = tmpdir ++ "/disp-" ++ show (ts :: Int)
     pdfTo x filename
     runIgnoreAndWait $ "/usr/bin/okular " ++ filename ++ ".pdf"
   svgViaTex :: a -> String
-  svgViaTex x = unsafePerformIO $ withSystemTempDirectory "smcdel" $ \tmpdir -> do
+  svgViaTex !x = unsafePerformIO $ withSystemTempDirectory "smcdel" $ \tmpdir -> do
     ts <- round <$> getPOSIXTime
     let filename = tmpdir ++ "/svgViaTex-" ++ show (ts :: Int)
     pdfTo x filename
