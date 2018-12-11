@@ -54,6 +54,11 @@ knsToKripkeWithG (kns@(KnS ps _ obs),currentState) =
     cur    | currentState `elem` statesOf kns = lav ! currentState
            | otherwise = error "knsToKripke failed: Invalid state."
 
+knsToKripkeMulti :: MultipointedKnowScene -> MultipointedModelS5
+knsToKripkeMulti (kns,statesBdd) = (m, ws) where
+  ((m,_),g) = knsToKripkeWithG (kns,undefined) -- FIXME uh oh
+  ws = filter (\w -> evaluateFun statesBdd (\k -> P k `elem` g w)) (worldsOf m)
+
 kripkeToKns :: PointedModelS5 -> KnowScene
 kripkeToKns = fst . kripkeToKnsWithG
 
