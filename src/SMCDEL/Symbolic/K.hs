@@ -244,9 +244,8 @@ instance TexAble MultipointedBelScene where
     , " \\right)" ]
 
 cleanupObsLaw :: BelScene -> BelScene
-cleanupObsLaw (BlS vocab law obs, s) = (BlS vocab law newobs, s) where
-  newobs = M.map optimize obs
-  optimize relbdd = restrictLaw <$> relbdd <*> (con <$> cpBdd law <*> mvBdd law)
+cleanupObsLaw (BlS vocab law obs, s) = (BlS vocab law (M.map clean obs), s) where
+  clean relbdd = restrictLaw <$> relbdd <*> (con <$> cpBdd law <*> mvBdd law)
 
 determinedVocabOf :: BelStruct -> [Prp]
 determinedVocabOf strct = filter (\p -> validViaBdd strct (PrpF p) || validViaBdd strct (Neg $ PrpF p)) (vocabOf strct)

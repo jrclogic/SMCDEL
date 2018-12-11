@@ -66,6 +66,8 @@ main = hspec $ do
         [(0,0),(1,0),(2,1)]
         (fst redundantModel)
         (fst minimizedModel `Exp.withoutProps` [P 2])
+    it "bisiminimizing redundantModel removes world 0" $
+      Exp.bisiminimize redundantModel == (fst redundantModel `Exp.withoutWorld` 0, 1)
     it "findStateMap works for modelB and knsB" $
       let (Just g) = findStateMap modelB knsB in equivalentWith modelB knsB g
     it "findStateMap works for redundantModel and myKNS" $

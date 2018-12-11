@@ -3,15 +3,15 @@
 module SMCDEL.Symbolic.S5 where
 
 import Control.Arrow (first,second,(***))
-import Data.HasCacBDD hiding (Top,Bot,substit)
+import Data.HasCacBDD hiding (Top,Bot)
 import Data.HasCacBDD.Visuals
-import Data.List (sort,intercalate,(\\),intersect)
+import Data.List ((\\),delete,intercalate,intersect,nub,sort)
 import Data.Tagged
 import System.IO (hPutStr, hGetContents, hClose)
 import System.IO.Unsafe (unsafePerformIO)
 import System.Process (runInteractiveCommand)
 
-import SMCDEL.Internal.Help (alleqWith,(!),apply,applyPartial,rtc,seteq,powerset) -- remove apply?
+import SMCDEL.Internal.Help ((!),alleqWith,apply,applyPartial,lfp,rtc,seteq,powerset) -- remove apply?
 import SMCDEL.Internal.TaggedBDD
 import SMCDEL.Internal.TexDisplay
 import SMCDEL.Language
@@ -86,15 +86,15 @@ eval (kns,s) (Xor  forms)  = odd $ length (filter id $ map (eval (kns,s)) forms)
 eval scn     (Impl f g)    = not (eval scn f) || eval scn g
 eval scn     (Equi f g)    = eval scn f == eval scn g
 eval scn     (Forall ps f) = eval scn (foldl singleForall f ps) where
-  singleForall g p = Conj [ substit p Top g, substit p Bot g ]
+  singleForall g p = Conj [ SMCDEL.Language.substit p Top g, SMCDEL.Language.substit p Bot g ]
 eval scn     (Exists ps f) = eval scn (foldl singleExists f ps) where
-  singleExists g p = Disj [ substit p Top g, substit p Bot g ]
+  singleExists g p = Disj [ SMCDEL.Language.substit p Top g, SMCDEL.Language.substit p Bot g ]
 eval (kns@(KnS _ _ obs),s) (K i form) = all (\s' -> eval (kns,s') form) theres where
   theres = filter (\s' -> seteq (s' `intersect` oi) (s `intersect` oi)) (statesOf kns)
-  oi = apply obs i
+  oi = obs ! i
 eval (kns@(KnS _ _ obs),s) (Kw i form) = alleqWith (\s' -> eval (kns,s') form) theres where
   theres = filter (\s' -> seteq (s' `intersect` oi) (s `intersect` oi)) (statesOf kns)
-  oi = apply obs i
+  oi = obs ! i
 eval (kns,s) (Ck ags form)  = all (\s' -> eval (kns,s') form) theres where
   theres = [ s' | (s0,s') <- comknow kns ags, s0 == s ]
 eval (kns,s) (Ckw ags form)  = alleqWith (\s' -> eval (kns,s') form) theres where
@@ -118,7 +118,7 @@ announce kns@(KnS props lawbdd obs) ags psi = KnS newprops newlawbdd newobs wher
   proppsi@(P k) = freshp props
   newprops  = proppsi:props
   newlawbdd = con lawbdd (equ (var k) (bddOf kns psi))
-  newobs    = [(i, apply obs i ++ [proppsi | i `elem` ags]) | i <- map fst obs]
+  newobs    = [(i, obs ! i ++ [proppsi | i `elem` ags]) | i <- map fst obs]
 
 announceOnScn :: KnowScene -> [Agent] -> Form -> KnowScene
 announceOnScn (kns@(KnS props _ _),s) ags psi
@@ -139,13 +139,13 @@ bddOf kns (Forall ps f) = forallSet (map fromEnum ps) (bddOf kns f)
 bddOf kns (Exists ps f) = existsSet (map fromEnum ps) (bddOf kns f)
 bddOf kns@(KnS allprops lawbdd obs) (K i form) =
   forallSet otherps (imp lawbdd (bddOf kns form)) where
-    otherps = map (\(P n) -> n) $ allprops \\ apply obs i
+    otherps = map (\(P n) -> n) $ allprops \\ obs ! i
 bddOf kns@(KnS allprops lawbdd obs) (Kw i form) =
   disSet [ forallSet otherps (imp lawbdd (bddOf kns f)) | f <- [form, Neg form] ] where
-    otherps = map (\(P n) -> n) $ allprops \\ apply obs i
+    otherps = map (\(P n) -> n) $ allprops \\ obs ! i
 bddOf kns@(KnS allprops lawbdd obs) (Ck ags form) = gfp lambda where
   lambda z = conSet $ bddOf kns form : [ forallSet (otherps i) (imp lawbdd z) | i <- ags ]
-  otherps i = map (\(P n) -> n) $ allprops \\ apply obs i
+  otherps i = map (\(P n) -> n) $ allprops \\ obs ! i
 bddOf kns (Ckw ags form) = dis (bddOf kns (Ck ags form)) (bddOf kns (Ck ags (Neg form)))
 bddOf kns@(KnS props _ _) (Announce ags form1 form2) =
   imp (bddOf kns form1) (restrict bdd2 (k,True)) where
@@ -193,6 +193,46 @@ whereViaBdd kns@(KnS props lawbdd _) f =
  map (sort . map (toEnum . fst) . filter snd) $
    allSatsWith (map fromEnum props) $ con lawbdd (bddOf kns f)
 
+determinedVocabOf :: KnowStruct -> [Prp]
+determinedVocabOf strct =
+  filter (\p -> validViaBdd strct (PrpF p) || validViaBdd strct (Neg $ PrpF p)) (vocabOf strct)
+
+nonobsVocabOf  :: KnowStruct -> [Prp]
+nonobsVocabOf (KnS vocab _ obs) = filter (`notElem` usedVars) vocab where
+  usedVars = sort $ concatMap snd obs
+
+equivExtraVocabOf :: [Prp] -> KnowStruct -> [(Prp,Prp)]
+equivExtraVocabOf mainVocab kns =
+  [ (p,q) | p <- vocabOf kns \\ mainVocab, q <- vocabOf kns, p > q, validViaBdd kns (PrpF p `Equi` PrpF q) ]
+
+replaceWithIn :: (Prp,Prp) -> KnowStruct -> KnowStruct
+replaceWithIn (p,q) (KnS oldProps oldLaw oldObs) =
+  KnS
+    (delete p oldProps)
+    (Data.HasCacBDD.substit (fromEnum p) (var (fromEnum q)) oldLaw)
+    [(i, if p `elem` os then sort $ nub (q : delete p os) else os) | (i,os) <- oldObs]
+
+replaceEquivExtra :: [Prp] -> KnowStruct -> (KnowStruct,[(Prp,Prp)])
+replaceEquivExtra mainVocab startKns = lfp step (startKns,[]) where
+  step (kns,replRel) = case equivExtraVocabOf mainVocab kns of
+               []        -> (kns,replRel)
+               ((p,q):_) -> (replaceWithIn (p,q) kns, (p,q):replRel)
+
+withoutProps :: [Prp] -> KnowStruct -> KnowStruct
+withoutProps propsToDel (KnS oldProps oldLawBdd oldObs) =
+  KnS
+    (oldProps \\ propsToDel)
+    (existsSet (map fromEnum propsToDel) oldLawBdd)
+    [(i,os \\ propsToDel) | (i,os) <- oldObs]
+
+instance Optimizable MultipointedKnowScene where
+  optimize myVocab (oldKns,oldStatesBdd) = (newKns,newStatesBdd) where
+    intermediateKns = withoutProps ((determinedVocabOf oldKns `intersect` nonobsVocabOf oldKns) \\ myVocab) oldKns
+    removedProps = vocabOf oldKns \\ vocabOf intermediateKns
+    intermediateStatesBdd = existsSet (map fromEnum removedProps) oldStatesBdd
+    (newKns,replRel) = replaceEquivExtra myVocab intermediateKns
+    newStatesBdd = foldr (uncurry Data.HasCacBDD.substit) intermediateStatesBdd [ (fromEnum p, var (fromEnum q)) | (p,q) <-replRel ]
+
 type Propulation = Tagged Quadrupel Bdd
 
 ($$) :: Monad m => ([a] -> b) -> [m a] -> m b
@@ -210,7 +250,7 @@ checkPropu propu kns1@(KnS _ law1 obs1) kns2@(KnS _ law2 obs2) voc =
     back  = conSet $$ [ forallSet (nonObs i obs1) <$>
                           (imp <$> mv law2 <*> (existsSet (nonObs i obs1) <$> (con <$> cp law1 <*> propu)))
                       | i <- agentsOf kns2 ]
-    nonObs i obs = map (\(P n) -> n) $ voc \\ apply obs i
+    nonObs i obs = map (\(P n) -> n) $ voc \\ obs ! i
 
 
 data KnowTransformer = KnTrf
@@ -280,7 +320,7 @@ instance Update MultipointedKnowScene MultipointedEvent where
   unsafeUpdate (kns@(KnS props law obs),statesBdd) (ctrf,eventsBddUnshifted)  =
     (KnS newprops newlaw newobs, newStatesBDD) where
       (KnTrf addprops addlaw changeprops changelaw eventObs, shiftrel) = shiftPrepare kns ctrf
-      -- apply the shifting to addlaw, changelaw, eventObs and eventsBdd:
+      -- apply the shifting to eventsBdd:
       eventsBdd = relabelWith shiftrel eventsBddUnshifted
       -- PART 2: COPYING the modified propositions
       copyrel = zip changeprops [(freshp $ props ++ addprops)..]
@@ -288,7 +328,7 @@ instance Update MultipointedKnowScene MultipointedEvent where
       newprops = sort $ props ++ addprops ++ copychangeprops -- V ∪ V⁺ ∪ V°
       newlaw = conSet $ relabelWith copyrel (con law (bddOf kns addlaw))
                       : [var (fromEnum q) `equ` relabelWith copyrel (changelaw ! q) | q <- changeprops]
-      newobs = [ (i , sort $ map (applyPartial copyrel) (apply obs i) ++ eventObs ! i) | i <- map fst obs ]
+      newobs = [ (i , sort $ map (applyPartial copyrel) (obs ! i) ++ eventObs ! i) | i <- map fst obs ]
       newStatesBDD = conSet [ relabelWith copyrel statesBdd, eventsBdd ]
 
 texBddWith :: (Int -> String) -> Bdd -> String

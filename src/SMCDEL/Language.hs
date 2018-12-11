@@ -71,8 +71,11 @@ data Form
   | AnnounceW [Agent] Form Form -- ^ (Semi-)Private announcement whether
   deriving (Eq,Ord,Show)
 
-class Semantics a where
+class HasVocab a => Semantics a where
   isTrue :: a -> Form -> Bool
+
+class Optimizable a where
+  optimize :: [Prp] -> a -> a
 
 class HasPrecondition a where
   preOf :: a -> Form
@@ -94,6 +97,9 @@ class (HasAgents a, Semantics a, HasPrecondition b) => Update a b where
                  else error $ "Update failed. Checks: " ++ show checkResults
                where checkResults = [ c x y | c <- checks ]
 
+updates :: Update a b => a -> [b] -> a
+updates = foldl update
+
 haveSameAgents :: (HasAgents a, HasAgents b) => a -> b -> Bool
 haveSameAgents x y = agentsOf x == agentsOf y
 
@@ -111,15 +117,15 @@ ppFormWith trans (PrpF p)      = trans p
 ppFormWith trans (Neg f)       = "~" ++ ppFormWith trans f
 ppFormWith trans (Conj fs)     = "(" ++ intercalate " & " (map (ppFormWith trans) fs) ++ ")"
 ppFormWith trans (Disj fs)     = "(" ++ intercalate " | " (map (ppFormWith trans) fs) ++ ")"
-ppFormWith trans (Xor fs)      = "XOR{" ++ intercalate "," (map (ppFormWith trans) fs) ++ "}"
+ppFormWith trans (Xor fs)      = "XOR{" ++ showSet (map (ppFormWith trans) fs) ++ "}"
 ppFormWith trans (Impl f g)    = "(" ++ ppFormWith trans f ++ "->" ++ ppFormWith trans g ++ ")"
 ppFormWith trans (Equi f g)    = ppFormWith trans f ++ "=" ++ ppFormWith trans g
 ppFormWith trans (Forall ps f) = "Forall {" ++ showSet ps ++ "}: " ++ ppFormWith trans f
 ppFormWith trans (Exists ps f) = "Exists {" ++ showSet ps ++ "}: " ++ ppFormWith trans f
 ppFormWith trans (K i f)       = "K " ++ i ++ " " ++ ppFormWith trans f
-ppFormWith trans (Ck is f)     = "Ck " ++ intercalate "," is ++ " " ++ ppFormWith trans f
+ppFormWith trans (Ck is f)     = "Ck " ++ showSet is ++ " " ++ ppFormWith trans f
 ppFormWith trans (Kw i f)      = "Kw " ++ i ++ " " ++ ppFormWith trans f
-ppFormWith trans (Ckw is f)    = "Ckw " ++ intercalate "," is ++ " " ++ ppFormWith trans f
+ppFormWith trans (Ckw is f)    = "Ckw " ++ showSet is ++ " " ++ ppFormWith trans f
 ppFormWith trans (PubAnnounce f g)  = "[! " ++ ppFormWith trans f ++ "] " ++ ppFormWith trans g
 ppFormWith trans (PubAnnounceW f g) = "[?! " ++ ppFormWith trans f ++ "] " ++ ppFormWith trans g
 ppFormWith trans (Announce is f g)  = "[" ++ intercalate ", " is ++ " ! " ++ ppFormWith trans f ++ "]" ++ ppFormWith trans g
@@ -189,7 +195,7 @@ substitSet [] f = f
 substitSet ((q,psi):rest) f = substitSet rest (substit q psi f)
 
 substitOutOf :: [Prp] -> [Prp] -> Form -> Form
-substitOutOf truths allps = substitSet $ [(p,Top) | p <- truths] ++ [(p,Bot) | p <- allps \\ truths]
+substitOutOf truths allps = substitSet [(p, if p `elem` truths then Top else Bot) | p <- allps]
 
 replPsInP :: [(Prp,Prp)] -> Prp -> Prp
 replPsInP repl p = fromMaybe p (lookup p repl)
@@ -349,7 +355,7 @@ testForm = Forall [P 3] $
           , Xor [Top,Kw alice (PrpF (P 4))]
           , AnnounceW [alice,bob] (PrpF (P 5)) (Kw bob $ PrpF (P 5)) ])
 
-newtype BF = BF Form deriving (Show)
+newtype BF = BF Form deriving (Eq,Ord,Show)
 
 instance Arbitrary BF where
   arbitrary = sized $ randomboolformWith [P 1 .. P 100]

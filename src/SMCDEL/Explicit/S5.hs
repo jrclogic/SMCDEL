@@ -6,6 +6,7 @@ import Control.Arrow (second,(&&&))
 import Control.Monad (replicateM)
 import Data.GraphViz
 import Data.List
+import Data.Tuple (swap)
 import Data.Maybe (fromMaybe)
 
 import SMCDEL.Language
@@ -213,6 +214,38 @@ generatedSubmodel (KrMS5 _ rel val, cur) = (KrMS5 newWorlds newrel newval, cur) 
     follow xs = sort . nub $ concat [ part | (_,parts) <- rel, part <- parts, any (`elem` part) xs ]
   newrel = map (second $ filter (any (`elem` newWorlds))) rel
   newval = filter (\p -> fst p `elem` newWorlds) val
+
+bisimClasses :: KripkeModelS5 -> [[World]]
+bisimClasses m@(KrMS5 _ rel val) = refine sameAssignmentPartition where
+  sameAssignmentPartition =
+    map (map snd)
+      $ groupBy (\x y -> fst x == fst y)
+        $ sort (map swap val)
+  refine parts = sort $ map sort $ foldl splitByAgent parts (agentsOf m)
+  splitByAgent parts a =
+    concat [ filter (not . null) [ ws `intersect` aPart | aPart <- rel ! a ] | ws <- parts ]
+
+checkBisimClasses :: KripkeModelS5 -> Bool
+checkBisimClasses m =
+  and [ checkBisimPointed (swapZ w1 w2) (m,w1) (m,w2)
+      | part <- bisimClasses m, w1 <- part, w2 <-part, w1 /= w2 ] where
+    swapZ w1 w2 = sort $ [(w1,w2),(w2,w1)] ++ [ (w,w) | w <- worldsOf m \\ [w1,w2] ]
+
+bisiminimize :: PointedModelS5 -> PointedModelS5
+bisiminimize (m,w) =
+  if all ((==1) . length) (bisimClasses m)
+    then (m,w) -- nothing to minimize
+    else (KrMS5 newWorlds newRel newVal, copyFct w) where
+      KrMS5 _ oldRel oldVal = m
+      copyRel      = zip (bisimClasses m) [1..]
+      copyFct wOld = snd $ head $ filter ((wOld `elem`) . fst) copyRel
+      newWorlds    = map snd copyRel
+      newRel       = [ (a,newRelFor a) | a <- agentsOf m ]
+      newRelFor a  = [ nub [ copyFct wOld | wOld <- part ] |  part <- oldRel ! a ]
+      newVal       = [ (wNew, oldVal ! wOld) | (wOld:_,wNew) <- copyRel ]
+
+instance Optimizable PointedModelS5 where
+  optimize _ = bisiminimize . generatedSubmodel
 
 type Action = Int
 type PostCondition = [(Prp,Form)]

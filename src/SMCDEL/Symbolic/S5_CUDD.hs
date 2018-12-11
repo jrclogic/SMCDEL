@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, MultiParamTypeClasses #-}
 
 module SMCDEL.Symbolic.S5_CUDD where
 
@@ -25,6 +25,11 @@ boolBddOf _             = error "boolBddOf failed: Not a boolean formula."
 data KnowStruct = KnS [Prp] Bdd [(Agent,[Prp])] deriving (Eq,Show)
 type KnState = [Prp]
 type KnowScene = (KnowStruct,KnState)
+
+instance HasVocab KnowStruct where
+  vocabOf (KnS props _ _) = props
+
+instance Pointed KnowStruct KnState
 
 pubAnnounce :: KnowStruct -> Form -> KnowStruct
 pubAnnounce kns@(KnS props lawbdd obs) psi = KnS props newlawbdd obs where
