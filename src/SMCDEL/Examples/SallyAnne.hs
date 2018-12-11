@@ -9,7 +9,7 @@ import SMCDEL.Symbolic.S5 (boolBddOf)
 pp, qq, tt :: Prp
 pp = P 0
 tt = P 1
-qq = P 7 -- this number should not matter!
+qq = P 7 -- this number does not matter
 
 sallyInit :: BelScene
 sallyInit = (BlS [pp, tt] law obs, actual) where
@@ -50,13 +50,11 @@ sallyIntermediate4 :: BelScene
 sallyIntermediate4 = sallyIntermediate3 `update` sallyComesBack
 
 sallyFinal :: BelScene
-sallyFinal = sallyInit
-              `update` sallyPutsMarbleInBasket
-              `update` sallyLeaves
-              `update` annePutsMarbleInBox
-              `update` sallyComesBack
+sallyFinal = sallyInit `updates`
+  [ sallyPutsMarbleInBasket
+  , sallyLeaves
+  , annePutsMarbleInBox
+  , sallyComesBack ]
 
-sallyFinalCheck :: (Bool,Bool)
-sallyFinalCheck =
-  ( SMCDEL.Symbolic.K.evalViaBdd sallyFinal (K "Sally" (PrpF tt))
-  , sallyIntermediate4 == sallyFinal )
+sallyFinalCheck :: Bool
+sallyFinalCheck = SMCDEL.Symbolic.K.evalViaBdd sallyFinal (K "Sally" (PrpF tt))

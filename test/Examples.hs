@@ -78,7 +78,8 @@ main = hspec $ do
       evalViaBdd mudScn0 (nobodyknows 3) &&
       evalViaBdd mudScn1 (nobodyknows 3) &&
       evalViaBdd mudScn2 (Conj [knows i | i <- [1..3]]) &&
-      length (SMCDEL.Symbolic.S5.statesOf mudKns2) == 1
+      length (SMCDEL.Symbolic.S5.statesOf mudKns2) == 1 &&
+      buildResult == mudScnInit 3 3
     it "Thirsty Logicians: valid for up to 10 agents" $
       all thirstyCheck [3..10]
     it "Dining Crypto: valid for up to 9 agents" $
@@ -96,8 +97,12 @@ main = hspec $ do
       validViaBdd sapKnStruct (Impl (Conj [xIs 4, yIs 13]) sapProtocol)
     it "Sum and Product: (4,13) is the only solution." $
       validViaBdd sapKnStruct (Impl sapProtocol (Conj [xIs 4, yIs 13]))
+    it "Sum and Product: explaining the solution." $
+      map sapExplainState sapSolutions `shouldBe` ["x = 4, y = 13, x+y = 17 and x*y = 52"]
     it "What Sum: There are 330 solutions." $
       length SMCDEL.Examples.WhatSum.wsSolutions == 330
+    it "What Sum: The first solution is [('a',1),('b',3),('c',2)]" $
+      wsExplainState (head wsSolutions) `shouldBe` [('a',1),('b',3),('c',2)]
   let ags = map show [1::Int,2,3]
   describe "SMCDEL.Explicit.K" $ do
     it "3MC genKrp: Top is Ck and Bot is not Ck" $

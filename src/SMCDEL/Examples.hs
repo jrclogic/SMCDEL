@@ -5,6 +5,7 @@ module SMCDEL.Examples where
 import Data.List ((\\),sort)
 
 import SMCDEL.Explicit.S5
+import SMCDEL.Internal.TaggedBDD
 import SMCDEL.Language
 import SMCDEL.Symbolic.S5
 import SMCDEL.Translations.S5
@@ -35,6 +36,9 @@ minimizedModel = knsToKripke myKNS
 
 minimizedKNS :: KnowScene
 minimizedKNS = kripkeToKns minimizedModel
+
+myPropu :: Propulation
+myPropu = allsamebdd (vocabOf myKNS)
 
 pubAnnounceAction :: [Agent] -> Form -> PointedActionModel
 pubAnnounceAction ags f = (ActMS5 [(0,(f,[]))] [ (i,[[0]]) | i <- ags ], 0)

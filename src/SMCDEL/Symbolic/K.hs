@@ -180,6 +180,9 @@ evalViaBdd (kns@(BlS allprops _ _),s) f = let
         ++ "  list: " ++ show list ++ "\n"
         ++ "  b:    " ++ show b ++ "\n"
 
+instance Semantics BelStruct where
+  isTrue = validViaBdd
+
 instance Semantics BelScene where
   isTrue = evalViaBdd
 
@@ -268,6 +271,9 @@ data Transformer = Trf
 
 instance HasAgents Transformer where
   agentsOf (Trf _ _ _ _ obdds) = M.keys obdds
+
+instance HasPrecondition Transformer where
+  preOf _ = Top
 
 instance Pointed Transformer State
 type Event = (Transformer,State)
