@@ -1,7 +1,9 @@
 module Main where
+
 import Criterion.Main
 import Data.Function
 import Data.List
+
 import SMCDEL.Language
 import SMCDEL.Examples.MuddyChildren
 import SMCDEL.Internal.Help (apply)

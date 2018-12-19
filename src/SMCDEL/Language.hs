@@ -1,6 +1,7 @@
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances, MultiParamTypeClasses  #-}
 
 module SMCDEL.Language where
+
 import Data.List (nub,intercalate,(\\))
 import Data.Maybe (fromMaybe)
 

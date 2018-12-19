@@ -34,5 +34,5 @@ install:
 script:
 # Build the package, its tests, and its docs and run the tests
 - stack --no-terminal test --coverage
-# check that benchmarks can be compiled, but do not run them
+# check that benchmarks can be compile, but don't run them
 - stack --no-terminal bench --no-run-benchmarks

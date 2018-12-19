@@ -1,9 +1,11 @@
 module Main (main) where
+
 import Control.Monad (when)
 import Data.Time (diffUTCTime,getCurrentTime,NominalDiffTime)
 import System.Environment (getArgs)
 import System.IO (hSetBuffering,BufferMode(NoBuffering),stdout)
 import Text.Printf
+
 import SMCDEL.Language
 import SMCDEL.Symbolic.S5
 import SMCDEL.Examples.DiningCrypto
