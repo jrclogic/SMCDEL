@@ -1,114 +1,101 @@
 module SMCDEL.Examples.Prisoners where
 
 import Data.HasCacBDD hiding (Top,Bot)
-import Data.Map.Strict (fromList)
 
-import SMCDEL.Explicit.K
+import SMCDEL.Explicit.S5
 import SMCDEL.Internal.TexDisplay
 import SMCDEL.Language
-import SMCDEL.Symbolic.K
-import SMCDEL.Symbolic.S5 (boolBddOf)
+import SMCDEL.Symbolic.S5
+
+n :: Int
+n = 3
+
+light :: Form
+light = PrpF (P 0)
 
 -- P 0 -- light is on
 -- P i -- agent i has been in the room (and switched on the light)
 -- agents: 1 is the counter, 2 and 3 are the others
 
-prisonExpStart :: KripkeModel
+prisonExpStart :: KripkeModelS5
 prisonExpStart =
-  KrM $ fromList [ (1, (fromList [(P 0,False),(P 1,False),(P 2,False),(P 3,False)], fromList [("1",[1])])) ]
+  KrMS5
+    [1]
+    [ ("1",[[1]]) ]
+    [ (1, [(P k,False) | k <- [0..n] ] ) ]
 
 prisonGoal :: Form
-prisonGoal = Disj [ K i everyoneWasInTheRoom | i <- ["1"] ] where
-  everyoneWasInTheRoom = Conj [ PrpF $ P k | k <- [1,2,3] ]
+prisonGoal = K "1" $ Conj [ PrpF $ P k | k <- [1..n] ]
 
 prisonAction :: ActionModel
-prisonAction = ActM $ fromList actions where
-  p = PrpF (P 0)
-  [p2,p3] = map (PrpF . P) [2,3]
+prisonAction = ActMS5 actions actRels where
+  p = PrpF . P
   actions =
-    [ (1, Act p       (fromList [(P 0, Bot), (P 1, Top)                ]) (fromList [("1",[1  ])]))
-    , (2, Act (Neg p) (fromList [            (P 1, Top)                ]) (fromList [("1",[2  ])]))
-    , (3, Act Top     (fromList [(P 0, p2 `Impl` p), (P 2, p `Impl` p2)]) (fromList [("1",[3,4])])) -- interview 2
-    , (4, Act Top     (fromList [(P 0, p3 `Impl` p), (P 3, p `Impl` p3)]) (fromList [("1",[3,4])])) -- interview 3
-    -- , (5, Ch Top  (fromList [ ]) (fromList [("1",[3,4,5])])) -- nothing happens, ignored for now
+    [ (0, (p 0      , [(P 0, Bot), (P 1, Top)]) ) -- interview 1 with light on
+    , (1, (Neg (p 0), [            (P 1, Top)]) ) -- interview 1 with light off
     ]
+    ++
+    [ (k, (Top, [(P 0, p k `Impl` p 0), (P k, p 0 `Impl` p k)]) ) | k <- [2..n] ] -- interview k
+  actRels = [ ("1", [[0],[1],[2..n]]) ]
 
-prisonInterview :: Integer -> MultipointedActionModel
-prisonInterview 1 = (prisonAction, [1,2])
-prisonInterview 2 = (prisonAction, [3])
-prisonInterview 3 = (prisonAction, [4])
-prisonInterview _ = undefined
+prisonInterview :: Int -> MultipointedActionModel
+prisonInterview 1 = (prisonAction, [0,1])
+prisonInterview k = (prisonAction, [k])
 
-newtype KripkeStory = KrpStory (PointedModel,[MultipointedActionModel])
+data Story a b = Story a [b]
 
-endOfKripkeStory :: KripkeStory -> PointedModel
-endOfKripkeStory (KrpStory (start,actions)) = foldl update start actions
+endOf :: (Update a b, Optimizable a) => Story a b -> a
+endOf (Story start actions) =
+  foldl (\cur a -> optimize (vocabOf start) $ cur `update` a) start actions
 
-instance TexAble KripkeStory where
-  tex (KrpStory (start,actions)) = adjust (tex start) ++ loop start actions where
-    adjust thing = "\\raisebox{-.5\\height}{\\begin{adjustbox}{max height=4cm, max width=7cm}" ++ thing ++ "\\end{adjustbox}}"
-    loop :: PointedModel -> [MultipointedActionModel] -> String
+instance (Update a b, Optimizable a, TexAble a, TexAble b) => TexAble (Story a b) where
+  tex (Story start actions) = adjust (tex start) ++ loop start actions where
+    adjust thing = " \\raisebox{-.5\\height}{ \\begin{adjustbox}{max height=4cm, max width=0.3\\linewidth} $ " ++ thing ++ " $ \\end{adjustbox} } "
     loop _       []     = ""
     loop current (a:as) =
       let
-        new = generatedSubmodel $ current `update` a
+        new = optimize (vocabOf start) $ current `update` a
       in
         " \\times " ++ adjust (tex a) ++ " = " ++ adjust (tex new) ++ "\\] \\[ " ++ loop new as
 
-prisonExp :: KripkeStory
-prisonExp = KrpStory ((prisonExpStart,1), map prisonInterview [2,1,3,1])
+prisonExpStory :: Story PointedModelS5 MultipointedActionModel
+prisonExpStory = Story (prisonExpStart,1) (map prisonInterview [2,1,3,1])
 
-prisonExpResult :: PointedModel
-prisonExpResult = endOfKripkeStory prisonExp
+prisonSymStart :: MultipointedKnowScene
+prisonSymStart = (KnS (map P [0..n]) law obs, actualStatesBdd) where
+  law    = boolBddOf (Conj (Neg light : [ Neg $ wasInterviewed k | k <- [1..n] ]))
+  obs    = [ ("1", []) ]
+  actualStatesBdd = top
 
-prisonSymStart :: BelScene
-prisonSymStart = (BlS (map P [0..3]) law obs, actual) where
-  law    = boolBddOf (Conj [ Neg $ PrpF $ P k | k <- [0..3]])
-  -- Light off, nobody has been in the room, this is common knowledge.
-  obs    = fromList [ ("1", pure top), ("2", pure top), ("3", pure top) ]
-  actual = []
+wasInterviewed, isNowInterviewed :: Int -> Form
+wasInterviewed     = PrpF . P
+isNowInterviewed k = PrpF (P (k + n))
+
+lightSeenByOne :: Form
+lightSeenByOne  = PrpF (P (1 + (2*n)))
+
+prisonSymEvent :: KnowTransformer
+prisonSymEvent = KnTrf -- agent 1 is interviewed
+  (map P $ [ k+n | k <- [1..n] ] ++ [1+(2*n)] ) -- distinguish events
+  (Conj [ isNowInterviewed 1 `Impl` (lightSeenByOne `Equi` light)
+        , Disj [ Conj $ isNowInterviewed k : [Neg $ isNowInterviewed l | l <- [1..n], l /= k ] | k <- [1..n]]
+        ] )
+  [P 0 .. P n] -- light might be switched and visits of the agents might be recorded
+  ( [ (P 0, boolBddOf $
+          Conj $ isNowInterviewed 1 `Impl` Bot -- 1 turns off the light
+               : concat [ [ Conj [Neg $ wasInterviewed k, isNowInterviewed k] `Impl` Top
+                          , Conj [      wasInterviewed k, isNowInterviewed k] `Impl` light ]
+                        | k <- [2..n] ])
+  , (P 1, boolBddOf $ Disj [wasInterviewed 1, Conj [           isNowInterviewed 1]])
+  ]
+  ++
+  [ (P k, boolBddOf $ Disj [wasInterviewed k, Conj [Neg light, isNowInterviewed k]])
+  | k <- [2..n] ] )
+  -- agent 1 observes whether they are interviewed, and if so, also observes the light
+  [ ("1", let (PrpF px, PrpF py) = (isNowInterviewed 1, lightSeenByOne) in [px, py]) ]
 
 prisonSymInterview :: Int -> MultipointedEvent
-prisonSymInterview 1 = (prisonSymEvent, [undefined])
-prisonSymInterview 2 = (prisonSymEvent, [undefined])
-prisonSymInterview 3 = (prisonSymEvent, [undefined])
-prisonSymInterview _ = undefined
+prisonSymInterview k = (prisonSymEvent, boolBddOf (isNowInterviewed k))
 
-prisonSymEvent :: Transformer
-prisonSymEvent = Trf -- agent 1 is interviewd
-  (map P [7,8,9]) -- distinguish six events using fresh variables:
-  -- p7 iff the light was on
-  -- p8 p9 - interview 1
-  -- p8    - interview 2
-  --    p9 - interview 3
-  --       - forbid!
-  (PrpF (P 7) `Equi` PrpF (P 0))  -- p7 hapens iff light is on aka p0
-  [P 0, P 1, P 2, P 3] -- light might be turned off and visits of agents recorded
-  (fromList [ (P 0, boolBddOf $ Conj [PrpF (P 7) `Impl` Bot, Neg (PrpF (P 7)) `Impl` PrpF (P 0)])
-            , (P 1, top) ]) -- changelaw
-
-  (fromList
-    -- agent 1 observes whether (p8 && p9) and if true, observes p7
-    [("1", allsamebdd [P 7])
-    ,("2", pure top),("3", pure top)])
-
-prisonSymEvent' :: Transformer
-prisonSymEvent' = Trf -- agent 2 or 3 is interviewd
-  [P 7] Top -- p7 iff interviewee is 2
-  [P 0, P 2, P 3] -- light p0 might be turned on and visits of 2 and 3 recorded
-  (fromList [ (P 0, boolBddOf $ Conj
-                      [      PrpF (P 7)  `Impl` (PrpF (P 2) `Impl` PrpF (P 0))
-                      , Neg (PrpF (P 7)) `Impl` (PrpF (P 3) `Impl` PrpF (P 0)) ] )
-            , (P 2, boolBddOf $ Conj
-                      [      PrpF (P 7)  `Impl` (PrpF (P 0) `Impl` PrpF (P 2))
-                      , Neg (PrpF (P 7)) `Impl` PrpF (P 2) ] )
-            , (P 3, boolBddOf $ Conj
-                      [ Neg (PrpF (P 7)) `Impl` (PrpF (P 0) `Impl` PrpF (P 3))
-                      ,      PrpF (P 7)  `Impl` PrpF (P 3) ] )
-            ]) -- changelaw
-  (fromList [("1", pure top), ("2", allsamebdd [P 7]), ("3", allsamebdd [P 7])]) -- agent 2 and 3 observe
-
-type Story = (BelScene,[MultipointedEvent])
-
-prisonSym :: Story
-prisonSym = (prisonSymStart, map prisonSymInterview [2,1,3,1])
+prisonSymStory :: Story MultipointedKnowScene MultipointedEvent
+prisonSymStory = Story prisonSymStart (map prisonSymInterview [2,1,3,1])
