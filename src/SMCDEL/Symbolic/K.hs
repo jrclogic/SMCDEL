@@ -31,10 +31,12 @@ mv = map mvP
 cp = map cpP
 
 unmv, uncp :: [Prp] -> [Prp]
-unmv = map f where -- Go from p in double vocabulary to p in single vocabulary:
+-- | Go from p in double vocabulary to p in single vocabulary.
+unmv = map f where
   f (P m) | odd m    = error "unmv failed: Number is odd!"
           | otherwise = P $ m `div` 2
-uncp = map f where -- Go from p' in double vocabulary to p in single vocabulary:
+-- | Go from p' in double vocabulary to p in single vocabulary.
+uncp = map f where
   f (P m) | even m    = error "uncp failed: Number is even!"
           | otherwise = P $ (m-1) `div` 2
 
@@ -282,10 +284,11 @@ instance HasPrecondition Event where
   preOf (Trf addprops addlaw _ _ _, x) = simplify $ substitOutOf x addprops addlaw
 
 instance Pointed Transformer [State]
-type MultipointedEvent = (Transformer,[State]) -- TODO replace [State] with Bdd
+type MultipointedEvent = (Transformer,Bdd)
 
 instance HasPrecondition MultipointedEvent where
-  preOf (Trf addprops addlaw _ _ _, xs) = simplify $ Disj [ substitOutOf x addprops addlaw | x <- xs ]
+  preOf (Trf addprops addlaw _ _ _, xsBdd) =
+    simplify $ Exists addprops (Conj [ formOf xsBdd, addlaw ])
 
 instance TexAble Transformer where
   tex (Trf addprops addlaw changeprops changelaw eventObs) = concat
@@ -310,48 +313,66 @@ instance TexAble MultipointedEvent where
     [ " \\left( \n"
     , tex trf ++ ", \\ "
     , " \\begin{array}{l} \\scalebox{0.4}{"
-    , tex (intercalate "," $ map show eventStates)
+    , texBDD eventStates
     , "} \\end{array}\n "
     , " \\right)" ]
 
-instance Update BelScene Event where
-  unsafeUpdate (kns@(BlS props law obdds),s) (Trf addprops addlaw changeprops changelaw addObs, eventFacts) = (BlS newprops newlaw newobs, news) where
-    -- PART 1: SHIFTING addprops to ensure props and newprops are disjoint
-    shiftaddprops = [(freshp props)..]
-    shiftrel = sort $ zip addprops shiftaddprops
-    -- apply the shifting to addlaw and changelaw:
-    addlawShifted = replPsInF shiftrel addlaw
+-- | shift addprops to ensure that props and newprops are disjoint:
+shiftPrepare :: BelStruct -> Transformer -> (Transformer, [(Prp,Prp)])
+shiftPrepare (BlS props _ _) (Trf addprops addlaw changeprops changelaw eventObs) =
+  (Trf shiftaddprops addlawShifted changeprops changelawShifted eventObsShifted, shiftrel) where
+    shiftrel = sort $ zip addprops [(freshp props)..]
+    shiftaddprops = map snd shiftrel
+    -- apply the shifting to addlaw, changelaw and eventObs:
+    addlawShifted    = replPsInF shiftrel addlaw
     changelawShifted = M.map (relabelWith shiftrel) changelaw
-    -- to apply the shifting to addObs we need shiftrel for the double vocabulary:
+    -- to shift addObs we need shiftrel in the double vocabulary:
     shiftrelMVCP = sort $ zip (mv addprops) (mv shiftaddprops)
                        ++ zip (cp addprops) (cp shiftaddprops)
-    addObsShifted = M.map (fmap $ relabelWith shiftrelMVCP) addObs
+    eventObsShifted  = M.map (fmap $ relabelWith shiftrelMVCP) eventObs
+
+instance Update BelScene Event where
+  unsafeUpdate (bls@(BlS props law obdds),s) (trf, eventFactsUnshifted) = (BlS newprops newlaw newobs, news) where
+    -- PART 1: SHIFTING addprops to ensure props and newprops are disjoint
+    (Trf addprops addlaw changeprops changelaw addObs, shiftrel) = shiftPrepare bls trf
     -- the actual event:
-    x = map (apply shiftrel) eventFacts
+    eventFacts = map (apply shiftrel) eventFactsUnshifted
     -- PART 2: COPYING the modified propositions
-    copychangeprops = [(freshp $ props ++ map snd shiftrel)..]
-    copyrel = zip changeprops copychangeprops
+    copyrel = zip changeprops [(freshp $ props ++ addprops)..]
+    copychangeprops = map snd copyrel
     copyrelMVCP = sort $ zip (mv changeprops) (mv copychangeprops)
+                      ++ zip (cp changeprops) (cp copychangeprops)
     -- PART 3: actual transformation
-    newprops = sort $ props ++ map snd shiftrel ++ map snd copyrel
-    newlaw = conSet $ relabelWith copyrel (con law (bddOf kns addlawShifted))
-                    : [var (fromEnum q) `equ` relabelWith copyrel (changelawShifted ! q) | q <- changeprops]
-    newobs = M.mapWithKey (\i oldobs -> con <$> (relabelWith copyrelMVCP <$> oldobs) <*> (addObsShifted ! i)) obdds
-    news | bddEval (s ++ x) (con law (bddOf kns addlawShifted)) = sort $ concat -- FIXME check should already be done with preOf?
+    newprops = sort $ props ++ addprops ++ copychangeprops
+    newlaw = conSet $ relabelWith copyrel (con law (bddOf bls addlaw))
+                    : [var (fromEnum q) `equ` relabelWith copyrel (changelaw ! q) | q <- changeprops]
+    newobs = M.mapWithKey (\i oldobs -> con <$> (relabelWith copyrelMVCP <$> oldobs) <*> (addObs ! i)) obdds
+    news = sort $ concat
             [ s \\ changeprops
             , map (apply copyrel) $ s `intersect` changeprops
-            , x
-            , filter (\ p -> bddEval (s ++ x) (changelawShifted ! p)) changeprops ]
-         | otherwise = error "Transformer is not applicable!"
+            , eventFacts
+            , filter (\ p -> bddEval (s ++ eventFacts) (changelaw ! p)) changeprops ]
 
 instance Update BelScene MultipointedEvent where
-  unsafeUpdate (kns,s) (trf@(Trf addprops addlaw _ _ _), eventsFacts) =
-    update (kns,s) (trf,selectedEventFacts) where
-      possible :: State -> Bool
-      possible eventFact = evalViaBdd (kns,s) (substitSet subs addlaw) where
-        subs = [ (p, if p `elem` eventFact then Top else Bot) |  p <- addprops ]
-      selectedEventFacts :: State
-      [selectedEventFacts] = filter possible eventsFacts
+  unsafeUpdate (kns,s) (trfUnshifted, eventFactsBddUnshifted) =
+    update (kns,s) (trf,selectedEventState) where
+      (trf@(Trf addprops addlaw _ _ _), shiftRel) = shiftPrepare kns trfUnshifted
+      eventFactsBdd = relabelWith shiftRel eventFactsBddUnshifted
+      selectedEventState :: State
+      selectedEventState = map (P . fst) $ filter snd selectedEvent
+      selectedEvent = case
+                        allSatsWith
+                          (map fromEnum addprops)
+                          (eventFactsBdd `con`  restrictSet (bddOf kns addlaw) [ (k, P k `elem` s) | P k <- vocabOf kns ])
+                      of
+                        []     -> error "no selected event"
+                        [this] -> this
+                        more   -> error $ "too many selected events: " ++ show more
+
+instance Update BelStruct Transformer where
+  checks = [haveSameAgents]
+  unsafeUpdate kns ctrf = BlS newprops newlaw newobs where
+    (BlS newprops newlaw newobs, _) = unsafeUpdate (kns,undefined::State) (ctrf,undefined::Bdd) -- using laziness!
 
 trfPost :: Event -> Prp -> Bdd
 trfPost (Trf addprops _ _ changelaw _, x) p
