@@ -57,11 +57,11 @@ mudKrpInit n m = (SMCDEL.Explicit.S5.KrMS5 ws rel val, cur) where
   table = foldl buildTable [[]] [P k | k<- [1..n]]
   buildTable partrows p = [ (p,v):pr | v <-[True,False], pr<-partrows ]
 
-findNumberNonS5 :: Int -> Int -> Int
-findNumberNonS5 = findNumberWith (mudBelScnInit, SMCDEL.Symbolic.K.evalViaBdd)
+findNumberK :: Int -> Int -> Int
+findNumberK = findNumberWith (mudBelScnInit, SMCDEL.Symbolic.K.evalViaBdd)
 
-findNumberNonS5Trans :: Int -> Int -> Int
-findNumberNonS5Trans = findNumberWith (start,SMCDEL.Symbolic.K.evalViaBdd) where
+findNumberTransK :: Int -> Int -> Int
+findNumberTransK = findNumberWith (start,SMCDEL.Symbolic.K.evalViaBdd) where
   start n m = SMCDEL.Translations.K.kripkeToBls $ mudGenKrpInit n m
 
 mudDemoKrpInit :: Int -> Int -> DEMO_S5.EpistM [Bool]
@@ -98,10 +98,10 @@ main = defaultMain (map mybench
   [ ("Triangle"  , findNumberTriangle  , [7..40] )
   , ("CacBDD"    , findNumberCacBDD    , [3..40] )
   , ("CUDD"      , findNumberCUDD      , [3..40] )
-  , ("NonS5"     , findNumberNonS5     , [3..12] )
+  , ("K"         , findNumberK         , [3..12] )
   , ("DEMOS5"    , findNumberDemoS5    , [3..12] )
   , ("Trans"     , findNumberTrans     , [3..12] )
-  , ("NonS5Trans", findNumberNonS5Trans, [3..11] ) ])
+  , ("TransK"    , findNumberTransK    , [3..11] ) ])
   where
     mybench (name,f,range) = bgroup name $ map (run f) range
     run f k = bench (show k) $ whnf (\n -> f n n) k
