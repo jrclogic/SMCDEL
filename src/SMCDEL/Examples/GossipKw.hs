@@ -23,11 +23,17 @@ willExchangeT :: (Int,Int) -> Int -> Form
 willExchangeT (a,b) k | k `elem` [a,b] = PrpF (P k)
                       | otherwise      = Disj [ K (show i) $ PrpF (P k) | i <- [a,b] ]
 
+inCall,inSecT :: Int -> Prp
+inCall k = P (100+k) -- k participates in the call
+inSecT k = P (200+(k*2)) -- secret k is being exchanged (as true)
+
 call :: (Int,Int) -> [Int] -> Event
-call (a,b) secSetT = (Trf vocplus lawplus [] (fromList []) obsplus, actualSet) where
+call (a,b) secSetT = (callTrf,actualSet) where
+  actualSet = [inCall a, inCall b] ++ map inSecT secSetT
+
+callTrf :: Transformer
+callTrf = Trf vocplus lawplus [] (fromList []) obsplus where
   vocplus = sort $ map inCall [1..n] ++ map inSecT [1..n]
-  inCall k = P (100+k) -- k participates in the call
-  inSecT k = P (200+(k*2)) -- secret k is being exchanged (as true)
   lawplus = simplify $ Disj [ Conj [ thisCallHappens i j, theseSecretsAreExchanged i j ]  | i <- [1..n], j <- [1..n], i < j ] where
     thisCallHappens i j = Conj $ map (PrpF . inCall) [i,j] ++ map (Neg . PrpF . inCall) ([1..n] \\ [i,j])
     -- lnsPreCondition i j = Neg $ K (show i) (PrpF $ P j)
@@ -38,8 +44,6 @@ call (a,b) secSetT = (Trf vocplus lawplus [] (fromList []) obsplus, actualSet) w
     obsfor i = con <$> allsamebdd [ inCall i ]
                    <*> (imp <$> (mvBdd . boolBddOf . PrpF $ inCall i)
                             <*> allsamebdd (sort $ map inCall [1..n] ++ map inSecT [1..n]))
-
-  actualSet = [inCall a, inCall b] ++ map inSecT secSetT
 
 toBeExchangedT :: BelScene -> (Int,Int) -> [Int]
 toBeExchangedT scn (a,b) = filter (evalViaBdd scn . willExchangeT (a,b)) [1..n]
