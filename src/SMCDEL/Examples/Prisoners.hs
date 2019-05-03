@@ -80,7 +80,7 @@ prisonSymEvent = KnTrf -- agent 1 is interviewed
   (Conj [ isNowInterviewed 1 `Impl` (lightSeenByOne `Equi` light)
         , Disj [ Conj $ isNowInterviewed k : [Neg $ isNowInterviewed l | l <- [1..n], l /= k ] | k <- [1..n]]
         ] )
-  [P 0 .. P n] -- light might be switched and visits of the agents might be recorded
+  -- light might be switched and visits of the agents might be recorded
   ( [ (P 0, boolBddOf $
           Conj $ isNowInterviewed 1 `Impl` Bot -- 1 turns off the light
                : concat [ [ Conj [Neg $ wasInterviewed k, isNowInterviewed k] `Impl` Top

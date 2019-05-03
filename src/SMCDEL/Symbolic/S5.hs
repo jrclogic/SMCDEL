@@ -257,17 +257,16 @@ checkPropu propu kns1@(KnS _ law1 obs1) kns2@(KnS _ law2 obs2) voc =
 data KnowTransformer = KnTrf
   [Prp]            -- addProps
   Form             -- addLaw
-  [Prp]            -- changeProps
   [(Prp,Bdd)]      -- changeLaw
   [(Agent,[Prp])]  -- addObs
   deriving (Show)
 
-noChange :: ([Prp] -> Form -> [Prp] -> [(Prp,Bdd)] -> [(Agent,[Prp])] -> KnowTransformer)
-          -> [Prp] -> Form                         -> [(Agent,[Prp])] -> KnowTransformer
-noChange kntrf addprops addlaw = kntrf addprops addlaw [] []
+noChange :: ([Prp] -> Form -> [(Prp,Bdd)] -> [(Agent,[Prp])] -> KnowTransformer)
+          -> [Prp] -> Form                -> [(Agent,[Prp])] -> KnowTransformer
+noChange kntrf addprops addlaw = kntrf addprops addlaw []
 
 instance HasAgents KnowTransformer where
-  agentsOf (KnTrf _ _ _ _ obdds) = map fst obdds
+  agentsOf (KnTrf _ _ _ obdds) = map fst obdds
 
 instance HasPrecondition KnowTransformer where
   preOf _ = Top
@@ -276,19 +275,19 @@ instance Pointed KnowTransformer State
 type Event = (KnowTransformer,State)
 
 instance HasPrecondition Event where
-  preOf (KnTrf addprops addlaw _ _ _, x) = simplify $ substitOutOf x addprops addlaw
+  preOf (KnTrf addprops addlaw _ _, x) = simplify $ substitOutOf x addprops addlaw
 
 instance Pointed KnowTransformer Bdd
 type MultipointedEvent = (KnowTransformer,Bdd)
 
 instance HasPrecondition MultipointedEvent where
-  preOf (KnTrf addprops addlaw _ _ _, xsBdd) =
+  preOf (KnTrf addprops addlaw _ _, xsBdd) =
     simplify $ Exists addprops (Conj [ formOf xsBdd, addlaw ])
 
 -- | shift addprops to ensure that props and newprops are disjoint:
 shiftPrepare :: KnowStruct -> KnowTransformer -> (KnowTransformer, [(Prp,Prp)])
-shiftPrepare (KnS props _ _) (KnTrf addprops addlaw changeprops changelaw eventObs) =
-  (KnTrf shiftaddprops addlawShifted changeprops changelawShifted eventObsShifted, shiftrel) where
+shiftPrepare (KnS props _ _) (KnTrf addprops addlaw changelaw eventObs) =
+  (KnTrf shiftaddprops addlawShifted changelawShifted eventObsShifted, shiftrel) where
     shiftrel = sort $ zip addprops [(freshp props)..]
     shiftaddprops = map snd shiftrel
     -- apply the shifting to addlaw, changelaw and eventObs:
@@ -299,10 +298,11 @@ shiftPrepare (KnS props _ _) (KnTrf addprops addlaw changeprops changelaw eventO
 instance Update KnowScene Event where
   unsafeUpdate (kns@(KnS props _ _),s) (ctrf, eventFactsUnshifted) = (KnS newprops newlaw newobs, news) where
     -- PART 1: SHIFTING addprops to ensure props and newprops are disjoint
-    (KnTrf addprops _ changeprops changelaw _, shiftrel) = shiftPrepare kns ctrf
+    (KnTrf addprops _ changelaw _, shiftrel) = shiftPrepare kns ctrf
     -- the actual event:
     eventFacts = map (apply shiftrel) eventFactsUnshifted
     -- PART 2: COPYING the modified propositions
+    changeprops = map fst changelaw
     copyrel = zip changeprops [(freshp $ props ++ addprops)..]
     -- do the pointless update and calculate new actual state
     KnS newprops newlaw newobs = unsafeUpdate kns ctrf
@@ -320,10 +320,11 @@ instance Update KnowStruct KnowTransformer where
 instance Update MultipointedKnowScene MultipointedEvent where
   unsafeUpdate (kns@(KnS props law obs),statesBdd) (ctrf,eventsBddUnshifted)  =
     (KnS newprops newlaw newobs, newStatesBDD) where
-      (KnTrf addprops addlaw changeprops changelaw eventObs, shiftrel) = shiftPrepare kns ctrf
+      (KnTrf addprops addlaw changelaw eventObs, shiftrel) = shiftPrepare kns ctrf
       -- apply the shifting to eventsBdd:
       eventsBdd = relabelWith shiftrel eventsBddUnshifted
       -- PART 2: COPYING the modified propositions
+      changeprops = map fst changelaw
       copyrel = zip changeprops [(freshp $ props ++ addprops)..]
       copychangeprops = map snd copyrel
       newprops = sort $ props ++ addprops ++ copychangeprops -- V ∪ V⁺ ∪ V°
@@ -355,7 +356,7 @@ instance TexAble KnowStruct where
     , texBDD lawbdd
     , "} \\end{array}\n "
     , ", \\begin{array}{l}\n"
-    , intercalate " \\\\\n " (map (\(_,os) -> (tex os)) obs)
+    , intercalate " \\\\\n " (map (\(_,os) -> tex os) obs)
     , "\\end{array}\n"
     , " \\right)" ]
 
@@ -372,14 +373,13 @@ instance TexAble MultipointedKnowScene where
     , " \\right)" ]
 
 instance TexAble KnowTransformer where
-  tex (KnTrf addprops addlaw changeprops changelaw eventObs) = concat
+  tex (KnTrf addprops addlaw changelaw eventObs) = concat
     [ " \\left( \n"
     , tex addprops, ", \\ "
     , tex addlaw, ", \\ "
-    , tex changeprops, ", \\ "
     , intercalate ", " $ map texChange changelaw
     , ", \\ \\begin{array}{l}\n"
-    , intercalate " \\\\\n " (map (\(_,os) -> (tex os)) eventObs)
+    , intercalate " \\\\\n " (map (\(_,os) -> tex os) eventObs)
     , "\\end{array}\n"
     , " \\right) \n"
     ] where
@@ -410,7 +410,7 @@ reduce e (Impl f1 f2) = Impl <$> reduce e f1 <*> reduce e f2
 reduce e (Equi f1 f2) = Equi <$> reduce e f1 <*> reduce e f2
 reduce _ (Forall _ _) = Nothing
 reduce _ (Exists _ _) = Nothing
-reduce event@(trf@(KnTrf addprops _ _ _ obs), x) (K a f) =
+reduce event@(trf@(KnTrf addprops _ _ obs), x) (K a f) =
   Impl (preOf event) <$> (Conj <$> sequence
     [ K a <$> reduce (trf,y) f | y <- powerset addprops
                                , (x `intersect` (obs ! a)) `seteq` (y `intersect` (obs ! a))
@@ -426,7 +426,7 @@ reduce _ AnnounceW    {} = Nothing
 bddReduce :: KnowScene -> Event -> Form -> Bdd
 bddReduce scn event f = restrictSet (bddOf newKns f) actualAss where
   (newKns,_) = update scn event
-  (KnTrf eventprops _ _ _ _, actual) = event
+  (KnTrf eventprops _ _ _, actual) = event
   actualAss = [(k, P k `elem` actual) | (P k) <- eventprops]
 
 evalViaBddReduce :: KnowScene -> Event -> Form -> Bool

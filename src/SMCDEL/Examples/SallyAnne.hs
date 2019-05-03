@@ -18,7 +18,7 @@ sallyInit = (BlS [pp, tt] law obs, actual) where
   actual = [pp]
 
 sallyPutsMarbleInBasket :: Event
-sallyPutsMarbleInBasket = (Trf [] Top [tt]
+sallyPutsMarbleInBasket = (Trf [] Top
   (fromList [ (tt,boolBddOf Top) ])
   (fromList [ (i,totalRelBdd) | i <- ["Anne","Sally"] ]), [])
 
@@ -26,7 +26,7 @@ sallyIntermediate1 :: BelScene
 sallyIntermediate1 = sallyInit `update` sallyPutsMarbleInBasket
 
 sallyLeaves :: Event
-sallyLeaves = (Trf [] Top [pp]
+sallyLeaves = (Trf [] Top
   (fromList [ (pp,boolBddOf Bot) ])
   (fromList [ (i,totalRelBdd) | i <- ["Anne","Sally"] ]), [])
 
@@ -34,7 +34,7 @@ sallyIntermediate2 :: BelScene
 sallyIntermediate2 = sallyIntermediate1 `update` sallyLeaves
 
 annePutsMarbleInBox :: Event
-annePutsMarbleInBox = (Trf [qq] Top [tt]
+annePutsMarbleInBox = (Trf [qq] Top
   (fromList [ (tt,boolBddOf $ Conj [Neg (PrpF qq) `Impl` PrpF tt, PrpF qq `Impl` Bot]) ])
   (fromList [ ("Anne", allsamebdd [qq]), ("Sally", cpBdd $ boolBddOf $ Neg (PrpF qq))  ]), [qq])
 
@@ -42,7 +42,7 @@ sallyIntermediate3 :: BelScene
 sallyIntermediate3 = sallyIntermediate2 `update` annePutsMarbleInBox
 
 sallyComesBack :: Event
-sallyComesBack = (Trf [] Top [pp]
+sallyComesBack = (Trf [] Top
   (fromList [ (pp,boolBddOf Top) ])
   (fromList [ (i,totalRelBdd) | i <- ["Anne","Sally"] ]), [])
 

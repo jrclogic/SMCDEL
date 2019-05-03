@@ -128,7 +128,7 @@ smartKripkeToKnsWithoutChecks (m@(KrMS5 worlds rel val), cur) =
     curs = map fst $ filter snd $ apply val cur
 
 actionToEvent :: PointedActionModel -> Event
-actionToEvent (ActMS5 acts actrel, faction) = (KnTrf addprops addlaw changeprops changelaw addobs, efacts) where
+actionToEvent (ActMS5 acts actrel, faction) = (KnTrf addprops addlaw changelaw addobs, efacts) where
   actions = map fst acts
   ags          = map fst actrel
   addprops     = actionprops ++ actrelprops
@@ -157,12 +157,12 @@ actionToEvent (ActMS5 acts actrel, faction) = (KnTrf addprops addlaw changeprops
   addobs       = [ (i,newps i) | i<- ags ]
 
 eventToAction' :: Event -> PointedActionModel
-eventToAction' event@(KnTrf addprops addlaw changeprops changelaw addobs, efacts) = (ActMS5 acts actrel, faction) where
+eventToAction' event@(KnTrf addprops addlaw changelaw addobs, efacts) = (ActMS5 acts actrel, faction) where
   actlist = zip (powerset addprops) [0..(2 ^ length addprops - 1)]
   acts    = [ (a, (simplify $ preFor ps, postsFor ps)) | (ps,a) <- actlist ] where
     preFor ps = substitSet (zip ps (repeat Top) ++ zip (addprops\\ps) (repeat Bot)) addlaw
     postsFor ps =
-      [ (q, formOf $ restrictSet (changelaw ! q) [(p, P p `elem` ps) | (P p) <- addprops]) | q <- changeprops ]
+      [ (q, formOf $ restrictSet (changelaw ! q) [(p, P p `elem` ps) | (P p) <- addprops]) | q <- map fst changelaw ]
   actrel    = [(i,rFor i) | i <- agentsOf event] where
     rFor i  = map (map snd) (groupBy ( \ (x,_) (y,_) -> x==y ) (pairs i))
     pairs i = sort $ map (\(set,a) -> (intersect set $ addobs ! i,a)) actlist

@@ -266,13 +266,12 @@ nonobsVocabOf (BlS vocab _law obs) = filter (`notElem` usedVars) vocab where
 data Transformer = Trf
   [Prp] -- addprops
   Form  -- event law
-  [Prp] -- changeprops, modified subset
   (M.Map Prp Bdd) -- changelaw
   (M.Map Agent RelBDD) -- eventObs
   deriving (Eq,Show)
 
 instance HasAgents Transformer where
-  agentsOf (Trf _ _ _ _ obdds) = M.keys obdds
+  agentsOf (Trf _ _ _ obdds) = M.keys obdds
 
 instance HasPrecondition Transformer where
   preOf _ = Top
@@ -281,17 +280,17 @@ instance Pointed Transformer State
 type Event = (Transformer,State)
 
 instance HasPrecondition Event where
-  preOf (Trf addprops addlaw _ _ _, x) = simplify $ substitOutOf x addprops addlaw
+  preOf (Trf addprops addlaw _ _, x) = simplify $ substitOutOf x addprops addlaw
 
 instance Pointed Transformer [State]
 type MultipointedEvent = (Transformer,Bdd)
 
 instance HasPrecondition MultipointedEvent where
-  preOf (Trf addprops addlaw _ _ _, xsBdd) =
+  preOf (Trf addprops addlaw _ _, xsBdd) =
     simplify $ Exists addprops (Conj [ formOf xsBdd, addlaw ])
 
 instance TexAble Transformer where
-  tex (Trf addprops addlaw changeprops changelaw eventObs) = concat
+  tex (Trf addprops addlaw changelaw eventObs) = concat
     [ " \\left( \n"
     , tex addprops, ", "
     , tex addlaw, ", "
@@ -300,6 +299,7 @@ instance TexAble Transformer where
     , intercalate ", " eobddstrings
     , " \\right) \n"
     ] where
+        changeprops = M.keys changelaw
         texChange prop changebdd = tex prop ++ " := " ++ tex (formOf changebdd)
         eobddstrings = map (bddstring . (fst &&& (texRelBDD . snd))) (M.toList eventObs)
         bddstring (i,os) = "\\Omega^+_{\\text{" ++ i ++ "}} = " ++ bddprefix ++ os ++ bddsuffix
@@ -319,8 +319,8 @@ instance TexAble MultipointedEvent where
 
 -- | shift addprops to ensure that props and newprops are disjoint:
 shiftPrepare :: BelStruct -> Transformer -> (Transformer, [(Prp,Prp)])
-shiftPrepare (BlS props _ _) (Trf addprops addlaw changeprops changelaw eventObs) =
-  (Trf shiftaddprops addlawShifted changeprops changelawShifted eventObsShifted, shiftrel) where
+shiftPrepare (BlS props _ _) (Trf addprops addlaw changelaw eventObs) =
+  (Trf shiftaddprops addlawShifted changelawShifted eventObsShifted, shiftrel) where
     shiftrel = sort $ zip addprops [(freshp props)..]
     shiftaddprops = map snd shiftrel
     -- apply the shifting to addlaw, changelaw and eventObs:
@@ -334,10 +334,11 @@ shiftPrepare (BlS props _ _) (Trf addprops addlaw changeprops changelaw eventObs
 instance Update BelScene Event where
   unsafeUpdate (bls@(BlS props law obdds),s) (trf, eventFactsUnshifted) = (BlS newprops newlaw newobs, news) where
     -- PART 1: SHIFTING addprops to ensure props and newprops are disjoint
-    (Trf addprops addlaw changeprops changelaw addObs, shiftrel) = shiftPrepare bls trf
+    (Trf addprops addlaw changelaw addObs, shiftrel) = shiftPrepare bls trf
     -- the actual event:
     eventFacts = map (apply shiftrel) eventFactsUnshifted
     -- PART 2: COPYING the modified propositions
+    changeprops = M.keys changelaw
     copyrel = zip changeprops [(freshp $ props ++ addprops)..]
     copychangeprops = map snd copyrel
     copyrelMVCP = sort $ zip (mv changeprops) (mv copychangeprops)
@@ -356,7 +357,7 @@ instance Update BelScene Event where
 instance Update BelScene MultipointedEvent where
   unsafeUpdate (kns,s) (trfUnshifted, eventFactsBddUnshifted) =
     update (kns,s) (trf,selectedEventState) where
-      (trf@(Trf addprops addlaw _ _ _), shiftRel) = shiftPrepare kns trfUnshifted
+      (trf@(Trf addprops addlaw _ _), shiftRel) = shiftPrepare kns trfUnshifted
       eventFactsBdd = relabelWith shiftRel eventFactsBddUnshifted
       selectedEventState :: State
       selectedEventState = map (P . fst) $ filter snd selectedEvent
@@ -375,7 +376,7 @@ instance Update BelStruct Transformer where
     (BlS newprops newlaw newobs, _) = unsafeUpdate (kns,undefined::State) (ctrf,undefined::Bdd) -- using laziness!
 
 trfPost :: Event -> Prp -> Bdd
-trfPost (Trf addprops _ _ changelaw _, x) p
+trfPost (Trf addprops _ changelaw _, x) p
   | p `elem` M.keys changelaw = restrictLaw (changelaw ! p) (booloutof x addprops)
   | otherwise                 = boolBddOf $ PrpF p
 
@@ -391,7 +392,7 @@ reduce e (Impl f1 f2) = Impl <$> reduce e f1 <*> reduce e f2
 reduce e (Equi f1 f2) = Equi <$> reduce e f1 <*> reduce e f2
 reduce _ (Forall _ _) = Nothing
 reduce _ (Exists _ _) = Nothing
-reduce e@(t@(Trf addprops _ _ _ eventObs), x) (K a f) =
+reduce e@(t@(Trf addprops _ _ eventObs), x) (K a f) =
   Impl (preOf e) <$> (Conj <$> sequence
     [ K a <$> reduce (t,y) f | y <- powerset addprops -- FIXME is this a bit much?
                              , tagBddEval (mv x ++ cp y) (eventObs ! a)
@@ -405,8 +406,9 @@ reduce _ Announce     {} = Nothing
 reduce _ AnnounceW    {} = Nothing
 
 bddReduce :: BelScene -> Event -> Form -> Bdd
-bddReduce scn@(oldBls,_) event@(Trf addprops _ changeprops changelaw _, eventFacts) f =
+bddReduce scn@(oldBls,_) event@(Trf addprops _ changelaw _, eventFacts) f =
   let
+    changeprops = M.keys changelaw
     -- same as in 'transform', to ensure props and addprops are disjoint
     shiftaddprops = [(freshp $ vocabOf scn)..]
     shiftrel      = sort $ zip addprops shiftaddprops

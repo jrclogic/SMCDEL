@@ -42,7 +42,7 @@ exampleStart = (BlS [P 0] law obs, actual) where
   actual = [P 0]
 
 exampleEvent :: Event
-exampleEvent = (Trf [P 1] addlaw [] (M.fromList []) eventObs, [P 1]) where
+exampleEvent = (Trf [P 1] addlaw (M.fromList []) eventObs, [P 1]) where
   addlaw = PrpF (P 1) `Impl` PrpF (P 0)
   eventObs = M.fromList [ ("1", allsamebdd [P 1]), ("2", cpBdd . boolBddOf $ Neg (PrpF $ P 1)) ]
 
@@ -57,7 +57,7 @@ publicMakeFalseActM ags p =
     myRel  = M.fromList [(i,[1]) | i <- ags]
 
 publicMakeFalseTrf :: [Agent] -> Prp -> Event
-publicMakeFalseTrf agents p = (Trf [] Top [p] changelaw eventobs, []) where
+publicMakeFalseTrf agents p = (Trf [] Top changelaw eventobs, []) where
   changelaw = M.fromList [ (p,boolBddOf Bot) ]
   eventobs  = M.fromList [ (i,totalRelBdd) | i <- agents ]
 
@@ -68,7 +68,7 @@ tResult :: BelScene
 tResult = exampleStart `update` myEvent
 
 flipOverAndShowTo :: [Agent] -> Prp -> Agent -> Event
-flipOverAndShowTo everyone p i = (Trf [q] eventlaw [p] changelaw eventobs, [q]) where
+flipOverAndShowTo everyone p i = (Trf [q] eventlaw changelaw eventobs, [q]) where
   q         = freshp [p]
   eventlaw  = PrpF q `Equi` PrpF p
   changelaw = M.fromList [ (p, boolBddOf . Neg . PrpF $ p) ]

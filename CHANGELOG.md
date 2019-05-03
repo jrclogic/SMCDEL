@@ -12,6 +12,7 @@ Changed:
 
 - polymorphic `update` replaces `productUpdate`, `transform`, `pubAnnounce` etc.
 - factual change per default: merge `Symbolic.S5.Change` into `Symbolic.S5` etc.
+- remove changeprops in (Kn)Trf to avoid redundancy with changelaw
 - move BDD related functions to HasCacBDD (`substit`, `substitSimul`)
 - avoid `Data.Map` in S5 modules, no longer depend on `lens`
 - replace `.cabal` file with a `package.yml` for `hpack`

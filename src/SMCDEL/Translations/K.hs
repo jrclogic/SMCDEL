@@ -35,7 +35,7 @@ kripkeToBls (m, cur) = (BlS vocab lawbdd obdds, truthsInAt m cur) where
   agents = agentsOf m
 
 actionToEvent :: PointedActionModel -> Event
-actionToEvent (ActM am, faction) = (Trf addprops addlaw changeprops changelaw eventObs, efacts) where
+actionToEvent (ActM am, faction) = (Trf addprops addlaw changelaw eventObs, efacts) where
   actions      = M.keys am
   (P fstnewp)  = freshp $ concatMap -- avoid props in pre and postconditions
                  (\c -> propsInForms (pre c : M.elems (post c)) ++ M.keys (post c)) (M.elems am)
@@ -53,11 +53,11 @@ actionToEvent (ActM am, faction) = (Trf addprops addlaw changeprops changelaw ev
   efacts       = ell faction
 
 eventToAction :: Event -> PointedActionModel
-eventToAction (t@(Trf addprops addlaw changeprops changelaw eventObs), efacts) = (ActM am, faction) where
+eventToAction (t@(Trf addprops addlaw changelaw eventObs), efacts) = (ActM am, faction) where
   actlist    = zip (powerset addprops) [0..]
   am         = M.fromList [ (a, Act (preFor ps) (postFor ps) (relFor ps)) | (ps,a) <- actlist, preFor ps /= Bot ]
   preFor ps  = simplify $ substitSet (zip ps (repeat Top) ++ zip (addprops \\ ps) (repeat Bot)) addlaw
-  postFor ps = M.fromList [ (q, formOf $ (changelaw ! q) `restrictSet` [(p, P p `elem` ps) | (P p) <- addprops]) | q <- changeprops ]
+  postFor ps = M.fromList [ (q, formOf $ (changelaw ! q) `restrictSet` [(p, P p `elem` ps) | (P p) <- addprops]) | q <- M.keys changelaw ]
   relFor ps  = M.fromList [(i,rFor i) | i <- agentsOf t] where
     rFor i   = concatMap (\(qs,b) -> [ b | tagBddEval (mv ps ++ cp qs) (eventObs ! i), preFor qs /= Bot ]) actlist
   faction    = apply actlist efacts

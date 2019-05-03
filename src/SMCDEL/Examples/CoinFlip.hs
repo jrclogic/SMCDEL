@@ -14,7 +14,7 @@ coinStart = (BlS [P 0] law obs, actual) where
   actual = [P 0]
 
 flipRandomAndShowTo :: [Agent] -> Prp -> Agent -> Event
-flipRandomAndShowTo everyone p i = (Trf [q] eventlaw [p] changelaw obs, [q]) where
+flipRandomAndShowTo everyone p i = (Trf [q] eventlaw changelaw obs, [q]) where
   q = freshp [p]
   eventlaw = Top
   changelaw = fromList [ (p, boolBddOf $ PrpF q) ]

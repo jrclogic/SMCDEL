@@ -11,7 +11,7 @@ myStart :: KnowScene
 myStart = (KnS [P 0] (boolBddOf Top) [("Alice",[]),("Bob",[P 0])],[P 0])
 
 publicMakeFalse :: [Agent] -> Prp -> Event
-publicMakeFalse agents p = (KnTrf [] Top [p] mychangelaw myobs, []) where
+publicMakeFalse agents p = (KnTrf [] Top mychangelaw myobs, []) where
   mychangelaw = [ (p,boolBddOf Bot) ]
   myobs = [ (i,[]) | i <- agents ]
 
@@ -25,7 +25,7 @@ exampleStart :: KnowScene
 exampleStart = (KnS [P 0] (boolBddOf Top) [("Alice",[]),("Bob",[P 0])],[P 0])
 
 makeFalseShowTo :: [Agent] -> Prp -> [Agent] -> Event
-makeFalseShowTo agents p intheknow = (KnTrf [P 99] Top [p] examplechangelaw exampleobs, []) where
+makeFalseShowTo agents p intheknow = (KnTrf [P 99] Top examplechangelaw exampleobs, []) where
   examplechangelaw = [ (p,boolBddOf $ PrpF (P 99)) ]
   exampleobs = [ (i,[P 99]) | i <- intheknow           ]
             ++ [ (i,[    ]) | i <- agents \\ intheknow ]

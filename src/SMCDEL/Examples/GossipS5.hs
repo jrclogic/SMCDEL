@@ -36,7 +36,7 @@ call :: Int -> (Int,Int) -> Event
 call n (a,b) = (callTrf n, [thisCallProp (a,b)])
 
 callTrf :: Int -> KnowTransformer
-callTrf n = KnTrf eventprops eventlaw changeprops changelaws eventobs where
+callTrf n = KnTrf eventprops eventlaw changelaws eventobs where
   thisCallHappens (i,j) = PrpF $ thisCallProp (i,j)
   isInCallForm k = Disj $ [ thisCallHappens (i,k) | i <- gossipers n \\ [k], i < k ]
                        ++ [ thisCallHappens (k,j) | j <- gossipers n \\ [k], k < j ]
@@ -50,7 +50,6 @@ callTrf n = KnTrf eventprops eventlaw changeprops changelaws eventobs where
   callPropsWith k = [ thisCallProp (i,k) | i <- gossipers n, i < k ]
                  ++ [ thisCallProp (k,j) | j <- gossipers n, k < j ]
   eventobs = [(show k, callPropsWith k) | k <- gossipers n]
-  changeprops = map fst changelaws
   changelaws =
     [(hasSof n i j, boolBddOf $              -- after a call, i has the secret of j iff
         Disj [ has n i j                     -- i already knew j, or

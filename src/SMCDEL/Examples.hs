@@ -56,7 +56,7 @@ exampleGroupAnnounceAction = groupAnnounceAction [alice, bob] [alice] (PrpF (P 0
 
 eGrAnLaw :: Form
 exampleGrAnnEvent :: Event
-exampleGrAnnEvent@(KnTrf _ eGrAnLaw _ _ _, _) = actionToEvent exampleGroupAnnounceAction
+exampleGrAnnEvent@(KnTrf _ eGrAnLaw _ _, _) = actionToEvent exampleGroupAnnounceAction
 
 actionOne :: PointedActionModel
 actionOne = (ActMS5 [(0,(p,[])),(1, (Disj [q, Neg q],[]))] [("Alice",[[0],[1]]), ("Bob",[[0,1]])], 0) where (p,q) = (PrpF $ P 0, PrpF $ P 1)
