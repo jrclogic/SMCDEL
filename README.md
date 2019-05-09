@@ -5,7 +5,7 @@
 [![Build Status](https://api.travis-ci.org/jrclogic/SMCDEL.svg?branch=master)](https://travis-ci.org/jrclogic/SMCDEL)
 [![DOI](https://zenodo.org/badge/36519077.svg)](https://zenodo.org/badge/latestdoi/36519077)
 
-A symbolic model checker for Dynamic Epistemic Logic.
+A symbolic model checker for [Dynamic Epistemic Logic](https://plato.stanford.edu/entries/dynamic-epistemic).
 
 You can find a complete literate Haskell documentation in the file
 [SMCDEL.pdf](https://github.com/jrclogic/SMCDEL/raw/master/SMCDEL.pdf).
@@ -56,8 +56,7 @@ On Debian, just do `sudo apt install graphviz dot2tex`.
 - `stack install` will put two executables `smcdel` and `smcdel-web`
   into ~/.local/bin which should be in your `PATH` variable.
 
-2) Create a text file which describes the knowledge structure and
-the formulas you want to check for truth or validity:
+2) Create a text file `MuddyShort.smcdel.txt` which describes the knowledge structure and the formulas you want to check for truth or validity:
 
     ```
     -- Three Muddy Children in SMCDEL
@@ -67,7 +66,7 @@ the formulas you want to check for truth or validity:
          bob:   1,3
          carol: 1,2
     WHERE?
-      [ ! (1|2|3) ] alices knows whether 1
+      [ ! (1|2|3) ] alice knows whether 1
     VALID?
       [ ! (1|2|3) ]
       [ ! ((~ (alice knows whether 1)) & (~ (bob knows whether 2)) & (~ (carol knows whether 3))) ]
@@ -75,7 +74,7 @@ the formulas you want to check for truth or validity:
       (alice,bob,carol) comknow that (1 & 2 & 3)
     ```
 
-3) Run "smcdel textfile" resulting in:
+3) Run `smcdel MuddyShort.smcdel.txt` resulting in:
 
     ```
     >> smcdel MuddyShort.smcdel.txt
