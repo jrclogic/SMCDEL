@@ -1,9 +1,10 @@
 module SMCDEL.Internal.Help (
   alleq,alleqWith,anydiff,anydiffWith,alldiff,
+  groupSortWith,
   apply,applyPartial,(!),(!=),
   powerset,restrict,rtc,tc,Erel,bl,fusion,seteq,subseteq,lfp
   ) where
-import Data.List (nub,union,sort,foldl',(\\))
+import Data.List ((\\),foldl',groupBy,nub,sort,sortBy,union)
 
 type Rel a b = [(a,b)]
 type Erel a = [[a]]
@@ -25,6 +26,10 @@ anydiffWith f (x:xs) = any (f x /=) (map f xs)
 alldiff :: Eq a => [a] -> Bool
 alldiff [] = True
 alldiff (x:xs) = notElem x xs && alldiff xs
+
+groupSortWith :: (Eq a, Ord b) => (a -> b) -> [a] -> [[a]]
+groupSortWith f = groupBy (\ x y -> myCompare x y == EQ) . sortBy myCompare where
+  myCompare x y = compare (f x) (f y)
 
 apply :: Show a => Show b => Eq a => Rel a b -> a -> b
 apply rel left = case lookup left rel of

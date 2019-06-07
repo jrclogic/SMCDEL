@@ -3,14 +3,14 @@
 module SMCDEL.Translations.K where
 
 import Data.HasCacBDD hiding (Top,Bot)
-import Data.List ((\\),nub,sort)
+import Data.List ((\\),elemIndex,nub,sort)
 import Data.Map.Strict ((!))
 import qualified Data.Map.Strict as M
 
 import SMCDEL.Language
 import SMCDEL.Explicit.S5 (worldsOf)
 import SMCDEL.Explicit.K
-import SMCDEL.Internal.Help (apply,powerset)
+import SMCDEL.Internal.Help (apply,powerset,groupSortWith)
 import SMCDEL.Symbolic.K
 import SMCDEL.Symbolic.S5 (boolBddOf)
 import SMCDEL.Translations.S5 (booloutof)
@@ -27,12 +27,25 @@ blsToKripke (f@(BlS _ _ obdds), curs) = (m, cur) where
   (Just cur) = lookup curs links
 
 kripkeToBls :: PointedModel -> BelScene
-kripkeToBls (m, cur) = (BlS vocab lawbdd obdds, truthsInAt m cur) where
+kripkeToBls pm@(m,_) | distinctVal m = kripkeToBlsUnsafe pm
+                     | otherwise     = kripkeToBlsUnsafe (ensureDistinctVal pm)
+
+kripkeToBlsUnsafe :: PointedModel -> BelScene
+kripkeToBlsUnsafe (m, cur) = (BlS vocab lawbdd obdds, truthsInAt m cur) where
   vocab  = vocabOf m
   lawbdd = disSet [ booloutof (truthsInAt m w) vocab | w <- worldsOf m ]
   obdds  :: M.Map Agent RelBDD
   obdds  = M.fromList [ (i, restrictLaw <$> relBddOfIn i m <*> (con <$> mvBdd lawbdd <*> cpBdd lawbdd)) | i <- agents ]
   agents = agentsOf m
+
+ensureDistinctVal :: PointedModel -> PointedModel
+ensureDistinctVal (krm@(KrM m), cur) = if distinctVal krm then (krm,cur) else (KrM newM,cur) where
+  sameVals = groupSortWith (truthsInAt krm) (worldsOf krm)
+  indexOf w = let Just k = elemIndex w (head $ filter (elem w) sameVals) in k
+  numAddProps = ceiling $ logBase (2::Double) (fromIntegral $ maximum (map length sameVals) + 1)
+  addProps = take numAddProps [freshp (vocabOf krm) ..]
+  addValForIndex k = M.fromList [ (p, p `elem` (reverse (powerset addProps) !! k) ) | p <- addProps ]
+  newM = M.mapWithKey (\w (val,r) -> (M.union val (addValForIndex (indexOf w)),r)) m
 
 actionToEvent :: PointedActionModel -> Event
 actionToEvent (ActM am, faction) = (Trf addprops addlaw changelaw eventObs, efacts) where
