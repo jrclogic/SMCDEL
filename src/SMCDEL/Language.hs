@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, MultiParamTypeClasses  #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, MultiParamTypeClasses #-}
 
 module SMCDEL.Language where
 
@@ -15,8 +15,11 @@ instance Enum Prp where
   toEnum = P
   fromEnum (P n) = n
 
+defaultVocabulary :: [Prp]
+defaultVocabulary = map P [0..4]
+
 instance Arbitrary Prp where
-  arbitrary = P <$> choose (0,4)
+  arbitrary = elements defaultVocabulary
 
 freshp :: [Prp] -> Prp
 freshp [] = P 1
@@ -32,10 +35,13 @@ alice = "Alice"
 bob   = "Bob"
 carol = "Carol"
 
+defaultAgents :: [Agent]
+defaultAgents = map show [(1::Integer)..5]
+
 newtype AgAgent = Ag Agent deriving (Eq,Ord,Show)
 
 instance Arbitrary AgAgent where
-  arbitrary = oneof $ map (pure . Ag . show) [1..(5::Integer)]
+  arbitrary = elements $ map Ag defaultAgents
 
 class HasAgents a where
   agentsOf :: a -> [Agent]
@@ -48,9 +54,9 @@ instance (HasAgents a, Pointed a b) => HasAgents (a,b) where agentsOf = agentsOf
 
 newtype Group = Group [Agent] deriving (Eq,Ord,Show)
 
--- generate a non-empty group of up to 5 agents
+-- generate a random group, always including agent 1
 instance Arbitrary Group where
-  arbitrary = fmap (Group.("1":)) $ sublistOf $ map show [2..(5::Integer)]
+  arbitrary = fmap (Group.("1":)) $ sublistOf $ defaultAgents \\ ["1"]
 
 data Form
   = Top                         -- ^ True Constant

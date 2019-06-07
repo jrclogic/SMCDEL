@@ -3,7 +3,6 @@
 module SMCDEL.Explicit.S5 where
 
 import Control.Arrow (second,(&&&))
-import Control.Monad (replicateM)
 import Data.GraphViz
 import Data.List
 import Data.Tuple (swap)
@@ -69,17 +68,16 @@ randomPartFor worlds = do
 
 instance Arbitrary KripkeModelS5 where
   arbitrary = do
-    let agents = map show [1..(5::Int)]
-    let props = map P [0..4]
-    worlds <- sort . nub <$> listOf1 (elements [0..8])
+    nonActualWorlds <- sublistOf [1..8]
+    let worlds = 0 : nonActualWorlds
     val <- mapM (\w -> do
-      randomAssignment <- zip props <$> infiniteListOf (choose (True,False))
-      return (w,randomAssignment)
+      myAssignment <- zip defaultVocabulary <$> infiniteListOf (choose (True,False))
+      return (w,myAssignment)
       ) worlds
     parts <- mapM (\i -> do
-      randomPartition <- randomPartFor worlds
-      return (i,randomPartition)
-      ) agents
+      myPartition <- randomPartFor worlds
+      return (i,myPartition)
+      ) defaultAgents
     return $ KrMS5 worlds parts val
   shrink m@(KrMS5 worlds _ _) =
     [ m `withoutWorld` w | w <- worlds, length worlds > 1 ]
@@ -318,7 +316,9 @@ instance TexAble MultipointedActionModel where
 
 instance Arbitrary ActionModel where
   arbitrary = do
-    [BF f, BF g, BF h] <- replicateM 3 (sized $ randomboolformWith [P 0 .. P 4])
+    BF f <- sized $ randomboolformWith [P 0 .. P 4]
+    BF g <- sized $ randomboolformWith [P 0 .. P 4]
+    BF h <- sized $ randomboolformWith [P 0 .. P 4]
     myPost <- (\_ -> do
       proptochange <- elements [P 0 .. P 4]
       postconcon <- elements $ [Top,Bot] ++ map PrpF [P 0 .. P 4]

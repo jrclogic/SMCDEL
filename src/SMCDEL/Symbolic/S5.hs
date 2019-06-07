@@ -434,12 +434,12 @@ evalViaBddReduce (kns,s) event f = evaluateFun (bddReduce (kns,s) event f) (\n -
 
 instance Arbitrary KnowStruct where
   arbitrary = do
-    let props = map P [0..4]
-    (BF statelaw) <- sized (randomboolformWith props) `suchThat` (\(BF bf) -> boolBddOf bf /= bot)
-    let agents = map show [1..(5::Int)]
+    numExtraVars <- choose (0,3)
+    let myVocabulary = defaultVocabulary ++ take numExtraVars [freshp defaultVocabulary ..]
+    (BF statelaw) <- sized (randomboolformWith myVocabulary) `suchThat` (\(BF bf) -> boolBddOf bf /= bot)
     obs <- mapM (\i -> do
-      obsVars <- sublistOf props
+      obsVars <- sublistOf myVocabulary
       return (i,obsVars)
-      ) agents
-    return $ KnS props (boolBddOf statelaw) obs
-  shrink kns = [ withoutProps [p] kns | p <- vocabOf kns, length (vocabOf kns) > 1 ]
+      ) defaultAgents
+    return $ KnS defaultVocabulary (boolBddOf statelaw) obs
+  shrink kns = [ withoutProps [p] kns | length (vocabOf kns) > 1, p <- vocabOf kns \\ defaultVocabulary ]

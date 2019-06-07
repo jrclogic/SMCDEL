@@ -82,12 +82,12 @@ main = hspec $ do
       let (Just g) = findStateMap redundantModel myKNS in equivalentWith redundantModel myKNS g
     it "findStateMap works for minimizedModel and myKNS" $
       let (Just g) = findStateMap minimizedModel myKNS in equivalentWith minimizedModel myKNS g
-    it "Three Muddy Children" $
-      evalViaBdd mudScn0 (nobodyknows 3) &&
-      evalViaBdd mudScn1 (nobodyknows 3) &&
-      evalViaBdd mudScn2 (Conj [knows i | i <- [1..3]]) &&
-      length (SMCDEL.Symbolic.S5.statesOf mudKns2) == 1 &&
-      buildResult == mudScnInit 3 3
+    describe "Three Muddy Children" $ do
+      it "mudScn0: nobodyknows 3" $ evalViaBdd mudScn0 (nobodyknows 3)
+      it "mudScn1: nobodyknows 3" $ evalViaBdd mudScn1 (nobodyknows 3)
+      it "mudScn2: everyone knows" $ evalViaBdd mudScn2 (Conj [knows i | i <- [1..3]])
+      it "mudKns2 has one state" $ length (SMCDEL.Symbolic.S5.statesOf mudKns2) === 1
+      it "build result == mudScnInit 3 3" $ buildResult === mudScnInit 3 3
     it "Thirsty Logicians: valid for up to 10 agents" $
       all thirstyCheck [3..10]
     it "Dining Crypto: valid for up to 9 agents" $

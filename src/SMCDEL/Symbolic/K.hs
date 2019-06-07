@@ -9,6 +9,7 @@ import Data.HasCacBDD hiding (Top,Bot)
 import Data.List (intercalate,sort,intersect,(\\))
 import qualified Data.Map.Strict as M
 import Data.Map.Strict ((!))
+import Test.QuickCheck
 
 import SMCDEL.Explicit.K
 import SMCDEL.Internal.Help (apply,lfp,powerset)
@@ -262,6 +263,25 @@ nonobsVocabOf (BlS vocab _law obs) = filter (`notElem` usedVars) vocab where
     $ sort
     $ concatMap (map P . Data.HasCacBDD.allVarsOf . untag . snd)
     $ M.toList obs
+
+withoutProps :: [Prp] -> BelStruct -> BelStruct
+withoutProps propsToDel (BlS oldProps oldLawBdd oldObs) =
+  BlS
+    (oldProps \\ propsToDel)
+    (existsSet (map fromEnum propsToDel) oldLawBdd)
+    (M.map (fmap $ existsSet (map fromEnum propsToDel)) oldObs)
+
+instance Arbitrary BelStruct where
+  arbitrary = do
+    numExtraVars <- choose (0,3)
+    let myVocabulary = defaultVocabulary ++ take numExtraVars [freshp defaultVocabulary ..]
+    (BF statelaw) <- sized (randomboolformWith myVocabulary) `suchThat` (\(BF bf) -> boolBddOf bf /= bot)
+    obs <- mapM (\i -> do
+      BF obsLaw <- sized $ randomboolformWith (sort $ mv myVocabulary ++ cp myVocabulary) -- FIXME should rather be a random BDD?
+      return (i,pure $ boolBddOf obsLaw)
+      ) defaultAgents
+    return $ BlS myVocabulary (boolBddOf statelaw) (M.fromList obs)
+  shrink bls = [ withoutProps [p] bls | length (vocabOf bls) > 1, p <- vocabOf bls \\ defaultVocabulary ]
 
 data Transformer = Trf
   [Prp] -- addprops

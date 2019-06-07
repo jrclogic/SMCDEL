@@ -3,7 +3,6 @@
 module SMCDEL.Explicit.K where
 
 import Control.Arrow ((&&&))
-import Control.Monad
 import Data.List (nub,sort,(\\),delete,intercalate,intersect)
 import qualified Data.Map.Strict as M
 import Data.Map.Strict ((!))
@@ -75,6 +74,24 @@ instance TexAble MultipointedModel where
   tex           = tex.ViaDot
   texTo         = texTo.ViaDot
   texDocumentTo = texDocumentTo.ViaDot
+
+instance Arbitrary KripkeModel where
+  arbitrary = do
+    nonActualWorlds <- sublistOf [1..8]
+    let worlds = 0 : nonActualWorlds
+    m <- mapM (\w -> do
+      myAssignment <- zip defaultVocabulary <$> infiniteListOf (choose (True,False))
+      myRelations <- mapM (\a -> do
+        reachables <- sublistOf worlds
+        return (a,reachables)
+        ) defaultAgents
+      return (w, (M.fromList myAssignment, M.fromList myRelations)) -- FIXME avoid fromList, build M.map directly?
+      ) worlds
+    return $ KrM $ M.fromList m
+  shrink krm = [ krm `withoutWorld` w | w <- worldsOf krm, length (worldsOf krm) > 1, w /= 0 ]
+
+withoutWorld :: KripkeModel -> World -> KripkeModel
+withoutWorld (KrM m) w = KrM $ M.map (\(a, r) -> (a, M.map (delete w) r)) $ M.delete w m
 
 eval :: PointedModel -> Form -> Bool
 eval _     Top           = True
@@ -216,16 +233,18 @@ instance Update MultipointedModel MultipointedActionModel where
 instance Arbitrary ActionModel where
   arbitrary = do
     let allactions = [0..3]
-    [BF f, BF g, BF h] <- replicateM 3 (sized $ randomboolformWith [P 0 .. P 4])
+    BF f <- sized $ randomboolformWith defaultVocabulary
+    BF g <- sized $ randomboolformWith defaultVocabulary
+    BF h <- sized $ randomboolformWith defaultVocabulary
     let myPres  = Top : map simplify [f,g,h]
     myPosts <- mapM (\_ -> do
-      proptochange <- elements [P 0 .. P 4]
-      postconcon <- elements $ [Top,Bot] ++ map PrpF [P 0 .. P 4]
+      proptochange <- elements defaultVocabulary
+      postconcon <- elements $ [Top,Bot] ++ map PrpF defaultVocabulary
       return $ M.fromList [ (proptochange, postconcon) ]
       ) allactions
     myRels <- mapM (\k -> do
       reachList <- sublistOf allactions
-      return $ M.fromList $ ("0",[k]) : [(show i,reachList) | i <- [1..5::Int]]
+      return $ M.fromList $ ("0",[k]) : [(ag,reachList) | ag <- defaultAgents]
       ) allactions
     return $ ActM $ M.fromList
       [ (k::Action, Act (myPres !! k) (myPosts !! k) (myRels !! k)) | k <- allactions ]
