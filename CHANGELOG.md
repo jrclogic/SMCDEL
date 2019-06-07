@@ -7,6 +7,7 @@ New:
 - minimization via bisimulation
 - multipointed models, action models, structures and events
 - added Cheryl's Birthday example
+- add S5 to K conversion
 
 Changed:
 
