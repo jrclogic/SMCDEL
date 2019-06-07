@@ -5,6 +5,7 @@
 New:
 
 - minimization via bisimulation
+- allow dynamic operators in formulas via Data.Dynamic
 - multipointed models, action models, structures and events
 - added Cheryl's Birthday example
 - more instances for QuickCheck

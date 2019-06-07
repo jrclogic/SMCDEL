@@ -3,6 +3,7 @@
 module SMCDEL.Explicit.K where
 
 import Control.Arrow ((&&&))
+import Data.Dynamic
 import Data.List (nub,sort,(\\),delete,intercalate,intersect)
 import qualified Data.Map.Strict as M
 import Data.Map.Strict ((!))
@@ -121,6 +122,9 @@ eval (m,w) (AnnounceW listeners f g) = eval newm g where
   newm = (m,w) `update` announceAction (agentsOf m) listeners aform
   aform | eval (m,w) f = f
         | otherwise    = Neg f
+eval pm (Dia (Dyn dynLabel d) f) = case fromDynamic d of
+  Just pactm -> eval pm (preOf (pactm :: PointedActionModel)) && eval (pm `update` pactm) f
+  Nothing    -> error $ "cannot update Kripke model with '" ++ dynLabel ++ "':\n  " ++ show d
 
 instance Semantics PointedModel where
   isTrue = eval

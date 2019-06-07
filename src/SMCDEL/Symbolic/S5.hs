@@ -1,18 +1,20 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, MultiParamTypeClasses #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, MultiParamTypeClasses, ScopedTypeVariables #-}
 
 module SMCDEL.Symbolic.S5 where
 
 import Control.Arrow (first,second,(***))
+import Data.Char (isSpace)
+import Data.Dynamic
 import Data.HasCacBDD hiding (Top,Bot)
 import Data.HasCacBDD.Visuals
-import Data.List ((\\),delete,intercalate,intersect,nub,sort)
+import Data.List ((\\),delete,dropWhile,dropWhileEnd,intercalate,intersect,nub,sort)
 import Data.Tagged
 import System.IO (hPutStr, hGetContents, hClose)
 import System.IO.Unsafe (unsafePerformIO)
 import System.Process (runInteractiveCommand)
 import Test.QuickCheck
 
-import SMCDEL.Internal.Help ((!),alleqWith,apply,applyPartial,lfp,rtc,seteq,powerset) -- remove apply?
+import SMCDEL.Internal.Help ((!),alleqWith,apply,applyPartial,lfp,powerset,rtc,seteq)
 import SMCDEL.Internal.TaggedBDD
 import SMCDEL.Internal.TexDisplay
 import SMCDEL.Language
@@ -112,6 +114,10 @@ eval scn (AnnounceW ags form1 form2) =
   if eval scn form1
     then eval (announceOnScn scn ags form1      ) form2
     else eval (announceOnScn scn ags (Neg form1)) form2
+eval scn (Dia (Dyn dynLabel d) f) = case fromDynamic d of
+  Just event -> eval scn (preOf (event :: Event))
+                && eval (scn `update` event) f
+  Nothing    -> error $ "cannot update knowledge structure with '" ++ dynLabel ++ "':\n  " ++ show d
 
 
 announce :: KnowStruct -> [Agent] -> Form -> KnowStruct
@@ -163,6 +169,34 @@ bddOf kns (PubAnnounceW form1 form2) =
   ifthenelse (bddOf kns form1) newform2a newform2b where
     newform2a = bddOf (update kns form1) form2
     newform2b = bddOf (update kns (Neg form1)) form2
+
+bddOf kns (Dia (Dyn dynLabel d) f) =
+    con (bddOf kns preCon)                    -- 5. Prefix with "precon AND ..." (diamond!)
+    . relabelWith copyrelInverse              -- 4. Copy back changeProps V_° to V_
+    . simulateActualEvents                    -- 3. Simulate actual event(s) [see below]
+    . substitSimul [ (k, changeLaw ! p)       -- 2. Replace changeProps V_ with postcons
+                   | p@(P k) <- changeProps]  --    (no "relabelWith copyrel", undone in 4)
+    . bddOf (kns `update` trf)                -- 1. boolean equivalent wrt new struct
+    $ f
+  where
+    changeProps = map fst changeLaw
+    copychangeProps = [(freshp $ vocabOf kns ++ addProps)..]
+    copyrelInverse  = zip copychangeProps changeProps
+    (trf@(KnTrf addProps addLaw changeLaw _), shiftrel) = shiftPrepare kns trfUnshifted
+    (preCon,trfUnshifted,simulateActualEvents) =
+      case fromDynamic d of
+        -- 3. For a signle pointed event, simulate actual event x outof V+
+        Just ((t,x) :: Event) -> ( preOf (t,x), t, (`restrictSet` actualAss) )
+          where actualAss = [(newK, P k `elem` x) | (P k, P newK) <- shiftrel]
+        Nothing -> case fromDynamic d of
+          -- 3. For a multipointed event, simulate a set of actual events by ...
+          Just ((t,xsBdd) :: MultipointedEvent) ->
+              ( preOf (t,xsBdd), t
+              , existsSet (map fromEnum addProps)  -- ... replacing addProps with assigments
+                . con actualsBdd                   -- ... that satisfy actualsBdd
+                . con (bddOf kns addLaw)           -- ... and a precondition.
+              ) where actualsBdd = relabelWith shiftrel xsBdd
+          Nothing -> error $ "cannot update knowledge structure with '" ++ dynLabel ++ "':\n " ++ show d
 
 evalViaBdd :: KnowScene -> Form -> Bool
 evalViaBdd (kns,s) f = evaluateFun (bddOf kns f) (\n -> P n `elem` s)
@@ -338,7 +372,8 @@ texBddWith myShow b = unsafePerformIO $ do
   (i,o,_,_) <- runInteractiveCommand "dot2tex --figpreamble=\"\\huge\" --figonly -traw"
   hPutStr i (genGraphWith myShow b ++ "\n")
   hClose i
-  hGetContents o
+  result <- hGetContents o
+  return $ dropWhileEnd isSpace $ dropWhile isSpace result
 
 texBDD :: Bdd -> String
 texBDD = texBddWith show
@@ -422,15 +457,7 @@ reduce _ PubAnnounce  {} = Nothing
 reduce _ PubAnnounceW {} = Nothing
 reduce _ Announce     {} = Nothing
 reduce _ AnnounceW    {} = Nothing
-
-bddReduce :: KnowScene -> Event -> Form -> Bdd
-bddReduce scn event f = restrictSet (bddOf newKns f) actualAss where
-  (newKns,_) = update scn event
-  (KnTrf eventprops _ _ _, actual) = event
-  actualAss = [(k, P k `elem` actual) | (P k) <- eventprops]
-
-evalViaBddReduce :: KnowScene -> Event -> Form -> Bool
-evalViaBddReduce (kns,s) event f = evaluateFun (bddReduce (kns,s) event f) (\n -> P n `elem` s)
+reduce _ Dia          {} = Nothing
 
 instance Arbitrary KnowStruct where
   arbitrary = do

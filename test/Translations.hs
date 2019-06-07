@@ -1,5 +1,6 @@
 module Main (main) where
 
+import Data.Dynamic (toDyn)
 import Data.List (sort)
 import Test.Hspec
 import Test.Hspec.QuickCheck
@@ -76,8 +77,12 @@ pubAnnounceTest prp (SF g) = alleq
   , Sym.eval (kripkeToKns mymodel) (PubAnnounce f g)
   , Sym.evalViaBdd (kripkeToKns mymodel) (PubAnnounce f g)
   , Sym.eval (update (kripkeToKns mymodel) (actionToEvent (pubAnnounceAction (agentsOf mymodel) f))) g
+  , Exp.eval mymodel (Dia (Dyn dynName (toDyn $ pubAnnounceAction (agentsOf mymodel) f)) g)
+  , Sym.eval (kripkeToKns mymodel) (Dia (Dyn dynName (toDyn $ actionToEvent $ pubAnnounceAction (agentsOf mymodel) f)) g)
+  , Sym.evalViaBdd (kripkeToKns mymodel) (Dia (Dyn dynName (toDyn $ actionToEvent $ pubAnnounceAction (agentsOf mymodel) f)) g)
   ] where
       f = PrpF prp
+      dynName = "publicly announce " ++ show prp
 
 announceTest :: SimplifiedForm -> Group -> SimplifiedForm -> [Bool]
 announceTest (SF f) (Group listeners) (SF g) =
@@ -87,6 +92,7 @@ announceTest (SF f) (Group listeners) (SF g) =
       action   = groupAnnounceAction (agentsOf mymodel) listeners f
       newModel = update mymodel action
     in not precon || Exp.eval newModel g
+  , Exp.eval mymodel (box (Dyn ("announce " ++ show f ++ " to " ++ show listeners) (toDyn $ groupAnnounceAction (agentsOf mymodel) listeners f)) g)
   , Sym.eval (kripkeToKns mymodel) (Announce listeners f g) -- on equivalent kns
   , Sym.evalViaBdd (kripkeToKns mymodel) (Announce listeners f g) -- BDD on equivalent kns
   , let -- apply equivalent transformer to equivalent kns

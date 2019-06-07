@@ -3,6 +3,7 @@
 module SMCDEL.Explicit.S5 where
 
 import Control.Arrow (second,(&&&))
+import Data.Dynamic
 import Data.GraphViz
 import Data.List
 import Data.Tuple (swap)
@@ -118,6 +119,11 @@ eval pm (AnnounceW ags form1 form2) =
   if eval pm form1
     then eval (announce pm ags form1) form2
     else eval (announce pm ags (Neg form1)) form2
+eval pm (Dia (Dyn dynLabel d) f) = case fromDynamic d of
+  Just pactm -> eval pm (preOf (pactm :: PointedActionModel)) && eval (pm `update` pactm) f
+  Nothing    -> case fromDynamic d of
+    Just mpactm -> eval pm (preOf (mpactm :: MultipointedActionModel)) && eval (pm `update` mpactm) f
+    Nothing     -> error $ "cannot update S5 Kripke model with '" ++ dynLabel ++ "':\n  " ++ show d
 
 valid :: KripkeModelS5 -> Form -> Bool
 valid m@(KrMS5 worlds _ _) f = all (\w -> eval (m,w) f) worlds

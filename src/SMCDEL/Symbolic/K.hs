@@ -1,10 +1,11 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, TypeOperators, MultiParamTypeClasses #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, TypeOperators, MultiParamTypeClasses, ScopedTypeVariables #-}
 
 module SMCDEL.Symbolic.K where
 
 import Data.Tagged
 
 import Control.Arrow ((&&&),first)
+import Data.Dynamic (fromDynamic)
 import Data.HasCacBDD hiding (Top,Bot)
 import Data.List (intercalate,sort,intersect,(\\))
 import qualified Data.Map.Strict as M
@@ -114,61 +115,89 @@ bddOf :: BelStruct -> Form -> Bdd
 bddOf _   Top           = top
 bddOf _   Bot           = bot
 bddOf _   (PrpF (P n))  = var n
-bddOf kns (Neg form)    = neg $ bddOf kns form
-bddOf kns (Conj forms)  = conSet $ map (bddOf kns) forms
-bddOf kns (Disj forms)  = disSet $ map (bddOf kns) forms
-bddOf kns (Xor  forms)  = xorSet $ map (bddOf kns) forms
-bddOf kns (Impl f g)    = imp (bddOf kns f) (bddOf kns g)
-bddOf kns (Equi f g)    = equ (bddOf kns f) (bddOf kns g)
-bddOf kns (Forall ps f) = forallSet (map fromEnum ps) (bddOf kns f)
-bddOf kns (Exists ps f) = existsSet (map fromEnum ps) (bddOf kns f)
+bddOf bls (Neg form)    = neg $ bddOf bls form
+bddOf bls (Conj forms)  = conSet $ map (bddOf bls) forms
+bddOf bls (Disj forms)  = disSet $ map (bddOf bls) forms
+bddOf bls (Xor  forms)  = xorSet $ map (bddOf bls) forms
+bddOf bls (Impl f g)    = imp (bddOf bls f) (bddOf bls g)
+bddOf bls (Equi f g)    = equ (bddOf bls f) (bddOf bls g)
+bddOf bls (Forall ps f) = forallSet (map fromEnum ps) (bddOf bls f)
+bddOf bls (Exists ps f) = existsSet (map fromEnum ps) (bddOf bls f)
 
-bddOf kns@(BlS allprops lawbdd obdds) (K i form) = unmvBdd result where
-  result = forallSet ps' <$> (imp <$> cpBdd lawbdd <*> (imp <$> omegai <*> cpBdd (bddOf kns form)))
+bddOf bls@(BlS allprops lawbdd obdds) (K i form) = unmvBdd result where
+  result = forallSet ps' <$> (imp <$> cpBdd lawbdd <*> (imp <$> omegai <*> cpBdd (bddOf bls form)))
   ps'    = map fromEnum $ cp allprops
   omegai = obdds ! i
 
-bddOf kns@(BlS allprops lawbdd obdds) (Kw i form) = unmvBdd result where
+bddOf bls@(BlS allprops lawbdd obdds) (Kw i form) = unmvBdd result where
   result = dis <$> part form <*> part (Neg form)
-  part f = forallSet ps' <$> (imp <$> cpBdd lawbdd <*> (imp <$> omegai <*> cpBdd (bddOf kns f)))
+  part f = forallSet ps' <$> (imp <$> cpBdd lawbdd <*> (imp <$> omegai <*> cpBdd (bddOf bls f)))
   ps'    = map fromEnum $ cp allprops
   omegai = obdds ! i
 
-bddOf kns@(BlS voc lawbdd obdds) (Ck ags form) = lfp lambda top where
+bddOf bls@(BlS voc lawbdd obdds) (Ck ags form) = lfp lambda top where
   ps' = map fromEnum $ cp voc
   lambda :: Bdd -> Bdd
   lambda z = unmvBdd $
     forallSet ps' <$>
       (imp <$> cpBdd lawbdd <*>
         (imp <$> (disSet <$> sequence [obdds ! i | i <- ags]) <*>
-          cpBdd (con (bddOf kns form) z)))
+          cpBdd (con (bddOf bls form) z)))
 
-bddOf kns (Ckw ags form) = dis (bddOf kns (Ck ags form)) (bddOf kns (Ck ags (Neg form)))
+bddOf bls (Ckw ags form) = dis (bddOf bls (Ck ags form)) (bddOf bls (Ck ags (Neg form)))
 
-bddOf kns (PubAnnounce f g) =
-  imp (bddOf kns f) (bddOf (pubAnnounce kns f) g)
-bddOf kns (PubAnnounceW f g) =
-  ifthenelse (bddOf kns f)
-    (bddOf (pubAnnounce kns f      ) g)
-    (bddOf (pubAnnounce kns (Neg f)) g)
+bddOf bls (PubAnnounce f g) =
+  imp (bddOf bls f) (bddOf (pubAnnounce bls f) g)
+bddOf bls (PubAnnounceW f g) =
+  ifthenelse (bddOf bls f)
+    (bddOf (pubAnnounce bls f      ) g)
+    (bddOf (pubAnnounce bls (Neg f)) g)
 
-bddOf kns@(BlS props _ _) (Announce ags f g) =
-  imp (bddOf kns f) (restrict bdd2 (k,True)) where
-    bdd2  = bddOf (announce kns ags f) g
+bddOf bls@(BlS props _ _) (Announce ags f g) =
+  imp (bddOf bls f) (restrict bdd2 (k,True)) where
+    bdd2  = bddOf (announce bls ags f) g
     (P k) = freshp props
 
-bddOf kns@(BlS props _ _) (AnnounceW ags f g) =
-  ifthenelse (bddOf kns f) bdd2a bdd2b where
-    bdd2a = restrict (bddOf (announce kns ags f      ) g) (k,True)
-    bdd2b = restrict (bddOf (announce kns ags (Neg f)) g) (k,True)
+bddOf bls@(BlS props _ _) (AnnounceW ags f g) =
+  ifthenelse (bddOf bls f) bdd2a bdd2b where
+    bdd2a = restrict (bddOf (announce bls ags f      ) g) (k,True)
+    bdd2b = restrict (bddOf (announce bls ags (Neg f)) g) (k,True)
     (P k) = freshp props
+
+bddOf bls (Dia (Dyn dynLabel d) f) =
+    con (bddOf bls preCon)                    -- 5. Prefix with "precon AND ..." (diamond!)
+    . relabelWith copyrelInverse              -- 4. Copy back changeProps V_° to V_
+    . simulateActualEvents                    -- 3. Simulate actual event(s) [see below]
+    . substitSimul [ (k, changeLaw ! p)       -- 2. Replace changeProps V_ with postcons
+                   | p@(P k) <- changeProps]  --    (no "relabelWith copyrel", undone in 4)
+    . bddOf (bls `update` trf)                -- 1. boolean equivalent wrt new struct
+    $ f
+  where
+    changeProps = M.keys changeLaw
+    copychangeProps = [(freshp $ vocabOf bls ++ addProps)..]
+    copyrelInverse  = zip copychangeProps changeProps
+    (trf@(Trf addProps addLaw changeLaw _), shiftrel) = shiftPrepare bls trfUnshifted
+    (preCon,trfUnshifted,simulateActualEvents) =
+      case fromDynamic d of
+        -- 3. For a single pointed event, simulate actual event x outof V+
+        Just ((t,x) :: Event) -> ( preOf (t,x), t, (`restrictSet` actualAss) )
+          where actualAss = [(newK, P k `elem` x) | (P k, P newK) <- shiftrel]
+        Nothing -> case fromDynamic d of
+          -- 3. For a multipointed event, simulate a set of actual events by ...
+          Just ((t,xsBdd) :: MultipointedEvent) ->
+              ( preOf (t,xsBdd), t
+              , existsSet (map fromEnum addProps)  -- ... replacing addProps with assigments
+                . con actualsBdd                   -- ... that satisfy actualsBdd
+                . con (bddOf bls addLaw)           -- ... and a precondition.
+              ) where actualsBdd = relabelWith shiftrel xsBdd
+          Nothing -> error $ "cannot update belief structure with '" ++ dynLabel ++ "':\n  " ++ show d
 
 validViaBdd :: BelStruct -> Form -> Bool
-validViaBdd kns@(BlS _ lawbdd _) f = top == imp lawbdd (bddOf kns f)
+validViaBdd bls@(BlS _ lawbdd _) f = top == imp lawbdd (bddOf bls f)
 
 evalViaBdd :: BelScene -> Form -> Bool
-evalViaBdd (kns@(BlS allprops _ _),s) f = let
-    bdd  = bddOf kns f
+evalViaBdd (bls@(BlS allprops _ _),s) f = let
+    bdd  = bddOf bls f
     b    = restrictSet bdd list
     list = [ (n, P n `elem` s) | (P n) <- allprops ]
   in
@@ -176,7 +205,7 @@ evalViaBdd (kns@(BlS allprops _ _),s) f = let
       (True,_) -> True
       (_,True) -> False
       _        -> error $ "evalViaBdd failed: Composite BDD leftover!\n"
-        ++ "  kns:  " ++ show kns ++ "\n"
+        ++ "  bls:  " ++ show bls ++ "\n"
         ++ "  s:    " ++ show s ++ "\n"
         ++ "  form: " ++ show f ++ "\n"
         ++ "  bdd:  " ++ show bdd ++ "\n"
@@ -190,19 +219,19 @@ instance Semantics BelScene where
   isTrue = evalViaBdd
 
 pubAnnounce :: BelStruct -> Form -> BelStruct
-pubAnnounce kns@(BlS allprops lawbdd obs) f =
-  BlS allprops (con lawbdd (bddOf kns f)) obs
+pubAnnounce bls@(BlS allprops lawbdd obs) f =
+  BlS allprops (con lawbdd (bddOf bls f)) obs
 
 pubAnnounceOnScn :: BelScene -> Form -> BelScene
-pubAnnounceOnScn (kns,s) psi = if evalViaBdd (kns,s) psi
-                                 then (pubAnnounce kns psi,s)
+pubAnnounceOnScn (bls,s) psi = if evalViaBdd (bls,s) psi
+                                 then (pubAnnounce bls psi,s)
                                  else error "Liar!"
 
 announce :: BelStruct -> [Agent] -> Form -> BelStruct
-announce kns@(BlS props lawbdd obdds) ags psi = BlS newprops newlawbdd newobdds where
+announce bls@(BlS props lawbdd obdds) ags psi = BlS newprops newlawbdd newobdds where
   (P k)     = freshp props
   newprops  = sort $ P k : props
-  newlawbdd = con lawbdd (imp (var k) (bddOf kns psi))
+  newlawbdd = con lawbdd (imp (var k) (bddOf bls psi))
   newobdds  = M.mapWithKey newOfor obdds
   newOfor i oi | i `elem` ags = con <$> oi <*> (equ <$> mvBdd (var k) <*> cpBdd (var k))
                | otherwise    = con <$> oi <*> (neg <$> cpBdd (var k)) -- p_psi'
@@ -237,13 +266,13 @@ instance TexAble BelStruct where
         bddstring (i,os) = "\\Omega_{\\text{" ++ i ++ "}} = " ++ bddprefix ++ os ++ bddsuffix
 
 instance TexAble BelScene where
-  tex (kns, state) = concat
-    [ " \\left( \n", tex kns, ", ", tex state, " \\right) \n" ]
+  tex (bls, state) = concat
+    [ " \\left( \n", tex bls, ", ", tex state, " \\right) \n" ]
 
 instance TexAble MultipointedBelScene where
-  tex (kns, statesBdd) = concat
+  tex (bls, statesBdd) = concat
     [ " \\left( \n"
-    , tex kns ++ ", "
+    , tex bls ++ ", "
     , " \\begin{array}{l} \\scalebox{0.4}{"
     , texBDD statesBdd
     , "} \\end{array}\n "
@@ -374,26 +403,26 @@ instance Update BelScene Event where
             , eventFacts
             , filter (\ p -> bddEval (s ++ eventFacts) (changelaw ! p)) changeprops ]
 
+instance Update BelStruct Transformer where
+  checks = [haveSameAgents]
+  unsafeUpdate bls ctrf = BlS newprops newlaw newobs where
+    (BlS newprops newlaw newobs, _) = unsafeUpdate (bls,undefined::State) (ctrf,undefined::State) -- using laziness!
+
 instance Update BelScene MultipointedEvent where
-  unsafeUpdate (kns,s) (trfUnshifted, eventFactsBddUnshifted) =
-    update (kns,s) (trf,selectedEventState) where
-      (trf@(Trf addprops addlaw _ _), shiftRel) = shiftPrepare kns trfUnshifted
+  unsafeUpdate (bls,s) (trfUnshifted, eventFactsBddUnshifted) =
+    update (bls,s) (trf,selectedEventState) where
+      (trf@(Trf addprops addlaw _ _), shiftRel) = shiftPrepare bls trfUnshifted
       eventFactsBdd = relabelWith shiftRel eventFactsBddUnshifted
       selectedEventState :: State
       selectedEventState = map (P . fst) $ filter snd selectedEvent
       selectedEvent = case
                         allSatsWith
                           (map fromEnum addprops)
-                          (eventFactsBdd `con`  restrictSet (bddOf kns addlaw) [ (k, P k `elem` s) | P k <- vocabOf kns ])
+                          (eventFactsBdd `con` restrictSet (bddOf bls addlaw) [ (k, P k `elem` s) | P k <- vocabOf bls ])
                       of
                         []     -> error "no selected event"
                         [this] -> this
                         more   -> error $ "too many selected events: " ++ show more
-
-instance Update BelStruct Transformer where
-  checks = [haveSameAgents]
-  unsafeUpdate kns ctrf = BlS newprops newlaw newobs where
-    (BlS newprops newlaw newobs, _) = unsafeUpdate (kns,undefined::State) (ctrf,undefined::Bdd) -- using laziness!
 
 trfPost :: Event -> Prp -> Bdd
 trfPost (Trf addprops _ changelaw _, x) p
@@ -424,6 +453,7 @@ reduce _ PubAnnounce  {} = Nothing
 reduce _ PubAnnounceW {} = Nothing
 reduce _ Announce     {} = Nothing
 reduce _ AnnounceW    {} = Nothing
+reduce _ Dia          {} = Nothing
 
 bddReduce :: BelScene -> Event -> Form -> Bdd
 bddReduce scn@(oldBls,_) event@(Trf addprops _ changelaw _, eventFacts) f =
@@ -449,4 +479,4 @@ bddReduce scn@(oldBls,_) event@(Trf addprops _ changelaw _, eventFacts) f =
             bddOf newBlS f             -- 1. boolean equivalent wrt new structure
 
 evalViaBddReduce :: BelScene -> Event -> Form -> Bool
-evalViaBddReduce (kns,s) event f = evaluateFun (bddReduce (kns,s) event f) (\n -> P n `elem` s)
+evalViaBddReduce (bls,s) event f = evaluateFun (bddReduce (bls,s) event f) (\n -> P n `elem` s)

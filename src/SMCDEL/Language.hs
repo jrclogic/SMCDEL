@@ -3,6 +3,7 @@
 module SMCDEL.Language where
 
 import Data.List (nub,intercalate,(\\))
+import Data.Dynamic
 import Data.Maybe (fromMaybe)
 
 import Test.QuickCheck
@@ -78,7 +79,20 @@ data Form
   | PubAnnounceW Form Form      -- ^ Public announcement whether
   | Announce [Agent] Form Form  -- ^ (Semi-)Private announcement that
   | AnnounceW [Agent] Form Form -- ^ (Semi-)Private announcement whether
+  | Dia DynamicOp Form          -- ^ Dynamic Diamond
   deriving (Eq,Ord,Show)
+
+box :: DynamicOp -> Form -> Form
+box op f = Neg (Dia op (Neg f))
+
+data DynamicOp = Dyn String Dynamic
+
+instance Eq DynamicOp where
+  Dyn a _ == Dyn b _ = a == b
+instance Ord DynamicOp where
+  compare (Dyn a _) (Dyn b _) = compare a b
+instance Show DynamicOp where
+  show (Dyn a _) = "Dyn " ++ show a ++ " _"
 
 class HasVocab a => Semantics a where
   isTrue :: a -> Form -> Bool
@@ -139,6 +153,7 @@ ppFormWith trans (PubAnnounce f g)  = "[! " ++ ppFormWith trans f ++ "] " ++ ppF
 ppFormWith trans (PubAnnounceW f g) = "[?! " ++ ppFormWith trans f ++ "] " ++ ppFormWith trans g
 ppFormWith trans (Announce is f g)  = "[" ++ intercalate ", " is ++ " ! " ++ ppFormWith trans f ++ "]" ++ ppFormWith trans g
 ppFormWith trans (AnnounceW is f g) = "[" ++ intercalate ", " is ++ " ?! " ++ ppFormWith trans f ++ "]" ++ ppFormWith trans g
+ppFormWith trans (Dia (Dyn s _) f)  = "〈" ++ s ++ "〉" ++ ppFormWith trans f
 
 pubAnnounceStack :: [Form] -> Form -> Form
 pubAnnounceStack = flip $ foldr PubAnnounce
@@ -169,6 +184,7 @@ subformulas (PubAnnounce  f g) = PubAnnounce  f g : nub (subformulas f ++ subfor
 subformulas (PubAnnounceW f g) = PubAnnounceW f g : nub (subformulas f ++ subformulas g)
 subformulas (Announce  is f g) = Announce  is f g : nub (subformulas f ++ subformulas g)
 subformulas (AnnounceW is f g) = AnnounceW is f g : nub (subformulas f ++ subformulas g)
+subformulas (Dia dynop f)      = Dia dynop f : subformulas f
 
 shrinkform :: Form -> [Form]
 shrinkform f =
@@ -209,6 +225,7 @@ substit q psi (PubAnnounce f g)   = PubAnnounce (substit q psi f) (substit q psi
 substit q psi (PubAnnounceW f g)  = PubAnnounceW (substit q psi f) (substit q psi g)
 substit q psi (Announce ags f g)  = Announce ags (substit q psi f) (substit q psi g)
 substit q psi (AnnounceW ags f g) = AnnounceW ags (substit q psi f) (substit q psi g)
+substit _ _   (Dia _ _)           = undefined -- TODO needs substit in dynop! Dia dynop (substit q psi f)
 
 substitSet :: [(Prp,Form)] -> Form -> Form
 substitSet [] f = f
@@ -240,6 +257,7 @@ replPsInF repl (PubAnnounce f g)   = PubAnnounce   (replPsInF repl f) (replPsInF
 replPsInF repl (PubAnnounceW f g)  = PubAnnounceW  (replPsInF repl f) (replPsInF repl g)
 replPsInF repl (Announce ags f g)  = Announce  ags (replPsInF repl f) (replPsInF repl g)
 replPsInF repl (AnnounceW ags f g) = AnnounceW ags (replPsInF repl f) (replPsInF repl g)
+replPsInF _    (Dia _ _)           = undefined -- TODO needs propsIn dynop!
 
 propsInForm :: Form -> [Prp]
 propsInForm Top                = []
@@ -261,6 +279,7 @@ propsInForm (Announce _ f g)   = nub $ propsInForm f ++ propsInForm g
 propsInForm (AnnounceW _ f g)  = nub $ propsInForm f ++ propsInForm g
 propsInForm (PubAnnounce f g)  = nub $ propsInForm f ++ propsInForm g
 propsInForm (PubAnnounceW f g) = nub $ propsInForm f ++ propsInForm g
+propsInForm (Dia _dynOp _f)    = undefined -- TODO needs HasVocab dynop!
 
 propsInForms :: [Form] -> [Prp]
 propsInForms fs = nub $ concatMap propsInForm fs
@@ -332,6 +351,7 @@ simStep (PubAnnounce  f g)  = PubAnnounce  (simStep f) (simStep g)
 simStep (PubAnnounceW f g)  = PubAnnounceW (simStep f) (simStep g)
 simStep (Announce  ags f g) = Announce  ags (simStep f) (simStep g)
 simStep (AnnounceW ags f g) = AnnounceW ags (simStep f) (simStep g)
+simStep (Dia dynop f)       = Dia dynop (simStep f)
 
 texForm :: Form -> String
 texForm Top           = "\\top "
@@ -363,6 +383,7 @@ texForm (PubAnnounce f g)   = "[!" ++ texForm f ++ "] " ++ texForm g
 texForm (PubAnnounceW f g)  = "[?!" ++ texForm f ++ "] " ++ texForm g
 texForm (Announce ags f g)  = "[" ++ intercalate "," ags ++ "!" ++ texForm f ++ "] " ++ texForm g
 texForm (AnnounceW ags f g) = "[" ++ intercalate "," ags ++ "?!" ++ texForm f ++ "] " ++ texForm g
+texForm (Dia (Dyn s _) f)   = " \\langle " ++ s ++ " \\rangle " ++ texForm f
 
 instance TexAble Form where
   tex = removeDoubleSpaces . texForm

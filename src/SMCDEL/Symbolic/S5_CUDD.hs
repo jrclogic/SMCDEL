@@ -79,6 +79,7 @@ bddOf kns (PubAnnounceW form1 form2) =
   ifthenelse (bddOf kns form1) newform2a newform2b where
     newform2a = bddOf (pubAnnounce kns form1) form2
     newform2b = bddOf (pubAnnounce kns (Neg form1)) form2
+bddOf _ (Dia _ _) = error "Dynamic operators are not implemented for CUDD."
 
 evalViaBdd :: KnowScene -> Form -> Bool
 evalViaBdd (kns@(KnS allprops _ _),s) f = bool where
