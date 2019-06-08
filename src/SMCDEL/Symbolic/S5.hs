@@ -268,6 +268,11 @@ instance Optimizable MultipointedKnowScene where
     (newKns,replRel) = replaceEquivExtra myVocab intermediateKns
     newStatesBdd = foldr (uncurry Data.HasCacBDD.substit) intermediateStatesBdd [ (fromEnum p, var (fromEnum q)) | (p,q) <-replRel ]
 
+generatedSubstructure :: MultipointedKnowScene -> MultipointedKnowScene
+generatedSubstructure kns@(KnS props oldLaw obs, curBdd) = (KnS props newLaw obs, curBdd) where
+  newLaw = oldLaw `con` disSet (curBdd : [ existsSet (map fromEnum $ props \\ obs ! i) curBdd
+                                         | i <- agentsOf kns ])
+
 type Propulation = Tagged Quadrupel Bdd
 
 ($$) :: Monad m => ([a] -> b) -> [m a] -> m b
@@ -418,7 +423,11 @@ instance TexAble KnowTransformer where
     , "\\end{array}\n"
     , " \\right) \n"
     ] where
-        texChange (prop,changebdd) = tex prop ++ " := " ++ tex (formOf changebdd)
+        texChange (prop,changebdd) = concat
+          [ tex prop ++ " := "
+          , " \\begin{array}{l} \\scalebox{0.4}{"
+          , texBDD changebdd
+          , "} \\end{array}\n " ]
 
 instance TexAble Event where
   tex (trf, eventFacts) = concat

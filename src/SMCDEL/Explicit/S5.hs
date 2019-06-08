@@ -201,7 +201,7 @@ checkBisim :: Bisimulation -> KripkeModelS5 -> KripkeModelS5 -> Bool
 checkBisim [] _                   _                     = False
 checkBisim z  m1@(KrMS5 _ rel1 val1) m2@(KrMS5 _ rel2 val2) =
   all (\(w1,w2) ->
-        (val1 ! w1 == val2 ! w2)  -- same props
+        (val1 ! w1 == val2 ! w2)  -- same valuation
     && and [ any (\v2 -> (v1,v2) `elem` z) (concat $ filter (elem w2) (rel2 ! ag)) -- forth
            | ag <- agentsOf m1, v1 <- concat $ filter (elem w1) (rel1 ! ag) ]
     && and [ any (\v1 -> (v1,v2) `elem` z) (concat $ filter (elem w1) (rel1 ! ag)) -- back
@@ -212,12 +212,15 @@ checkBisimPointed :: Bisimulation -> PointedModelS5 -> PointedModelS5 -> Bool
 checkBisimPointed z (m1,w1) (m2,w2) = (w1,w2) `elem` z && checkBisim z m1 m2
 
 generatedSubmodel :: PointedModelS5 -> PointedModelS5
-generatedSubmodel (KrMS5 _ rel val, cur) = (KrMS5 newWorlds newrel newval, cur) where
-  newWorlds :: [World]
-  newWorlds = lfp follow [cur] where
-    follow xs = sort . nub $ concat [ part | (_,parts) <- rel, part <- parts, any (`elem` part) xs ]
-  newrel = map (second $ filter (any (`elem` newWorlds))) rel
-  newval = filter (\p -> fst p `elem` newWorlds) val
+generatedSubmodel (KrMS5 oldWorlds rel val, cur) =
+  if cur `notElem` oldWorlds
+    then error "Actual world is not in the model!"
+    else (KrMS5 newWorlds newrel newval, cur) where
+      newWorlds :: [World]
+      newWorlds = lfp follow [cur] where
+        follow xs = sort . nub $ concat [ part | (_,parts) <- rel, part <- parts, any (`elem` part) xs ]
+      newrel = map (second $ filter (any (`elem` newWorlds))) rel
+      newval = filter (\p -> fst p `elem` newWorlds) val
 
 bisimClasses :: KripkeModelS5 -> [[World]]
 bisimClasses m@(KrMS5 _ rel val) = refine sameAssignmentPartition where
