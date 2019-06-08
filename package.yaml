@@ -28,7 +28,7 @@ library:
     - containers
     - cudd == 0.1.0.0
     - graphviz
-    - HasCacBDD == 0.1.0.0
+    - HasCacBDD >= 0.1.0.1 && < 0.2
     - process
     - QuickCheck
     - tagged
@@ -55,7 +55,7 @@ executables:
       - base >= 4.8 && < 5
       - file-embed
       - scotty
-      - HasCacBDD
+      - HasCacBDD >= 0.1.0.1 && < 0.2
       - js-jquery >= 3
       - smcdel
       - template-haskell
@@ -75,8 +75,8 @@ tests:
       - base >= 4.8 && < 5
       - hspec
       - smcdel
-  nonS5:
-    main: test/NonS5.hs
+  k:
+    main: test/K.hs
     dependencies:
       - base >= 4.8 && < 5
       - containers
