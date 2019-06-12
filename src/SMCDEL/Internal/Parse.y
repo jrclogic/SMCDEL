@@ -10,6 +10,8 @@ import SMCDEL.Language
 %tokentype { Token AlexPosn }
 %error { parseError }
 
+%monad { ParseResult } { >>= } { Right }
+
 %token
   VARS   { TokenVARS   _ }
   LAW    { TokenLAW    _ }
@@ -102,7 +104,10 @@ type FormList = [Form]
 type ObserveLine = (String,IntList)
 type ObserveSpec = [ObserveLine]
 
-parseError :: [Token AlexPosn] -> a
-parseError (t:ts) = error ("Parse error in line " ++ show lin ++ ", column " ++ show col)
+type ParseResult a = Either (Int,Int) a
+
+parseError :: [Token AlexPosn] -> ParseResult a
+parseError []     = Left (1,1)
+parseError (t:ts) = Left (lin,col)
   where (AlexPn abs lin col) = apn t
 }

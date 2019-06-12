@@ -25,21 +25,23 @@ a:hover {
   width:48%;
   border:1px solid #666;
 }
-textarea, #output {
+#smcinput, #output {
   width:100%;
   margin:0px;
   padding:0px;
-  min-height:400px;
+  min-height:450px;
   height:100%;
   border:none;
   box-sizing:border-box;
+}
+#output {
   overflow-y:scroll;
 }
-textarea {
-  background-color: #fff;
-  color: #000;
-  font-family:monospace;
-  resize:vertical;
+input[type=button], input[type=submit] {
+  color:#000;
+  background-color:#fff;
+  border:1px solid #666;
+  border-radius:2px;
 }
 .expbut {
   padding:5px;
@@ -54,11 +56,22 @@ textarea {
   max-width: 100%;
   height: auto;
 }
+.error {
+  padding:20px;
+  color:darkred;
+}
+.footer {
+  clear:both;
+  padding-top:1em;
+  color:#888;
+}
+.footer a {
+  color:#888;
+}
 </style>
 </head>
 <body>
-<h1>SMCDEL <!-- VERSION NUMBER --></h1>
-<p>This is the web interface of <a href="https://github.com/jrclogic/SMCDEL">SMCDEL</a>, a symbolic model checker for <a href="https://plato.stanford.edu/entries/dynamic-epistemic" target="_blank">Dynamic Epistemic Logic</a>.
+<p>This is the web interface of <a href="https://github.com/jrclogic/SMCDEL">SMCDEL</a> <!-- VERSION NUMBER -->, a symbolic model checker for <a href="https://plato.stanford.edu/entries/dynamic-epistemic" target="_blank">Dynamic Epistemic Logic</a>.
 See <a href="https://homepages.cwi.nl/~jve/papers/16/pdfs/2016-05-23-del-bdd-lori-journal.pdf">this paper</a>
 and <a href="https://github.com/jrclogic/SMCDEL/raw/master/SMCDEL.pdf">this technical report</a> for more information.</p>
 <div id="menubar">
@@ -67,18 +80,19 @@ and <a href="https://github.com/jrclogic/SMCDEL/raw/master/SMCDEL.pdf">this tech
   <input type="button" class="expbut" value="DrinkingLogicians" />
   <input type="button" class="expbut" value="DiningCryptographers" />
   or enter your own code on the left side, then
-  <input id="runbutton" type="submit" value="Run SMCDEL!" onclick="myRequest('check');" />
+  <input id="runbutton" type="submit" value="Run SMCDEL!" onclick="myRequest('check');" title="shortcut: Ctrl + s" />
   or
-  <input id="kripkebutton" type="submit" value="Show Kripke!" onclick="myRequest('knsToKripke');" />
+  <input id="kripkebutton" type="submit" value="Show Kripke!" onclick="myRequest('knsToKripke');" title="shortcut: Ctrl + p" />
 </div>
 <div id="left">
-  <textarea name="smcinput" id="smcinput" placeholder="Enter your code here." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+  <div id="smcinput"></div>
 </div>
 <div id="right">
   <div id="output"></div>
 </div>
 <script src="viz-lite.js"></script>
 <script src="jquery.js"></script>
+<script src="ace.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
 <script type="text/x-mathjax-config">
   MathJax.Hub.Config({
@@ -88,12 +102,13 @@ and <a href="https://github.com/jrclogic/SMCDEL/raw/master/SMCDEL.pdf">this tech
 </script>
 <script>
   "use strict";
+  var editor = ace.edit("smcinput");
   $(document).ready(function(){
     $('.expbut').click(function() {
       $('#smcinput').val('... loading ...');
       $.get("getExample?filename=" + $(this).val(),
         function(data) {
-            $('#smcinput').val(data);
+            editor.getSession().setValue(data);
         });
     });
   });
@@ -102,7 +117,7 @@ and <a href="https://github.com/jrclogic/SMCDEL/raw/master/SMCDEL.pdf">this tech
     $.ajax({
       type: "POST",
       url: url,
-      data: { "smcinput": $('#smcinput').val() },
+      data: { "smcinput": editor.getSession().getValue() },
       success:
         function(data,textStatus,jqXHR) {
           $('#output').html(data);
@@ -117,9 +132,19 @@ and <a href="https://github.com/jrclogic/SMCDEL/raw/master/SMCDEL.pdf">this tech
   function toggleLaw() {
     $('.lawbdd').fadeToggle();
   }
+  $(document).keydown(function(e) {
+    if(e.ctrlKey && e.key == "s") {
+      $("#runbutton").click();
+      return false;
+    }
+    if(e.ctrlKey && e.key == "p") {
+      $("#kripkebutton").click();
+      return false;
+    }
+  });
 </script>
-<p style="clear:both; padding-top:1em; color:#666;">
-  Made by <a href="https://w4eg.de/malvin/">Malvin Gattinger</a>.
+<p class="footer">
+  Made by <a href="https://malv.in/">Malvin Gattinger</a>.
   Using
     <a href="https://www.haskell.org/alex/">alex</a>,
     <a href="https://www.haskell.org/happy/">happy</a>,

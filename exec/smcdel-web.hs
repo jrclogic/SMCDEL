@@ -33,34 +33,43 @@ main = do
     get "/" $ redirect "index.html"
     get "/index.html"  . html . TL.fromStrict $ addVersionNumber $ embeddedFile "index.html"
     get "/jquery.js"   . html . TL.fromStrict $ embeddedFile "jquery.js"
+    get "/ace.js"      . html . TL.fromStrict $ embeddedFile "ace.js"
     get "/viz-lite.js" . html . TL.fromStrict $ embeddedFile "viz-lite.js"
     get "/getExample" $ do
       this <- param "filename"
       html . TL.fromStrict $ embeddedFile this
     post "/check" $ do
       smcinput <- param "smcinput"
-      let (CheckInput vocabInts lawform obs jobs) = parse $ alexScanTokens smcinput
-      let mykns = KnS (map P vocabInts) (boolBddOf lawform) (map (second (map P)) obs)
-      knstring <- liftIO $ showStructure mykns
-      let results = concatMap (\j -> "<p>" ++ doJobWeb mykns j ++ "</p>") jobs
-      html $ mconcat
-        [ TL.pack knstring
-        , "<hr />\n"
-        , TL.pack results ]
+      case alexScanTokensSafe smcinput of
+        Left pos -> webError "Lex" pos
+        Right lexResult -> case parse lexResult of
+          Left pos -> webError "Parse" pos
+          Right (CheckInput vocabInts lawform obs jobs) -> do
+            let mykns = KnS (map P vocabInts) (boolBddOf lawform) (map (second (map P)) obs)
+            knstring <- liftIO $ showStructure mykns
+            let results = concatMap (\j -> "<p>" ++ doJobWeb mykns j ++ "</p>") jobs
+            html $ mconcat
+              [ TL.pack knstring
+              , "<hr />\n"
+              , TL.pack results ]
     post "/knsToKripke" $ do
       smcinput <- param "smcinput"
-      let (CheckInput vocabInts lawform obs _) = parse $ alexScanTokens smcinput
-      let mykns = KnS (map P vocabInts) (boolBddOf lawform) (map (second (map P)) obs)
-      _ <- liftIO $ showStructure mykns -- this moves parse errors to scotty
-      if numberOfStates mykns > 32
-        then html . TL.pack $ "Sorry, I will not draw " ++ show (numberOfStates mykns) ++ " states!"
-        else do
-          let (myKripke, _) = knsToKripke (mykns, head $ statesOf mykns) -- ignore actual world
-          html $ TL.concat
-            [ TL.pack "<div id='here'></div>"
-            , TL.pack "<script>document.getElementById('here').innerHTML += Viz('"
-            , textDot myKripke
-            , TL.pack "');</script>" ]
+      case alexScanTokensSafe smcinput of
+        Left pos -> webError "Lex" pos
+        Right lexResult -> case parse lexResult of
+          Left pos -> webError "Parse" pos
+          Right (CheckInput vocabInts lawform obs _) -> do
+            let mykns = KnS (map P vocabInts) (boolBddOf lawform) (map (second (map P)) obs)
+            _ <- liftIO $ showStructure mykns -- this moves parse errors to scotty
+            if numberOfStates mykns > 32
+              then html . TL.pack $ "Sorry, I will not draw " ++ show (numberOfStates mykns) ++ " states!"
+              else do
+                let (myKripke, _) = knsToKripke (mykns, head $ statesOf mykns) -- ignore actual world
+                html $ TL.concat
+                  [ TL.pack "<div id='here'></div>"
+                  , TL.pack "<script>document.getElementById('here').innerHTML += Viz('"
+                  , textDot myKripke
+                  , TL.pack "');</script>" ]
 
 doJobWeb :: KnowStruct -> Job -> String
 doJobWeb mykns (ValidQ f) = unlines
@@ -90,6 +99,7 @@ embeddedFile :: String -> T.Text
 embeddedFile s = case s of
   "index.html"           -> E.decodeUtf8 $(embedFile "static/index.html")
   "viz-lite.js"          -> E.decodeUtf8 $(embedFile "static/viz-lite.js")
+  "ace.js"               -> E.decodeUtf8 $(embedFile "static/ace.js")
   "jquery.js"            -> E.decodeUtf8 $(embedFile =<< runIO JQuery.file)
   "MuddyChildren"        -> E.decodeUtf8 $(embedFile "Examples/MuddyChildren.smcdel.txt")
   "DiningCryptographers" -> E.decodeUtf8 $(embedFile "Examples/DiningCryptographers.smcdel.txt")
@@ -98,3 +108,14 @@ embeddedFile s = case s of
 
 addVersionNumber :: T.Text -> T.Text
 addVersionNumber = T.replace "<!-- VERSION NUMBER -->" (T.pack $ showVersion version)
+
+webError :: String -> (Int,Int) -> ActionM ()
+webError kind (lin,col) = html $ TL.pack $ concat
+  [ "<p class='error'>", kind, " error in line ", show lin, ", column ", show col, "</p>\n"
+  , "<script>"
+  , "editor.clearSelection();"
+  , "editor.moveCursorTo(", show (lin - 1), ",", show col, ");"
+  , "editor.renderer.scrollCursorIntoView({row: ", show (lin - 1),", column: ", show col, "}, 0.5);"
+  , "editor.focus();"
+  , "</script>"
+  ]
