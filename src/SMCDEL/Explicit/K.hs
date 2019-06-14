@@ -7,10 +7,11 @@ import Data.Dynamic
 import Data.List (nub,sort,(\\),delete,intercalate,intersect)
 import qualified Data.Map.Strict as M
 import Data.Map.Strict ((!))
+import Data.Maybe (isJust,isNothing)
 import Test.QuickCheck
 
 import SMCDEL.Language
-import SMCDEL.Explicit.S5 (World,HasWorlds,worldsOf,Action)
+import SMCDEL.Explicit.S5 (Action,Bisimulation,HasWorlds,World,worldsOf)
 import SMCDEL.Internal.Help (alleqWith,lfp)
 import SMCDEL.Internal.TexDisplay
 
@@ -161,6 +162,59 @@ announceAction everyone listeners f = (ActM am, 1) where
     [ (1, Act { pre = f,   post = M.fromList [], rel = M.fromList $ [(i,[1]) | i <- listeners] ++ [(i,[2]) | i <- everyone \\ listeners] } )
     , (2, Act { pre = Top, post = M.fromList [], rel = M.fromList [(i,[2]) | i <- everyone] } )
     ]
+
+checkBisim :: Bisimulation -> KripkeModel -> KripkeModel -> Bool
+checkBisim [] _  _  = False
+checkBisim z  m1 m2 =
+  all (\(w1,w2) ->
+        (truthsInAt m1 w1 == truthsInAt m2 w2)  -- same valuation
+    && and [ any (\v2 -> (v1,v2) `elem` z) (relOfIn ag m2 ! w2) -- forth
+           | ag <- agentsOf m1, v1 <- relOfIn ag m1 ! w1 ]
+    && and [ any (\v1 -> (v1,v2) `elem` z) (relOfIn ag m1 ! w1) -- back
+           | ag <- agentsOf m2, v2 <- relOfIn ag m2 ! w2 ]
+      ) z
+
+checkBisimPointed :: Bisimulation -> PointedModel -> PointedModel -> Bool
+checkBisimPointed z (m1,w1) (m2,w2) = (w1,w2) `elem` z && checkBisim z m1 m2
+
+type Status = Maybe Form
+type StatusMap = M.Map (World,World) Status
+
+diff :: KripkeModel -> KripkeModel -> StatusMap
+diff m1 m2 = lfp step start where
+  -- initialize using differences in atomic propositions given by valuation
+  start = M.fromList [ ((w1,w2), propDiff (truthsInAt m1 w1) (truthsInAt m2 w2))
+                     |  w1 <- worldsOf m1, w2 <- worldsOf m2 ]
+  propDiff ps qs | ps \\ qs /= []  = Just $       PrpF $ head (ps \\ qs)
+                 | qs \\ ps /= []  = Just $ Neg $ PrpF $ head (qs \\ ps)
+                 | otherwise       = Nothing
+  step curMap = M.mapWithKey (updateAt curMap) curMap
+  updateAt _      _       (Just f) = Just f
+  updateAt curMap (w1,w2) Nothing  = case
+    -- forth
+    [ Neg . K i . Neg . Conj $ [ f | w2' <- w2's, let Just f = curMap ! (w1',w2') ]
+    | i <- agentsOf m1
+    , w1' <- relOfIn i m1 ! w1
+    , let w2's = relOfIn i m2 ! w2
+    , all (\w2' -> isJust $ curMap ! (w1',w2')) w2's
+    ]
+    ++
+    -- back
+    [ K i . Disj $ [ f | w1' <- w1's, let Just f = curMap ! (w1',w2') ]
+    | i <- agentsOf m1
+    , w2' <- relOfIn i m2 ! w2
+    , let w1's = relOfIn i m1 ! w1
+    , all (\w1' -> isJust $ curMap ! (w1',w2')) w1's
+    ]
+    of
+      [] -> Nothing
+      (f:_) -> Just f
+
+diffPointed :: PointedModel -> PointedModel -> Either Bisimulation Form
+diffPointed (m1,w1) (m2,w2) =
+  case diff m1 m2 ! (w1,w2) of
+    Nothing -> Left $ M.keys $ M.filter isNothing (diff m1 m2)
+    Just f -> Right f
 
 generatedSubmodel :: PointedModel -> PointedModel
 generatedSubmodel (KrM m, cur) = (KrM newm, cur) where
