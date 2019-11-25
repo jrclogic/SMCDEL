@@ -20,7 +20,7 @@ In: Proceedings of The Fifth International Conference on Logic, Rationality and 
 [Johan van Benthem, Jan van Eijck, Malvin Gattinger, and Kaile Su:
 *Symbolic Model Checking for Dynamic Epistemic Logic --- S5 and Beyond.*
 Journal of Logic and Computation,
-2017](https://homepages.cwi.nl/~jve/papers/16/pdfs/2016-05-23-del-bdd-lori-journal.pdf).
+2017](https://pure.uva.nl/ws/files/25483686/2016_05_23_del_bdd_lori_journal.pd.pdf).
 
 [Malvin Gattinger:
 *Towards Symbolic Factual Change in DEL.*
