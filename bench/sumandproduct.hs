@@ -18,7 +18,7 @@ msnp = Mo pairs [alice,bob] [] rels pairs where
   partWith op = groupBy (\(x,y) (x',y') -> op x y == op x' y') $
     sortBy (\(x,y) (x',y') -> compare (op x y) (op x' y')) pairs
 
-fmrs1e, fmrp2e, fmrs3e :: Form (Int,Int)
+fmrs1e, fmrp2e, fmrs3e :: DemoForm (Int,Int)
 
 --Sum says: I knew that you didn't know the two numbers.
 fmrs1e = Kn alice (Conj [Disj[Ng (Info p),

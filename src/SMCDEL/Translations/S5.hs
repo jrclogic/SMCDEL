@@ -72,7 +72,7 @@ kripkeToKnsWithG (KrMS5 worlds rel val, cur) = ((KnS ps law obs, curs), g) where
   newps i   = map (\k -> P (newpstart + (newpstep * inum) +k)) [0..(amount i - 1)] -- O_i
     where (Just inum) = elemIndex i (map fst rel)
   copyrel i = zip (rel ! i) (powerset (newps i)) -- label equiv.classes with P(O_i)
-  gag i w   = snd $ head $ filter (\(ws,_) -> elem w ws) (copyrel i)
+  gag i w   = snd $ head $ filter (\(ws,_) -> w `elem` ws) (copyrel i)
   g w       = filter (apply (val ! w)) v ++ concat [ gag i w | i <- ags ]
   ps        = v ++ concat [ newps i | i <- ags ]
   law       = disSet [ booloutof (g w) ps | w <- worlds ]
@@ -127,7 +127,7 @@ smartKripkeToKnsWithoutChecks (m@(KrMS5 worlds rel val), cur) =
     obsOf = fst.obsnobs m
     curs = map fst $ filter snd $ apply val cur
 
-actionToEvent :: PointedActionModel -> Event
+actionToEvent :: PointedActionModelS5 -> Event
 actionToEvent (ActMS5 acts actrel, faction) = (KnTrf addprops addlaw changelaw addobs, efacts) where
   actions = map fst acts
   ags          = map fst actrel
@@ -148,7 +148,7 @@ actionToEvent (ActMS5 acts actrel, faction) = (KnTrf addprops addlaw changelaw a
   copyactrel i = zip (apply actrel i) (powerset (newps i)) -- label equclasses-of-actions with subsets-of-newps
   actrelfs i   = [ Equi (booloutofForm (apply (copyactrel i) as) (newps i)) (Disj (map happens as)) | as <- apply actrel i ]
   actrelforms  = concatMap actrelfs ags
-  factsFor i   = snd $ head $ filter (\(as,_) -> elem faction as) (copyactrel i)
+  factsFor i   = snd $ head $ filter (\(as,_) -> faction `elem` as) (copyactrel i)
   efacts       = ell faction ++ concatMap factsFor ags
   addlaw       = simplify $ Conj (actform : actrelforms)
   changeprops  = sort $ nub $ concatMap (\(_,(_,posts)) -> map fst posts) acts -- propositions to be changed
@@ -156,7 +156,7 @@ actionToEvent (ActMS5 acts actrel, faction) = (KnTrf addprops addlaw changelaw a
   changeFor p  = disSet [ boolBddOf $ Conj [ happens a, safepost posts p ] | (a,(_,posts)) <- acts ]
   addobs       = [ (i,newps i) | i<- ags ]
 
-eventToAction' :: Event -> PointedActionModel
+eventToAction' :: Event -> PointedActionModelS5
 eventToAction' event@(KnTrf addprops addlaw changelaw addobs, efacts) = (ActMS5 acts actrel, faction) where
   actlist = zip (powerset addprops) [0..(2 ^ length addprops - 1)]
   acts    = [ (a, (simplify $ preFor ps, postsFor ps)) | (ps,a) <- actlist ] where
@@ -168,7 +168,7 @@ eventToAction' event@(KnTrf addprops addlaw changelaw addobs, efacts) = (ActMS5 
     pairs i = sort $ map (\(set,a) -> (intersect set $ addobs ! i,a)) actlist
   faction   = apply actlist efacts
 
-eventToAction :: Event -> PointedActionModel
+eventToAction :: Event -> PointedActionModelS5
 eventToAction e = (ActMS5 acts actrel, faction) where
   (ActMS5 acts' actrel', faction) = eventToAction' e
   acts    = filter (\(_,(pre,_)) -> pre /= Bot) acts' -- remove actions w/ contradictory precon

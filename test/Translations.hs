@@ -102,7 +102,7 @@ announceTest (SF f) (Group listeners) (SF g) =
     in not precon || Sym.eval newKns g
   ]
 
-singleActionTest :: ActionModel -> Form -> [Bool]
+singleActionTest :: ActionModelS5 -> Form -> [Bool]
 singleActionTest myact f = [a,b,c,d] where
   a = Exp.eval (update mymodel (myact,0::Action)) f
   b = Sym.evalViaBdd (update (kripkeToKns mymodel) (actionToEvent (myact,0::Action))) f

@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module SMCDEL.Examples where
 
@@ -40,26 +40,26 @@ minimizedKNS = kripkeToKns minimizedModel
 myPropu :: Propulation
 myPropu = allsamebdd (vocabOf myKNS)
 
-pubAnnounceAction :: [Agent] -> Form -> PointedActionModel
+pubAnnounceAction :: [Agent] -> Form -> PointedActionModelS5
 pubAnnounceAction ags f = (ActMS5 [(0,(f,[]))] [ (i,[[0]]) | i <- ags ], 0)
 
-examplePaAction :: PointedActionModel
+examplePaAction :: PointedActionModelS5
 examplePaAction = pubAnnounceAction [alice,bob] (PrpF (P 0))
 
-groupAnnounceAction :: [Agent] -> [Agent] -> Form -> PointedActionModel
+groupAnnounceAction :: [Agent] -> [Agent] -> Form -> PointedActionModelS5
 groupAnnounceAction everyone listeners f = (ActMS5 [(0,(f,[])),(1,(Neg f,[]))] actrel, 0)
   where actrel = sort $ [ (i,[[0],[1]]) | i <- listeners ]
                      ++ [ (i,[[0 , 1]]) | i <- everyone \\ listeners ]
 
-exampleGroupAnnounceAction :: PointedActionModel
+exampleGroupAnnounceAction :: PointedActionModelS5
 exampleGroupAnnounceAction = groupAnnounceAction [alice, bob] [alice] (PrpF (P 0))
 
 eGrAnLaw :: Form
 exampleGrAnnEvent :: Event
 exampleGrAnnEvent@(KnTrf _ eGrAnLaw _ _, _) = actionToEvent exampleGroupAnnounceAction
 
-actionOne :: PointedActionModel
+actionOne :: PointedActionModelS5
 actionOne = (ActMS5 [(0,(p,[])),(1, (Disj [q, Neg q],[]))] [("Alice",[[0],[1]]), ("Bob",[[0,1]])], 0) where (p,q) = (PrpF $ P 0, PrpF $ P 1)
 
-actionTwo :: PointedActionModel
+actionTwo :: PointedActionModelS5
 actionTwo = (ActMS5 [(0,(p,[])),(1,(q,[])),(2,(Neg q,[]))] [("Alice",[[0],[1,2]]), ("Bob",[[0,1,2]]) ], 0) where (p,q) = (PrpF $ P 0, PrpF $ P 1)

@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, TypeOperators, MultiParamTypeClasses, ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleInstances, TypeOperators, MultiParamTypeClasses, ScopedTypeVariables #-}
 
 module SMCDEL.Symbolic.K where
 
@@ -62,7 +62,7 @@ cpBdd :: Bdd -> RelBDD
 cpBdd b = Tagged $ relabelFun (\n -> (2*n) + 1) b
 
 mvBdd :: Bdd -> RelBDD
-mvBdd b = Tagged $ relabelFun (\n -> 2*n) b
+mvBdd b = Tagged $ relabelFun (2 *) b
 
 unmvBdd :: RelBDD -> Bdd
 unmvBdd (Tagged b) =

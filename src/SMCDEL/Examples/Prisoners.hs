@@ -27,7 +27,7 @@ prisonExpStart =
 prisonGoal :: Form
 prisonGoal = K "1" $ Conj [ PrpF $ P k | k <- [1..n] ]
 
-prisonAction :: ActionModel
+prisonAction :: ActionModelS5
 prisonAction = ActMS5 actions actRels where
   p = PrpF . P
   actions =
@@ -38,7 +38,7 @@ prisonAction = ActMS5 actions actRels where
     [ (k, (Top, [(P 0, p k `Impl` p 0), (P k, p 0 `Impl` p k)]) ) | k <- [2..n] ] -- interview k
   actRels = [ ("1", [[0],[1],[2..n]]) ]
 
-prisonInterview :: Int -> MultipointedActionModel
+prisonInterview :: Int -> MultipointedActionModelS5
 prisonInterview 1 = (prisonAction, [0,1])
 prisonInterview k = (prisonAction, [k])
 
@@ -58,7 +58,7 @@ instance (Update a b, Optimizable a, TexAble a, TexAble b) => TexAble (Story a b
       in
         " \\times " ++ adjust (tex a) ++ " = " ++ adjust (tex new) ++ "\\] \\[ " ++ loop new as
 
-prisonExpStory :: Story PointedModelS5 MultipointedActionModel
+prisonExpStory :: Story PointedModelS5 MultipointedActionModelS5
 prisonExpStory = Story (prisonExpStart,1) (map prisonInterview [2,1,3,1])
 
 prisonSymStart :: MultipointedKnowScene

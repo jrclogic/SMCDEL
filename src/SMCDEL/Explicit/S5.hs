@@ -81,7 +81,7 @@ instance Arbitrary KripkeModelS5 where
       ) defaultAgents
     return $ KrMS5 worlds parts val
   shrink m@(KrMS5 worlds _ _) =
-    [ m `withoutWorld` w | w <- worlds, length worlds > 1 ]
+    [ m `withoutWorld` w | not (null worlds), w <- worlds ]
 
 eval :: PointedModelS5 -> Form -> Bool
 eval _ Top = True
@@ -120,9 +120,9 @@ eval pm (AnnounceW ags form1 form2) =
     then eval (announce pm ags form1) form2
     else eval (announce pm ags (Neg form1)) form2
 eval pm (Dia (Dyn dynLabel d) f) = case fromDynamic d of
-  Just pactm -> eval pm (preOf (pactm :: PointedActionModel)) && eval (pm `update` pactm) f
+  Just pactm -> eval pm (preOf (pactm :: PointedActionModelS5)) && eval (pm `update` pactm) f
   Nothing    -> case fromDynamic d of
-    Just mpactm -> eval pm (preOf (mpactm :: MultipointedActionModel)) && eval (pm `update` mpactm) f
+    Just mpactm -> eval pm (preOf (mpactm :: MultipointedActionModelS5)) && eval (pm `update` mpactm) f
     Nothing     -> error $ "cannot update S5 Kripke model with '" ++ dynLabel ++ "':\n  " ++ show d
 
 valid :: KripkeModelS5 -> Form -> Bool
@@ -257,32 +257,32 @@ instance Optimizable PointedModelS5 where
 type Action = Int
 type PostCondition = [(Prp,Form)]
 
-data ActionModel = ActMS5 [(Action,(Form,PostCondition))] [(Agent,Partition)]
+data ActionModelS5 = ActMS5 [(Action,(Form,PostCondition))] [(Agent,Partition)]
   deriving (Eq,Ord,Show)
 
-instance HasAgents ActionModel where
+instance HasAgents ActionModelS5 where
   agentsOf (ActMS5 _ rel) = map fst rel
 
 -- | A safe way to `lookup` all postconditions
 safepost :: PostCondition -> Prp -> Form
 safepost posts p = fromMaybe (PrpF p) (lookup p posts)
 
-instance Pointed ActionModel Action
-type PointedActionModel = (ActionModel, Action)
+instance Pointed ActionModelS5 Action
+type PointedActionModelS5 = (ActionModelS5, Action)
 
-instance HasPrecondition ActionModel where
+instance HasPrecondition ActionModelS5 where
   preOf _ = Top
 
-instance HasPrecondition PointedActionModel where
+instance HasPrecondition PointedActionModelS5 where
   preOf (ActMS5 acts _, actual) = fst (acts ! actual)
 
-instance Pointed ActionModel [World]
-type MultipointedActionModel = (ActionModel,[Action])
+instance Pointed ActionModelS5 [World]
+type MultipointedActionModelS5 = (ActionModelS5,[Action])
 
-instance HasPrecondition MultipointedActionModel where
+instance HasPrecondition MultipointedActionModelS5 where
   preOf (am, actuals) = Disj [ preOf (am, a) | a <- actuals ]
 
-instance KripkeLike ActionModel where
+instance KripkeLike ActionModelS5 where
   directed = const False
   getNodes (ActMS5 acts _) = map labelOf acts where
     labelOf (a,(pre,posts)) = (show a, concat
@@ -296,34 +296,34 @@ instance KripkeLike ActionModel where
   nodeAts _ True  = [shape BoxShape, style solid]
   nodeAts _ False = [shape BoxShape, style dashed]
 
-instance TexAble ActionModel where
+instance TexAble ActionModelS5 where
   tex           = tex.ViaDot
   texTo         = texTo.ViaDot
   texDocumentTo = texDocumentTo.ViaDot
 
-instance KripkeLike PointedActionModel where
+instance KripkeLike PointedActionModelS5 where
   directed = directed . fst
   getNodes = getNodes . fst
   getEdges = getEdges . fst
   getActuals (_, cur) = [show cur]
 
-instance TexAble PointedActionModel where
+instance TexAble PointedActionModelS5 where
   tex           = tex.ViaDot
   texTo         = texTo.ViaDot
   texDocumentTo = texDocumentTo.ViaDot
 
-instance KripkeLike MultipointedActionModel where
+instance KripkeLike MultipointedActionModelS5 where
   directed = directed . fst
   getNodes = getNodes . fst
   getEdges = getEdges . fst
   getActuals (_, curs) = map show curs
 
-instance TexAble MultipointedActionModel where
+instance TexAble MultipointedActionModelS5 where
   tex           = tex.ViaDot
   texTo         = texTo.ViaDot
   texDocumentTo = texDocumentTo.ViaDot
 
-instance Arbitrary ActionModel where
+instance Arbitrary ActionModelS5 where
   arbitrary = do
     BF f <- sized $ randomboolformWith [P 0 .. P 4]
     BF g <- sized $ randomboolformWith [P 0 .. P 4]
@@ -341,26 +341,26 @@ instance Arbitrary ActionModel where
         , (3,(h  ,[]))     ]
         ( ("0",[[0],[1],[2],[3]]):[(show k,[[0..3::Int]]) | k<-[1..5::Int] ])
 
-instance Update KripkeModelS5 ActionModel where
+instance Update KripkeModelS5 ActionModelS5 where
   checks = [haveSameAgents]
   unsafeUpdate m am@(ActMS5 acts _) =
     let (newModel,_) = unsafeUpdate (m, worldsOf m) (am, map fst acts) in newModel
 
-instance Update PointedModelS5 PointedActionModel where
+instance Update PointedModelS5 PointedActionModelS5 where
   checks = [haveSameAgents,preCheck]
   unsafeUpdate (m, w) (actm, a) =
     let (newModel,[newWorld]) = unsafeUpdate (m, [w]) (actm, [a]) in (newModel,newWorld)
 
-instance Update PointedModelS5 MultipointedActionModel where
+instance Update PointedModelS5 MultipointedActionModelS5 where
   checks = [haveSameAgents,preCheck]
   unsafeUpdate (m, w) mpactm =
     let (newModel,[newWorld]) = unsafeUpdate (m, [w]) mpactm in (newModel,newWorld)
 
-instance Update MultipointedModelS5 PointedActionModel where
+instance Update MultipointedModelS5 PointedActionModelS5 where
   checks = [haveSameAgents] -- do not check precondition!
   unsafeUpdate mpm (actm, a) = unsafeUpdate mpm (actm, [a])
 
-instance Update MultipointedModelS5 MultipointedActionModel where
+instance Update MultipointedModelS5 MultipointedActionModelS5 where
   checks = [haveSameAgents] -- do not check precondition!
   unsafeUpdate (m@(KrMS5 oldWorlds oldrel oldval), oldcurs) (ActMS5 acts actrel, factions) =
     (KrMS5 newWorlds newrel newval, newcurs) where

@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, MultiParamTypeClasses, ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, ScopedTypeVariables #-}
 
 module SMCDEL.Symbolic.S5 where
 
@@ -185,7 +185,7 @@ bddOf kns (Dia (Dyn dynLabel d) f) =
     (trf@(KnTrf addProps addLaw changeLaw _), shiftrel) = shiftPrepare kns trfUnshifted
     (preCon,trfUnshifted,simulateActualEvents) =
       case fromDynamic d of
-        -- 3. For a signle pointed event, simulate actual event x outof V+
+        -- 3. For a single event, simulate actual event x outof V+
         Just ((t,x) :: Event) -> ( preOf (t,x), t, (`restrictSet` actualAss) )
           where actualAss = [(newK, P k `elem` x) | (P k, P newK) <- shiftrel]
         Nothing -> case fromDynamic d of

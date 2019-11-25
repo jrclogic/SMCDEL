@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
 
 module SMCDEL.Explicit.K where
 
@@ -90,7 +90,7 @@ instance Arbitrary KripkeModel where
       return (w, (M.fromList myAssignment, M.fromList myRelations)) -- FIXME avoid fromList, build M.map directly?
       ) worlds
     return $ KrM $ M.fromList m
-  shrink krm = [ krm `withoutWorld` w | w <- worldsOf krm, length (worldsOf krm) > 1, w /= 0 ]
+  shrink krm = [ krm `withoutWorld` w | length (worldsOf krm) > 1, w <- delete 0 (worldsOf krm) ]
 
 withoutWorld :: KripkeModel -> World -> KripkeModel
 withoutWorld (KrM m) w = KrM $ M.map (\(a, r) -> (a, M.map (delete w) r)) $ M.delete w m
@@ -194,16 +194,16 @@ diff m1 m2 = lfp step start where
     -- forth
     [ Neg . K i . Neg . Conj $ [ f | w2' <- w2's, let Just f = curMap ! (w1',w2') ]
     | i <- agentsOf m1
-    , w1' <- relOfIn i m1 ! w1
     , let w2's = relOfIn i m2 ! w2
+    , w1' <- relOfIn i m1 ! w1
     , all (\w2' -> isJust $ curMap ! (w1',w2')) w2's
     ]
     ++
     -- back
     [ K i . Disj $ [ f | w1' <- w1's, let Just f = curMap ! (w1',w2') ]
     | i <- agentsOf m1
-    , w2' <- relOfIn i m2 ! w2
     , let w1's = relOfIn i m1 ! w1
+    , w2' <- relOfIn i m2 ! w2
     , all (\w1' -> isJust $ curMap ! (w1',w2')) w1's
     ]
     of
