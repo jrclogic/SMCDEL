@@ -62,6 +62,12 @@ main = hspec $ do
     prop "generatedSubmodel preserves truth" $
       \m f -> let pm = (m::Exp.KripkeModelS5, head $ Exp.worldsOf m)
               in isTrue pm f === isTrue (Exp.generatedSubmodel pm) f
+    prop "optimize preserves truth" $
+      \m f -> let pm = (m::Exp.KripkeModelS5, head $ Exp.worldsOf m)
+              in isTrue pm f === isTrue (optimize (vocabOf m) pm) f
+    prop "optimize can shrink the model" $
+      expectFailure (\m -> let pm = (m::Exp.KripkeModelS5, head $ Exp.worldsOf m)
+                           in length (Exp.worldsOf pm) <= length (Exp.worldsOf (optimize (vocabOf m) pm)) )
   describe "SMCDEL.Examples" $ do
     it "modelA: bob knows p, alice does not" $
       Exp.eval modelA $ Conj [K bob (PrpF (P 0)), Neg $ K alice (PrpF (P 0))]
