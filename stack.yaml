@@ -1,4 +1,4 @@
-resolver: lts-13.26
+resolver: lts-14.16
 
 packages:
 - '.'
@@ -7,4 +7,3 @@ extra-deps:
 - git: https://github.com/m4lvin/cudd.git
   commit: 32f7d6b764a80bbf8f84c07e2c1d691469aaaba0
 - HasCacBDD-0.1.0.2
-- graphviz-2999.20.0.3@sha256:cde383c356bc41136ed53cd27e0800f46dbd2185600dd0de18d66d5c49739d94
