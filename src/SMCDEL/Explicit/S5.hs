@@ -161,6 +161,12 @@ announce pm@(m@(KrMS5 sts rel val), cur) ags form =
     nrel (i,ri) | i `elem` ags = (i,filter ([]/=) (concatMap split ri))
                 | otherwise    = (i,ri)
 
+announceAction :: [Agent] -> [Agent] -> Form -> PointedActionModelS5
+announceAction everyone listeners f = (am, 1) where
+  am = ActMS5 -- [(Action,(Form,PostCondition))] [(Agent,Partition)]
+    [ (1, (f, [])), (2, (Top, [])) ]
+    [ (i, if i `elem` listeners then [[1],[2]] else [[1,2]] ) | i <- everyone ]
+
 instance KripkeLike KripkeModelS5 where
   directed = const False
   getNodes (KrMS5 ws _ val) = map (show &&& labelOf) ws where
