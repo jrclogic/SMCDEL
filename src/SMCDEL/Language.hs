@@ -97,6 +97,9 @@ instance Show DynamicOp where
 class HasVocab a => Semantics a where
   isTrue :: a -> Form -> Bool
 
+(|=) :: Semantics a => a -> Form -> Bool
+(|=) = isTrue
+
 class Optimizable a where
   optimize :: [Prp] -> a -> a
 

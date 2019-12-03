@@ -188,6 +188,7 @@ diff m1 m2 = lfp step start where
   propDiff ps qs | ps \\ qs /= []  = Just $       PrpF $ head (ps \\ qs)
                  | qs \\ ps /= []  = Just $ Neg $ PrpF $ head (qs \\ ps)
                  | otherwise       = Nothing
+  -- until a fixpoint is reached, update the map using all relations
   step curMap = M.mapWithKey (updateAt curMap) curMap
   updateAt _      _       (Just f) = Just f
   updateAt curMap (w1,w2) Nothing  = case
