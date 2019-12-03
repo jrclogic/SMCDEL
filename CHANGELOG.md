@@ -8,6 +8,7 @@ New:
 - allow dynamic operators in formulas via Data.Dynamic
 - multipointed models, action models, structures and events
 - added Cheryl's Birthday and Cheryl's Age examples
+- more epistemic planning functions and examples
 - more instances for QuickCheck
 - add S5 to K conversion
 

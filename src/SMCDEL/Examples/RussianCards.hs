@@ -1,10 +1,10 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module SMCDEL.Examples.RussianCards where
 
 import Control.Monad (replicateM)
 import Data.HasCacBDD hiding (Top,Bot)
-import Data.List (delete,intersect,nub,sort)
+import Data.List ((\\),delete,intersect,nub,sort)
 import Data.Map.Strict (fromList)
 
 import SMCDEL.Internal.Help (powerset)
@@ -44,9 +44,10 @@ allCardsUnique = Conj [ Neg $ isDouble n | n <- rcCards ] where
 
 distribute331 :: Form
 distribute331 = Conj [ aliceAtLeastThree, bobAtLeastThree, carolAtLeastOne ] where
-  aliceAtLeastThree = Disj [ Conj (map (alice `hasCard`) [x, y, z]) | x<-rcCards, y<-rcCards, z<-rcCards, x/=y, x/=z, y/=z  ]
-  bobAtLeastThree = Disj [ Conj (map (bob `hasCard`) [x, y, z]) | x<-rcCards, y<-rcCards, z<-rcCards, x/=y, x/=z, y/=z  ]
-  carolAtLeastOne = Disj [ carol `hasCard` k | k<-[0..6] ]
+  triples = [ [x, y, z] | x <- rcCards, y <- delete x rcCards, z <- rcCards \\ [x,y] ]
+  aliceAtLeastThree = Disj [ Conj (map (alice `hasCard`) t) | t <- triples ]
+  bobAtLeastThree   = Disj [ Conj (map (bob   `hasCard`) t) | t <- triples ]
+  carolAtLeastOne   = Disj [ carol `hasCard` k | k<-[0..6] ]
 
 rusSCN :: KnowScene
 rusKNS :: KnowStruct
@@ -97,55 +98,65 @@ checkSet set = all (evalViaBdd rusSCN) fs where
        , PubAnnounce aliceSays (PubAnnounce bobSays (Ck rcPlayers cIgnorant)) ]
 
 possibleHands :: [[Int]]
-possibleHands = [ [x,y,z] | x <- rcCards, y <- rcCards, z <-rcCards, x < y, y < z ]
+possibleHands = [ [x,y,z] | x <- rcCards, y <- filter (> x) rcCards, z <-filter (> y) rcCards ]
 
-pickHands :: [ [Int] ] -> Int -> [ [ [Int] ] ]
-pickHands _ 0 = [ [ [ ] ] ]
-pickHands unused 1 = [ [h] | h <- unused ]
-pickHands unused n = concat [ [ h:hs | hs <- pickHands (myfilter h unused) (n-1) ]  | h <- unused ] where
-  myfilter h = filter (\xs -> length (h `intersect` xs) < 2 && h < xs)
+pickHandsNoCrossing :: [ [Int] ] -> Int -> [ [ [Int] ] ]
+pickHandsNoCrossing _ 0 = [ [ [ ] ] ]
+pickHandsNoCrossing unused 1 = [ [h] | h <- unused ]
+pickHandsNoCrossing unused n = concat [ [ h:hs | hs <- pickHandsNoCrossing (myfilter h unused) (n-1) ]  | h <- unused ] where
+  myfilter h = filter (\xs -> length (h `intersect` xs) < 2 && h < xs) -- do not allow intersection > 2
 
-allHandLists :: [ [ [Int] ] ]
-allHandLists = concatMap (pickHands possibleHands) [5,6,7]
+allHandLists, safeHandLists :: [ [ [Int] ] ]
+allHandLists = concatMap (pickHandsNoCrossing possibleHands) [5,6,7]
+safeHandLists = sort (filter checkSet allHandLists)
 
-pickHandsNaive :: [ [Int] ] -> Int -> [ [ [Int] ] ]
-pickHandsNaive _ 0 = [ [ [ ] ] ]
-pickHandsNaive unused 1 = [ [h] | h <- unused ]
-pickHandsNaive unused n = concat [ [ h:hs | hs <- pickHandsNaive (myfilter h unused) (n-1) ]  | h <- unused ] where
-  myfilter h = filter (\xs -> h < xs)
+alicesActions :: [Form]
+alicesActions = [ Disj $ map (alice `hasHand`) ([0,1,2]:otherHands) | otherHands <- handLists ] where
+  handLists :: [ [ [Int] ] ]
+  handLists = pickHands (delete [0,1,2] possibleHands) 4
+  pickHands :: [ [Int] ] -> Int -> [ [ [Int] ] ]
+  pickHands _     0 = [ [ [ ] ] ]
+  pickHands hands 1 = [ [ h   ] | h <- hands ]
+  pickHands hands n = [ h:hs    | h <- hands, hs <- pickHands (filter (h <) hands) (n-1) ]
 
-alicesActions :: [[[Int]]]
-alicesActions = pickHandsNaive (delete [0,1,2] possibleHands) 4
+bobsActions :: [Form]
+bobsActions = [ carol `hasCard` n | n <- reverse [4..6] ]
 
-alicesForms :: [Form]
-alicesForms = map translate alicesActions
+rcSolutions :: [ [Form] ]
+rcSolutions = [ [a, b] | a <- alicesActions, b <- bobsActions, testPlan a b ] where
+  testPlan :: Form -> Form -> Bool
+  testPlan aSays bSays = all (evalViaBdd rusSCN)
+    -- NOTE: increasing checks are faster than one big conjunction!
+    [ aSays
+    , PubAnnounce aSays bKnowsAs
+    , PubAnnounce aSays cIgnorant
+    , PubAnnounce aSays bSays
+    , PubAnnounce aSays (PubAnnounce bSays aKnowsBs)
+    , PubAnnounce aSays (PubAnnounce bSays (Ck [alice,bob] $ Conj [cIgnorant,aKnowsBs,bKnowsAs])) ]
 
-translate :: [[Int]] -> Form
-translate set = Disj [ Conj $ map (alice `hasCard`) h | h <- [0,1,2]:set ]
+rcPlan :: OfflinePlan
+rcPlan = [ aAnnounce, bAnnounce ]
 
-bobsForms :: [Form]
-bobsForms = [carol `hasCard` n | n <- reverse [0..6]] -- FIXME relax!
+rcGoal :: Form
+rcGoal = Conj [ aKnowsBs
+              , bKnowsAs
+              , Ck [alice,bob] (Conj [aKnowsBs, bKnowsAs])
+              , Ck [alice,bob,carol] cIgnorant ]
 
-allPlans :: [(Form,Form)]
-allPlans = [ (a,b) | a <- alicesForms, b <- bobsForms ]
-
-testPlan :: (Form,Form) -> Bool
-testPlan (aSays,bSays) = all (evalViaBdd rusSCN) fs where
-  fs = [ aSays
-       , PubAnnounce aSays bKnowsAs
-       , PubAnnounce aSays (Ck [alice,bob] bKnowsAs)
-       , PubAnnounce aSays (Ck [alice,bob,carol] cIgnorant)
-       , PubAnnounce aSays bSays
-       , PubAnnounce aSays (PubAnnounce bSays (Ck [alice,bob] $ Conj [aKnowsBs, bKnowsAs]))
-       , PubAnnounce aSays (PubAnnounce bSays (Ck [alice,bob,carol] cIgnorant)) ]
-
-rcSolutions :: [(Form, Form)]
-rcSolutions = filter testPlan allPlans
+rcSolutionsViaPlanning :: [OfflinePlan]
+rcSolutionsViaPlanning = offlineSearch maxSteps start actions constraints goal where
+  maxSteps    = 2 -- We need two steps!
+  start       = rusSCNfor (3,3,1)
+  actions     = alicesActions ++ bobsActions
+  constraints = [cIgnorant,bKnowsAs]
+  goal        = Conj [aKnowsBs, bKnowsAs]
 
 type RusCardProblem = (Int,Int,Int)
 
 distribute :: RusCardProblem -> Form
-distribute (na,nb,nc) = Conj [ alice `hasAtLeast` na, bob `hasAtLeast` nb, carol `hasAtLeast` nc ] where
+distribute (na,nb,nc) = Conj [ alice `hasAtLeast` na
+                             , bob   `hasAtLeast` nb
+                             , carol `hasAtLeast` nc ] where
   n = na + nb + nc
   hasAtLeast :: Agent -> Int -> Form
   hasAtLeast _ 0 = Top
@@ -173,19 +184,13 @@ rusSCNfor (na,nb,nc) = (KnS props law [ (i, obs i) | i <- rcPlayers ], defaultDe
   cardsFor "Carol" = [(na+nb)..(na+nb+nc-1)]
   cardsFor _       = error "Who is that?"
 
--- the plan for (3,3,1)
-basicPlan :: OfflinePlan
-basicPlan =
-  [ (aAnnounce, Conj [ bKnowsAs, Ck [alice,bob] bKnowsAs, Ck [alice,bob,carol] cIgnorant ] )
-  , (bAnnounce, Conj [ aKnowsBs, Ck [alice,bob] aKnowsBs, Ck rcPlayers cIgnorant ] ) ]
-
 possibleHandsN :: Int -> Int -> [[Int]]
 possibleHandsN n na = filter alldiff $ nub $ map sort $ replicateM na (nCards n) where
   alldiff [] = True
   alldiff (x:xs) = x `notElem` xs && alldiff xs
 
 allHandListsN :: Int -> Int -> [ [ [Int] ] ]
-allHandListsN n na = concatMap (pickHands (possibleHandsN n na)) [5,6,7] -- FIXME how to adapt the number of hands for larger n?
+allHandListsN n na = concatMap (pickHandsNoCrossing (possibleHandsN n na)) [5,6,7] -- FIXME how to adapt the number of hands for larger n?
 
 aKnowsBsN, bKnowsAsN, cIgnorantN :: Int -> Form
 aKnowsBsN n = Conj [ alice `Kw` (bob `hasCard` k) | k <- nCards n ]
@@ -194,14 +199,11 @@ cIgnorantN n = Conj $ concat [ [ Neg $ K carol $ alice `hasCard` i
                             , Neg $ K carol $ bob   `hasCard` i ] | i <- nCards n ]
 
 checkSetFor :: RusCardProblem -> [[Int]] -> Bool
-checkSetFor (na,nb,nc) set = plan `succeedsOn` rusSCNfor (na,nb,nc) where
+checkSetFor (na,nb,nc) set = reachesOn plan rcGoal (rusSCNfor (na,nb,nc)) where
   n = na + nb + nc
   aliceSays = K alice (Disj [ Conj $ map (alice `hasCard`) h | h <- set ])
   bobSays = K bob (carol `hasCard` last (nCards n))
-  plan =
-   [ (aliceSays, Conj [ bKnowsAsN n, Ck [alice,bob] (bKnowsAsN n), Ck [alice,bob,carol] (cIgnorantN n) ] )
-   , (bobSays  , Conj [ Ck [alice,bob] $ Conj [aKnowsBsN n, bKnowsAsN n], Ck rcPlayers (cIgnorantN n) ] )
-   ]
+  plan = [ aliceSays, bobSays ]
 
 checkHandsFor :: RusCardProblem -> [ ( [[Int]], Bool) ]
 checkHandsFor (na,nb,nc) = map (\hs -> (hs, checkSetFor (na,nb,nc) hs)) (allHandListsN n na) where
@@ -220,8 +222,8 @@ dontChange :: [Form] -> K.RelBDD
 dontChange fs = conSet <$> sequence [ equ <$> K.mvBdd b <*> K.cpBdd b | b <- map boolBddOf fs ]
 
 noDoubles :: Int -> Form
-noDoubles n = Conj [ notDOuble k | k <- nCards n ] where
-  notDOuble k = Neg $ Conj [alice `hasCard` k, bob `hasCard` k]
+noDoubles n = Neg $ Disj [ notDouble k | k <- nCards n ] where
+  notDouble k = Conj [alice `hasCard` k, bob `hasCard` k]
 
 rusBelScnfor :: RusCardProblem -> K.BelScene
 rusBelScnfor (na,nb,nc) = (K.BlS props law (fromList [ (i, obsbdd i) | i <- rcPlayers ]), defaultDeal) where
