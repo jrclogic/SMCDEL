@@ -110,7 +110,7 @@ class HasPrecondition a where
 instance HasPrecondition Form where
   preOf = id
 
-class (HasAgents a, Semantics a, HasPrecondition b) => Update a b where
+class (Show a, Show b, HasAgents a, Semantics a, HasPrecondition b) => Update a b where
   {-# MINIMAL unsafeUpdate #-}
   unsafeUpdate :: a -> b -> a
   checks :: [a -> b -> Bool]
@@ -120,7 +120,13 @@ class (HasAgents a, Semantics a, HasPrecondition b) => Update a b where
   update :: a -> b -> a
   update x y = if and checkResults
                  then unsafeUpdate x y
-                 else error $ "Update failed. Checks: " ++ show checkResults
+                 else error . concat $
+                   [ "Update failed."
+                   , "\n  x = ", show x
+                   , "\n  y = ", show y
+                   , "\n  preOf y = ", show (preOf y)
+                   , "\n  preCheck y = ", show (preCheck x y)
+                   , "\n  checkResults: ", show checkResults ]
                where checkResults = [ c x y | c <- checks ]
 
 updates :: Update a b => a -> [b] -> a
