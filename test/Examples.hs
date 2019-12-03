@@ -9,6 +9,7 @@ import SMCDEL.Examples
 import SMCDEL.Examples.DiningCrypto
 import SMCDEL.Examples.DrinkLogic
 import SMCDEL.Examples.MuddyChildren
+import SMCDEL.Examples.DoorMat
 import SMCDEL.Examples.Prisoners
 import SMCDEL.Examples.RussianCards
 import SMCDEL.Examples.SumAndProduct
@@ -16,6 +17,7 @@ import SMCDEL.Examples.WhatSum
 import SMCDEL.Internal.TexDisplay
 import SMCDEL.Language
 import SMCDEL.Other.BDD2Form
+import SMCDEL.Other.Planning
 import SMCDEL.Symbolic.S5
 import SMCDEL.Translations.S5
 import qualified SMCDEL.Explicit.S5 as Exp
@@ -101,6 +103,8 @@ main = hspec $ do
     it "Dining Crypto, dcScn2: Only Alice knows that she paid:" $
       evalViaBdd dcScn2 $
         Conj [K "1" (PrpF (P 1)), Neg $ K "2" (PrpF (P 1)), Neg $ K "3" (PrpF (P 1))]
+    it "Epistemic Planning: door mat plan succeeds" $
+      reachesOn (Do "tryTake" tryTake (Check dmGoal Stop)) dmGoal dmStart
     it "Three Prisoners: Explicit Version reaches the goal" $
       endOf prisonExpStory `isTrue` prisonGoal
     it "Three Prisoners: Symbolic Version reaches the goal" $
