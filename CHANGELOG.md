@@ -7,7 +7,7 @@ New:
 - minimization via bisimulation
 - allow dynamic operators in formulas via Data.Dynamic
 - multipointed models, action models, structures and events
-- added Cheryl's Birthday example
+- added Cheryl's Birthday and Cheryl's Age examples
 - more instances for QuickCheck
 - add S5 to K conversion
 
