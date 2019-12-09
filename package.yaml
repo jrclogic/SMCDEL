@@ -1,5 +1,5 @@
 name:                 smcdel
-version:              1.0.0
+version:              1.1.0
 synopsis:             Symbolic Model Checking for Dynamic Epistemic Logic
 description:          See README.md and SMCDEL.pdf for references and documentation.
 maintainer:           Malvin Gattinger <malvin@w4eg.eu>
@@ -11,8 +11,10 @@ ghc-options:          -Wall
 
 extra-source-files:
   - README.md
+  - CHANGELOG.md
   - stack.yaml
   - package.yaml
+  - static/ace.js
   - static/index.html
   - static/viz-lite.js
   - Examples/DiningCryptographers.smcdel.txt

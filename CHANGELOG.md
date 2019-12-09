@@ -2,20 +2,26 @@
 
 ## upcoming
 
+...
+
+
+## v1.1.0 (2018-12-09)
+
 New:
 
-- minimization via bisimulation
-- allow dynamic operators in formulas via Data.Dynamic
+- minimization under bisimulation
+- dynamic operators in formulas via `Data.Dynamic`
 - multipointed models, action models, structures and events
 - added Cheryl's Birthday and Cheryl's Age examples
-- more epistemic planning functions and examples
-- more instances for QuickCheck
-- add S5 to K conversion
+- experimental functions for epistemic planning (with small examples)
+- more instances for QuickCheck, more tests
+- add S5 to K conversion in `SMCDEL.Translations.Convert`
+- improvements to the web interface
 
 Changed:
 
 - polymorphic `update` replaces `productUpdate`, `transform`, `pubAnnounce` etc.
-- factual change per default: merge `Symbolic.S5.Change` into `Symbolic.S5` etc.
+- factual change by default: merge `Symbolic.S5.Change` into `Symbolic.S5` etc.
 - remove changeprops in (Kn)Trf to avoid redundancy with changelaw
 - move BDD related functions to HasCacBDD (`substit`, `substitSimul`)
 - avoid `Data.Map` in S5 modules, no longer depend on `lens`
