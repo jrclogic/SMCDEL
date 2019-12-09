@@ -47,9 +47,13 @@ import SMCDEL.Language
   'Forall'     { TokenForall            _ }
   'Exists'     { TokenExists            _ }
 
-%left '&'
-%left '|'
-%nonassoc '~'
+%left '->' 'iff'
+%left '|' '&'
+%nonassoc '&' '|'
+%left KNOWSTHAT KNOWSWHETHER CKNOWTHAT CKNOWWHETHER
+%left '[' ']'
+%left '<' '>'
+%left '~'
 
 %%
 
