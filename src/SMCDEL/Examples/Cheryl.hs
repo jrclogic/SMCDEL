@@ -40,8 +40,8 @@ start = KnS allprops statelaw obs where
   statelaw = boolBddOf $ Conj
     [ Disj (map thisPos possibilities)
     , Conj [ Neg $ Conj [thisPos p1, thisPos p2] | p1 <- possibilities, p2 <- possibilities, p1 /= p2 ] ]
-  obs = [ ("Albert", nub $ map (dayIs   . fst) possibilities)
-        , ("Bernard", nub $ map (monthIs . snd) possibilities) ]
+  obs = [ ("Albert" , nub $ map (monthIs . snd) possibilities)
+        , ("Bernard", nub $ map (dayIs   . fst) possibilities) ]
 
 round1,round2,round3 :: KnowStruct
 round1 = update start (Conj [Neg $ knWhich "Albert", K "Albert" $ Neg (knWhich "Bernard")])
