@@ -166,9 +166,9 @@ bddOf bls@(BlS props _ _) (AnnounceW ags f g) =
 
 bddOf bls (Dia (Dyn dynLabel d) f) =
     con (bddOf bls preCon)                    -- 5. Prefix with "precon AND ..." (diamond!)
-    . relabelWith copyrelInverse              -- 4. Copy back changeProps V_° to V_
+    . relabelWith copyrelInverse              -- 4. Copy back changeProps V_-^o to V_-
     . simulateActualEvents                    -- 3. Simulate actual event(s) [see below]
-    . substitSimul [ (k, changeLaw ! p)       -- 2. Replace changeProps V_ with postcons
+    . substitSimul [ (k, changeLaw ! p)       -- 2. Replace changeProps V_- with postcons
                    | p@(P k) <- changeProps]  --    (no "relabelWith copyrel", undone in 4)
     . bddOf (bls `update` trf)                -- 1. boolean equivalent wrt new struct
     $ f
@@ -468,7 +468,7 @@ bddReduce scn@(oldBls,_) event@(Trf addprops _ changelaw _, eventFacts) f =
     -- the actual event, shifted
     actualAss  = [ (shifted, P orig `elem` eventFacts) | (P orig, P shifted) <- shiftrel ]
     postconrel = [ (n, changelawShifted ! P n) | (P n) <- changeprops ]
-    -- reversing V° to V
+    -- reversing V^o to V
     copychangeprops = [(freshp $ vocabOf scn ++ map snd shiftrel)..]
     copyrelInverse  = zip copychangeprops changeprops
   in

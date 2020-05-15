@@ -162,7 +162,7 @@ ppFormWith trans (PubAnnounce f g)  = "[! " ++ ppFormWith trans f ++ "] " ++ ppF
 ppFormWith trans (PubAnnounceW f g) = "[?! " ++ ppFormWith trans f ++ "] " ++ ppFormWith trans g
 ppFormWith trans (Announce is f g)  = "[" ++ intercalate ", " is ++ " ! " ++ ppFormWith trans f ++ "]" ++ ppFormWith trans g
 ppFormWith trans (AnnounceW is f g) = "[" ++ intercalate ", " is ++ " ?! " ++ ppFormWith trans f ++ "]" ++ ppFormWith trans g
-ppFormWith trans (Dia (Dyn s _) f)  = "〈" ++ s ++ "〉" ++ ppFormWith trans f
+ppFormWith trans (Dia (Dyn s _) f)  = "<" ++ s ++ ">" ++ ppFormWith trans f
 
 pubAnnounceStack :: [Form] -> Form -> Form
 pubAnnounceStack = flip $ foldr PubAnnounce

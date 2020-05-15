@@ -172,7 +172,7 @@ bddOf kns (PubAnnounceW form1 form2) =
 
 bddOf kns (Dia (Dyn dynLabel d) f) =
     con (bddOf kns preCon)                    -- 5. Prefix with "precon AND ..." (diamond!)
-    . relabelWith copyrelInverse              -- 4. Copy back changeProps V_° to V_
+    . relabelWith copyrelInverse              -- 4. Copy back changeProps V_-^o to V_-
     . simulateActualEvents                    -- 3. Simulate actual event(s) [see below]
     . substitSimul [ (k, changeLaw ! p)       -- 2. Replace changeProps V_ with postcons
                    | p@(P k) <- changeProps]  --    (no "relabelWith copyrel", undone in 4)
@@ -370,7 +370,7 @@ instance Update MultipointedKnowScene MultipointedEvent where
       changeprops = map fst changelaw
       copyrel = zip changeprops [(freshp $ props ++ addprops)..]
       copychangeprops = map snd copyrel
-      newprops = sort $ props ++ addprops ++ copychangeprops -- V ∪ V⁺ ∪ V°
+      newprops = sort $ props ++ addprops ++ copychangeprops -- V u V^+ u V^o
       newlaw = conSet $ relabelWith copyrel (con law (bddOf kns addlaw))
                       : [var (fromEnum q) `equ` relabelWith copyrel (changelaw ! q) | q <- changeprops]
       newobs = [ (i , sort $ map (applyPartial copyrel) (obs ! i) ++ eventObs ! i) | i <- map fst obs ]
