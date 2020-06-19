@@ -53,6 +53,7 @@ executables:
   smcdel-web:
     source-dirs: exec
     main: smcdel-web.hs
+    ghc-options: -threaded
     dependencies:
       - base >= 4.8 && < 5
       - file-embed
