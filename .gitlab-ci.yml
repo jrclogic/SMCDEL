@@ -1,16 +1,4 @@
-image: haskell:8.8.3
-
-variables:
-  STACK_ROOT: "${CI_PROJECT_DIR}/.stack"
-
-before_script:
-  - apt update -qq
-  - apt install -y --no-install-recommends graphviz poppler-utils dot2tex texlive-latex-base preview-latex-style texlive-pstricks
-
-cache:
-  paths:
-    - .stack
-    - .stack-work
+image: m4lvin/smcdel-ci:16.1
 
 build:
   script:
