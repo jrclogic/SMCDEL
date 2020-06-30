@@ -30,7 +30,7 @@ library:
     - containers
     - cudd == 0.1.0.0
     - graphviz
-    - HasCacBDD >= 0.1.0.1 && < 0.2
+    - HasCacBDD >= 0.1.0.3 && < 0.2
     - process
     - QuickCheck
     - tagged
