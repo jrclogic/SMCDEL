@@ -7,7 +7,7 @@ import Data.Char (isSpace)
 import Data.Dynamic
 import Data.HasCacBDD hiding (Top,Bot)
 import Data.HasCacBDD.Visuals
-import Data.List ((\\),delete,dropWhile,dropWhileEnd,intercalate,intersect,nub,sort)
+import Data.List ((\\),delete,dropWhileEnd,intercalate,intersect,nub,sort)
 import Data.Tagged
 import System.IO (hPutStr, hGetContents, hClose)
 import System.IO.Unsafe (unsafePerformIO)
