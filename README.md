@@ -88,7 +88,9 @@ On Debian, just do `sudo apt install graphviz dot2tex`.
     True
     ```
 
-More example files are in the folder [Examples](https://github.com/jrclogic/SMCDEL/tree/master/Examples).
+    More example files are in the folder [Examples](https://github.com/jrclogic/SMCDEL/tree/master/Examples).
+
+4) To use the web interface run `smcdel-web` and then open <http://localhost:3000/index.html>.
 
 
 ## Advanced usage

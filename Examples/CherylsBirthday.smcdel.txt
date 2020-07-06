@@ -1,0 +1,66 @@
+-- Cheryls Birthday in SMCDEL
+
+VARS 5,6,7,8,           -- month
+     14,15,16,17,18,19  -- day of the month
+
+LAW  AND (
+  -- birthday is one of these ten possibilities:
+  OR ( (15 & 5), (16 & 5) , (19 & 5)
+     , (17 & 6), (18 & 6)
+     , (14 & 7), (16 & 7)
+     , (14 & 8), (15 & 8), (17 & 8)
+     ),
+  -- day must be unique:
+  AND ( ~(5 & 6), ~(5 & 7), ~(5 & 8)
+      , ~(6 & 7), ~(6 & 8)
+      , ~(7 & 8)
+      ),
+  -- month must be unique:
+  AND ( ~(14 & 15), ~(14 & 16), ~(14 & 17), ~(14 & 18), ~(14 & 19)
+      , ~(15 & 16), ~(15 & 17), ~(15 & 18), ~(15 & 19)
+      , ~(16 & 17), ~(16 & 18), ~(16 & 19)
+      , ~(17 & 18), ~(17 & 19)
+      , ~(18 & 19)
+      )
+  )
+
+OBS  albert:  5,6,7,8            -- knows month
+     bernard: 14,15,16,17,18,19  -- knows day
+
+-- list all states
+WHERE?
+  Top
+
+-- the dialogue
+WHERE?
+   -- Albert: I don't know when Cheryl's birthday is, ...
+   < ! ~ OR ( albert knows that (15 & 5), albert knows that (16 & 5)
+            , albert knows that (19 & 5), albert knows that (17 & 6)
+            , albert knows that (18 & 6), albert knows that (14 & 7)
+            , albert knows that (16 & 7), albert knows that (14 & 8)
+            , albert knows that (15 & 8), albert knows that (17 & 8)
+            ) >
+   -- ... but I know that Bernard doesn't know too.
+   < ! ( albert knows that (
+         ~( OR ( bernard knows that (15 & 5), bernard knows that (16 & 5)
+               , bernard knows that (19 & 5), bernard knows that (17 & 6)
+               , bernard knows that (18 & 6), bernard knows that (14 & 7)
+               , bernard knows that (16 & 7), bernard knows that (14 & 8)
+               , bernard knows that (15 & 8), bernard knows that (17 & 8)
+               ) ) ) ) >
+   -- Bernard: First I did not know when Cheryl's birthday is, but now I know.
+   < ! OR ( bernard knows that (15 & 5), bernard knows that (16 & 5)
+          , bernard knows that (19 & 5), bernard knows that (17 & 6)
+          , bernard knows that (18 & 6), bernard knows that (14 & 7)
+          , bernard knows that (16 & 7), bernard knows that (14 & 8)
+          , bernard knows that (15 & 8), bernard knows that (17 & 8)
+          ) >
+   -- Albert: Then I also know when Cheryl's birthday is.
+   < ! OR ( albert knows that (15 & 5), albert knows that (16 & 5)
+          , albert knows that (19 & 5), albert knows that (17 & 6)
+          , albert knows that (18 & 6), albert knows that (14 & 7)
+          , albert knows that (16 & 7), albert knows that (14 & 8)
+	  , albert knows that (15 & 8), albert knows that (17 & 8)
+          ) >
+   -- (show all states where these announcements can be made in this order)
+   Top

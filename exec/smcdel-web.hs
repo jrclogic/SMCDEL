@@ -104,6 +104,7 @@ embeddedFile s = case s of
   "MuddyChildren"        -> E.decodeUtf8 $(embedFile "Examples/MuddyChildren.smcdel.txt")
   "DiningCryptographers" -> E.decodeUtf8 $(embedFile "Examples/DiningCryptographers.smcdel.txt")
   "DrinkingLogicians"    -> E.decodeUtf8 $(embedFile "Examples/DrinkingLogicians.smcdel.txt")
+  "CherylsBirthday"      -> E.decodeUtf8 $(embedFile "Examples/CherylsBirthday.smcdel.txt")
   _                      -> error "File not found."
 
 addVersionNumber :: T.Text -> T.Text
