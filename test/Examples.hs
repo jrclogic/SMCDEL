@@ -72,9 +72,9 @@ main = hspec $ do
                            in length (Exp.worldsOf pm) <= length (Exp.worldsOf (optimize (vocabOf m) pm)) )
   describe "SMCDEL.Examples" $ do
     it "modelA: bob knows p, alice does not" $
-      Exp.eval modelA $ Conj [K bob (PrpF (P 0)), Neg $ K alice (PrpF (P 0))]
+      modelA |= Conj [K bob (PrpF (P 0)), Neg $ K alice (PrpF (P 0))]
     it "modelB: bob knows p, alice does not know whether he knows whether p" $
-      Exp.eval modelB $ Conj [K bob (PrpF (P 0)), Neg $ Kw alice (Kw bob (PrpF (P 0)))]
+      modelB |= Conj [K bob (PrpF (P 0)), Neg $ Kw alice (Kw bob (PrpF (P 0)))]
     it "knsA has two states while knsB has three" $
       [2,3] === map (length . statesOf . fst) [knsA,knsB]
     it "redundantModel and minimizedModel are bisimilar" $
@@ -91,9 +91,9 @@ main = hspec $ do
     it "findStateMap works for minimizedModel and myKNS" $
       let (Just g) = findStateMap minimizedModel myKNS in equivalentWith minimizedModel myKNS g
     describe "Three Muddy Children" $ do
-      it "mudScn0: nobodyknows 3" $ evalViaBdd mudScn0 (nobodyknows 3)
-      it "mudScn1: nobodyknows 3" $ evalViaBdd mudScn1 (nobodyknows 3)
-      it "mudScn2: everyone knows" $ evalViaBdd mudScn2 (Conj [knows i | i <- [1..3]])
+      it "mudScn0: nobodyknows 3" $ mudScn0 |= nobodyknows 3
+      it "mudScn1: nobodyknows 3" $ mudScn1 |= nobodyknows 3
+      it "mudScn2: everyone knows" $ mudScn2 |= Conj [knows i | i <- [1..3]]
       it "mudKns2 has one state" $ length (SMCDEL.Symbolic.S5.statesOf mudKns2) === 1
       it "build result == mudScnInit 3 3" $ buildResult === mudScnInit 3 3
     it "Thirsty Logicians: valid for up to 10 agents" $
@@ -101,8 +101,9 @@ main = hspec $ do
     it "Dining Crypto: valid for up to 9 agents" $
       dcValid && all genDcValid [3..9]
     it "Dining Crypto, dcScn2: Only Alice knows that she paid:" $
-      evalViaBdd dcScn2 $
-        Conj [K "1" (PrpF (P 1)), Neg $ K "2" (PrpF (P 1)), Neg $ K "3" (PrpF (P 1))]
+      dcScn2 |= Conj [ K "1" (PrpF (P 1))
+                     , Neg $ K "2" (PrpF (P 1))
+                     , Neg $ K "3" (PrpF (P 1)) ]
     it "Epistemic Planning: door mat plan succeeds" $
       reachesOn (Do "tryTake" tryTake (Check dmGoal Stop)) dmGoal dmStart
     it "Three Prisoners: Explicit Version reaches the goal" $
@@ -118,31 +119,29 @@ main = hspec $ do
     it "Sum and Product: There is exactly one solution." $
       length sapSolutions === 1
     it "Sum and Product: (4,13) is a solution." $
-      validViaBdd sapKnStruct (Impl (Conj [xIs 4, yIs 13]) sapProtocol)
+      sapKnStruct |= Impl (Conj [xIs 4, yIs 13]) sapProtocol
     it "Sum and Product: (4,13) is the only solution." $
-      validViaBdd sapKnStruct (Impl sapProtocol (Conj [xIs 4, yIs 13]))
+      sapKnStruct |= Impl sapProtocol (Conj [xIs 4, yIs 13])
     it "Sum and Product: explaining the solution." $
       map sapExplainState sapSolutions `shouldBe` ["x = 4, y = 13, x+y = 17 and x*y = 52"]
     it "What Sum: There are 330 solutions." $
       length SMCDEL.Examples.WhatSum.wsSolutions === 330
     it "What Sum: The first solution is [('a',1),('b',3),('c',2)]" $
       wsExplainState (head wsSolutions) `shouldBe` [('a',1),('b',3),('c',2)]
-  let ags = map show [1::Int,2,3]
+  let ags = agentsOf myMudGenKrpInit
   describe "SMCDEL.Explicit.K" $ do
     it "3MC genKrp: Top is Ck and Bot is not Ck" $
-      ExpK.eval myMudGenKrpInit $ Conj [Ck ags Top, Neg (Ck ags Bot)]
+      myMudGenKrpInit |= Conj [Ck ags Top, Neg (Ck ags Bot)]
     it "3MC genKrp: It is not common knowledge that someone is muddy" $
-      ExpK.eval myMudGenKrpInit $
-        Neg $ Ck (map show [1::Int,2,3]) $ Disj (map (PrpF . P) [1,2,3])
+      myMudGenKrpInit |= Neg (Ck (map show [1::Int,2,3]) $ Disj (map (PrpF . P) [1,2,3]))
     it "3MC genKrp: after announcing makes it common knowledge that someone is muddy" $
-      ExpK.eval myMudGenKrpInit $
-        PubAnnounce (Disj (map (PrpF . P) [1,2,3])) $ Ck (map show [1::Int,2,3]) $ Disj (map (PrpF . P) [1,2,3])
+      myMudGenKrpInit |= PubAnnounce (Disj (map (PrpF . P) [1,2,3])) (Ck (map show [1::Int,2,3]) $ Disj (map (PrpF . P) [1,2,3]))
   describe "SMCDEL.Symbolic.K" $ do
     it "3MC genScn: Top is Ck and Bot is not Ck" $
-      SymK.evalViaBdd SMCDEL.Examples.MuddyChildren.myMudBelScnInit $ Conj [Ck ags Top, Neg (Ck ags Bot)]
+      SMCDEL.Examples.MuddyChildren.myMudBelScnInit |= Conj [Ck ags Top, Neg (Ck ags Bot)]
     it "3MC genScn: It is not common knowledge that someone is muddy" $
-      SymK.evalViaBdd SMCDEL.Examples.MuddyChildren.myMudBelScnInit $
-        Neg $ Ck (map show [1::Int,2,3]) $ Disj (map (PrpF . P) [1,2,3])
+      SMCDEL.Examples.MuddyChildren.myMudBelScnInit |=
+        Neg (Ck (map show [1::Int,2,3]) $ Disj (map (PrpF . P) [1,2,3]))
     it "3MC genScn: after announcing makes it common knowledge that someone is muddy" $
-      SymK.evalViaBdd SMCDEL.Examples.MuddyChildren.myMudBelScnInit $
-        PubAnnounce (Disj (map (PrpF . P) [1,2,3])) $ Ck (map show [1::Int,2,3]) $ Disj (map (PrpF . P) [1,2,3])
+      SMCDEL.Examples.MuddyChildren.myMudBelScnInit |=
+        PubAnnounce (Disj (map (PrpF . P) [1,2,3])) (Ck (map show [1::Int,2,3]) $ Disj (map (PrpF . P) [1,2,3]))

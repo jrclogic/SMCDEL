@@ -303,7 +303,7 @@ instance Arbitrary ActionModel where
       ) allactions
     myRels <- mapM (\k -> do
       reachList <- sublistOf allactions
-      return $ M.fromList $ ("0",[k]) : [(ag,reachList) | ag <- defaultAgents]
+      return $ M.fromList $ ("1",[k]) : [ (ag,reachList) | ag <- tail defaultAgents ]
       ) allactions
     return $ ActM $ M.fromList
       [ (k::Action, Act (myPres !! k) (myPosts !! k) (myRels !! k)) | k <- allactions ]

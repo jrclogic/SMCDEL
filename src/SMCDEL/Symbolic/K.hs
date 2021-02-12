@@ -147,11 +147,11 @@ bddOf bls@(BlS voc lawbdd obdds) (Ck ags form) = lfp lambda top where
 bddOf bls (Ckw ags form) = dis (bddOf bls (Ck ags form)) (bddOf bls (Ck ags (Neg form)))
 
 bddOf bls (PubAnnounce f g) =
-  imp (bddOf bls f) (bddOf (pubAnnounce bls f) g)
+  imp (bddOf bls f) (bddOf (bls `update` f) g)
 bddOf bls (PubAnnounceW f g) =
   ifthenelse (bddOf bls f)
-    (bddOf (pubAnnounce bls f      ) g)
-    (bddOf (pubAnnounce bls (Neg f)) g)
+    (bddOf (bls `update`     f) g)
+    (bddOf (bls `update` Neg f) g)
 
 bddOf bls@(BlS props _ _) (Announce ags f g) =
   imp (bddOf bls f) (restrict bdd2 (k,True)) where
@@ -218,14 +218,18 @@ instance Semantics BelStruct where
 instance Semantics BelScene where
   isTrue = evalViaBdd
 
-pubAnnounce :: BelStruct -> Form -> BelStruct
-pubAnnounce bls@(BlS allprops lawbdd obs) f =
-  BlS allprops (con lawbdd (bddOf bls f)) obs
+instance Semantics MultipointedBelScene where
+  isTrue (kns@(BlS _ lawBdd _),statesBdd) f =
+    let a = lawBdd `imp` (statesBdd `imp` bddOf kns f)
+     in a == top
 
-pubAnnounceOnScn :: BelScene -> Form -> BelScene
-pubAnnounceOnScn (bls,s) psi = if evalViaBdd (bls,s) psi
-                                 then (pubAnnounce bls psi,s)
-                                 else error "Liar!"
+instance Update BelStruct Form where
+  checks = [ ] -- unpointed structures can be updated with anything
+  unsafeUpdate bls@(BlS props lawbdd obs) psi =
+    BlS props (lawbdd `con` bddOf bls psi) obs
+
+instance Update BelScene Form where
+  unsafeUpdate (kns,s) psi = (unsafeUpdate kns psi,s)
 
 announce :: BelStruct -> [Agent] -> Form -> BelStruct
 announce bls@(BlS props lawbdd obdds) ags psi = BlS newprops newlawbdd newobdds where
@@ -331,7 +335,7 @@ type Event = (Transformer,State)
 instance HasPrecondition Event where
   preOf (Trf addprops addlaw _ _, x) = simplify $ substitOutOf x addprops addlaw
 
-instance Pointed Transformer [State]
+instance Pointed Transformer Bdd
 type MultipointedEvent = (Transformer,Bdd)
 
 instance HasPrecondition MultipointedEvent where
@@ -423,6 +427,20 @@ instance Update BelScene MultipointedEvent where
                         []     -> error "no selected event"
                         [this] -> this
                         more   -> error $ "too many selected events: " ++ show more
+
+-- TODO: test this!
+instance Update MultipointedBelScene MultipointedEvent where
+  checks = [haveSameAgents] -- no need to check precondition, we allow an empty set of actual states
+  unsafeUpdate (bls@(BlS props _ _),statesBdd) (trfUnshifted, eventsBddUnshifted) =
+    (newBls, newStatesBdd) where
+      -- shiftPrepare first to ensure that eventsBdd is also shifted
+      (trf@(Trf addprops _ changelaw _), shiftRel) = shiftPrepare bls trfUnshifted
+      eventsBdd = relabelWith shiftRel eventsBddUnshifted
+      (newBls, _) = unsafeUpdate (bls,undefined::State) (trf,undefined::State) -- using laziness!
+      -- the actual event:
+      changeprops = M.keys changelaw
+      copyrel = zip changeprops [(freshp $ props ++ addprops)..]
+      newStatesBdd = conSet [ relabelWith copyrel statesBdd, eventsBdd ]
 
 trfPost :: Event -> Prp -> Bdd
 trfPost (Trf addprops _ changelaw _, x) p

@@ -213,7 +213,7 @@ instance Semantics MultipointedKnowScene where
      in a == top
 
 instance Update KnowStruct Form where
-  checks = [ ] -- unpointed structures can always be updated with anything
+  checks = [ ] -- unpointed structures can be updated with anything
   unsafeUpdate kns@(KnS props lawbdd obs) psi =
     KnS props (lawbdd `con` bddOf kns psi) obs
 

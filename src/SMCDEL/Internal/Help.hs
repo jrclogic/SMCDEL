@@ -1,7 +1,7 @@
 module SMCDEL.Internal.Help (
   alleq,alleqWith,anydiff,anydiffWith,alldiff,
   groupSortWith,
-  apply,applyPartial,(!),(!=),
+  apply,(!),set,applyPartial,(!=),
   powerset,restrict,rtc,tc,Erel,bl,fusion,seteq,subseteq,lfp
   ) where
 import Data.List ((\\),foldl',groupBy,nub,sort,sortBy,union)
@@ -38,6 +38,11 @@ apply rel left = case lookup left rel of
 
 (!) :: Show a => Show b => Eq a => Rel a b -> a -> b
 (!) = apply
+
+set :: Eq a => Rel a b -> a -> b -> Rel a b
+set []               _ _    = []
+set ((x',oldY):rest) x newY | x' == x   = (x,newY) : rest
+                            | otherwise = (x,oldY) : set rest x newY
 
 applyPartial :: Eq a => [(a,a)] -> a -> a
 applyPartial rel left = case lookup left rel of
