@@ -72,6 +72,11 @@ main = do
                   , TL.pack "');</script>" ]
 
 doJobWeb :: KnowStruct -> Job -> String
+doJobWeb mykns (TrueQ s f) = unlines
+  [ "\\( (\\mathcal{F}, " ++ sStr ++ " ) "
+  , if evalViaBdd (mykns, map P s) f then "\\vDash" else "\\not\\vDash"
+  , (texForm.simplify) f
+  , "\\)" ] where sStr = " \\{ " ++ intercalate "," (map (\i -> "p_{" ++ show i ++ "}") s) ++ " \\}" -- FIXME use tex
 doJobWeb mykns (ValidQ f) = unlines
   [ "\\( \\mathcal{F} "
   , if validViaBdd mykns f then "\\vDash" else "\\not\\vDash"

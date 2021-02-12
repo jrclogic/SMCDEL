@@ -16,6 +16,7 @@ import SMCDEL.Language
   VARS   { TokenVARS   _ }
   LAW    { TokenLAW    _ }
   OBS    { TokenOBS    _ }
+  TRUEQ  { TokenTRUEQ  _ }
   VALIDQ { TokenVALIDQ _ }
   WHEREQ { TokenWHEREQ _ }
   COLON  { TokenColon  _ }
@@ -26,6 +27,8 @@ import SMCDEL.Language
   ')'    { TokenCB     _ }
   '['    { TokenCOB    _ }
   ']'    { TokenCCB    _ }
+  '{'    { TokenSOB    _ }
+  '}'    { TokenSCB    _ }
   '<'    { TokenLA     _ }
   '>'    { TokenRA     _ }
   '!'    { TokenExclam _ }
@@ -97,11 +100,15 @@ StringList : String { [$1] } | String COMMA StringList { $1:$3 }
 ObserveLine : STR COLON IntList { ($1,$3) }
 ObserveSpec : ObserveLine { [$1] } | ObserveLine ObserveSpec { $1:$2 }
 JobList : Job { [$1] } | Job JobList { $1:$2 }
-Job : VALIDQ Form { ValidQ $2 } | WHEREQ Form { WhereQ $2 }
+State : '{' '}' { [] }
+      | '{' IntList '}' { $2 }
+Job : TRUEQ State Form { TrueQ $2 $3 }
+    | VALIDQ Form { ValidQ $2 }
+    | WHEREQ Form { WhereQ $2 }
 
 {
 data CheckInput = CheckInput [Int] Form [(String,[Int])] JobList deriving (Show,Eq,Ord)
-data Job = ValidQ Form | WhereQ Form deriving (Show,Eq,Ord)
+data Job = TrueQ IntList Form | ValidQ Form | WhereQ Form deriving (Show,Eq,Ord)
 type JobList = [Job]
 type IntList = [Int]
 type FormList = [Form]

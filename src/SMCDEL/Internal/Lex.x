@@ -17,6 +17,7 @@ tokens :-
   "VARS"            { \ p _ -> TokenVARS              p }
   "LAW"             { \ p _ -> TokenLAW               p }
   "OBS"             { \ p _ -> TokenOBS               p }
+  "TRUE?"           { \ p _ -> TokenTRUEQ             p }
   "VALID?"          { \ p _ -> TokenVALIDQ            p }
   "WHERE?"          { \ p _ -> TokenWHEREQ            p }
   ":"               { \ p _ -> TokenColon             p }
@@ -25,6 +26,8 @@ tokens :-
   ")"               { \ p _ -> TokenCB                p }
   "["               { \ p _ -> TokenCOB               p }
   "]"               { \ p _ -> TokenCCB               p }
+  "{"               { \ p _ -> TokenSOB               p }
+  "}"               { \ p _ -> TokenSCB               p }
   "<"               { \ p _ -> TokenLA                p }
   ">"               { \ p _ -> TokenRA                p }
   "!"               { \ p _ -> TokenExclam            p }

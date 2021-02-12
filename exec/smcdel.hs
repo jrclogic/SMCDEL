@@ -46,12 +46,12 @@ main = do
       putStrLn "\nDoei!"
 
 doJob :: Handle -> Bool -> KnowStruct -> Job -> IO ()
-doJob outHandle True mykns (ValidQ f) = do
-  hPutStrLn outHandle $ "Is $" ++ texForm (simplify f) ++ "$ valid on $\\mathcal{F}$?"
-  hPutStrLn outHandle (show (validViaBdd mykns f) ++ "\n\n")
-doJob outHandle False mykns (ValidQ f) = do
-  hPutStrLn outHandle $ "Is " ++ ppForm f ++ " valid on the given structure?"
-  vividPutStrLn (show (validViaBdd mykns f) ++ "\n")
+doJob outHandle texMode mykns (TrueQ s f) = do
+  hPutStrLn outHandle $ "Is " ++ (if texMode then "$" ++ texForm (simplify f) ++ "$" else ppForm f) ++ " true at " ++ (if texMode then "$" ++ tex (map P s) ++ "$" else show s) ++ "?"
+  (if texMode then hPutStrLn outHandle else vividPutStrLn) (show (evalViaBdd (mykns, map P s) f) ++ "\n" ++ ['\n' | texMode])
+doJob outHandle texMode mykns (ValidQ f) = do
+  hPutStrLn outHandle $ "Is " ++ (if texMode then "$" ++ texForm (simplify f) ++ "$" else ppForm f) ++ " valid on "++ (if texMode then "$\\mathcal{F}$" else "F") ++ "?"
+  (if texMode then hPutStrLn outHandle else vividPutStrLn) (show (validViaBdd mykns f) ++ "\n" ++ ['\n' | texMode])
 doJob outHandle True mykns (WhereQ f) = do
   hPutStrLn outHandle $ "At which states is $" ++ texForm (simplify f) ++ "$ true? $"
   let states = map tex (whereViaBdd mykns f)

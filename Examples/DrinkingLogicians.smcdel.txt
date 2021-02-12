@@ -8,6 +8,10 @@ OBS  a: 1
      b: 2
      c: 3
 
+TRUE?
+  {}
+  a knows that ~(1 & 2 & 3)
+
 VALID?
   [ ! ~ a knows whether (1 & 2 & 3) ]
   (a,b,c) comknow that 1

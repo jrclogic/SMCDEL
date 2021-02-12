@@ -3,6 +3,7 @@ data Token a -- == AlexPn
   = TokenVARS              {apn :: a}
   | TokenLAW               {apn :: a}
   | TokenOBS               {apn :: a}
+  | TokenTRUEQ            {apn :: a}
   | TokenVALIDQ            {apn :: a}
   | TokenWHEREQ            {apn :: a}
   | TokenColon             {apn :: a}
@@ -17,6 +18,8 @@ data Token a -- == AlexPn
   | TokenCB                {apn :: a}
   | TokenCOB               {apn :: a}
   | TokenCCB               {apn :: a}
+  | TokenSOB               {apn :: a}
+  | TokenSCB               {apn :: a}
   | TokenLA                {apn :: a}
   | TokenRA                {apn :: a}
   | TokenExclam            {apn :: a}
