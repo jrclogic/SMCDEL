@@ -12,7 +12,6 @@ VALID?
   [ ! ~ a knows whether (1 & 2 & 3) ]
   (a,b,c) comknow that 1
 
-
 VALID?
   [ ! ~ a knows whether (1 & 2 & 3) ]
   [ ! ~ b knows whether (1 & 2 & 3) ]

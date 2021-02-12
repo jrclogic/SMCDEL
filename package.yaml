@@ -17,6 +17,7 @@ extra-source-files:
   - static/ace.js
   - static/index.html
   - static/viz-lite.js
+  - Examples/CherylsBirthday.smcdel.txt
   - Examples/DiningCryptographers.smcdel.txt
   - Examples/MuddyChildren.smcdel.txt
   - Examples/DrinkingLogicians.smcdel.txt

@@ -34,7 +34,7 @@ main = do
       let mykns = KnS (map P vocabInts) (boolBddOf lawform) (map (second (map P)) obs)
       when texMode $
         hPutStrLn outHandle $ unlines
-          [ "\\section{Given Knowledge Structure}", "\\[ (\\mathcal{F},s) = (" ++ tex ((mykns,[])::KnowScene) ++ ") \\]", "\\section{Results}" ]
+          [ "\\section{Given Knowledge Structure}", "\\[ (\\mathcal{F},s) = (" ++ tex ((mykns,[])::KnowScene) ++ ") \\]", "\n\n\\section{Results}" ]
       mapM_ (doJob outHandle texMode mykns) jobs
       when texMode $ hPutStrLn outHandle texEnd
       when showMode $ do
