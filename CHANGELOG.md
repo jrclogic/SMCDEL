@@ -2,7 +2,14 @@
 
 ## upcoming
 
-...
+New:
+
+- "TRUE?" command in Web and CI interface
+
+Changed:
+
+- use HasCacBDD-0.1.0.3
+- update ace.js and MathJax
 
 
 ## v1.1.0 (2019-12-09)
