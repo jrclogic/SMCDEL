@@ -42,7 +42,7 @@ apply rel left = case lookup left rel of
 set :: Eq a => Rel a b -> a -> b -> Rel a b
 set []               _ _    = []
 set ((x',oldY):rest) x newY | x' == x   = (x,newY) : rest
-                            | otherwise = (x,oldY) : set rest x newY
+                            | otherwise = (x',oldY) : set rest x newY
 
 applyPartial :: Eq a => [(a,a)] -> a -> a
 applyPartial rel left = case lookup left rel of
