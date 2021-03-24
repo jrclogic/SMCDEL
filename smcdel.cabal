@@ -1,0 +1,211 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.33.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 5a6cc91ddacabc07f1d05439a14edd70a7e768a6788a67093bd32750768029e6
+
+name:           smcdel
+version:        1.1.0
+synopsis:       Symbolic Model Checking for Dynamic Epistemic Logic
+description:    See README.md and SMCDEL.pdf for references and documentation.
+category:       Logic
+homepage:       https://github.com/jrclogic/SMCDEL#readme
+bug-reports:    https://github.com/jrclogic/SMCDEL/issues
+maintainer:     Malvin Gattinger <malvin@w4eg.eu>
+license:        GPL-2
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+    CHANGELOG.md
+    stack.yaml
+    package.yaml
+    static/ace.js
+    static/index.html
+    static/viz-lite.js
+    Examples/CherylsBirthday.smcdel.txt
+    Examples/DiningCryptographers.smcdel.txt
+    Examples/MuddyChildren.smcdel.txt
+    Examples/DrinkingLogicians.smcdel.txt
+
+source-repository head
+  type: git
+  location: https://github.com/jrclogic/SMCDEL
+
+library
+  exposed-modules:
+      SMCDEL.Examples
+      SMCDEL.Examples.Cheryl
+      SMCDEL.Examples.CherylDemo
+      SMCDEL.Examples.CoinFlip
+      SMCDEL.Examples.DiningCrypto
+      SMCDEL.Examples.DoorMat
+      SMCDEL.Examples.DrinkLogic
+      SMCDEL.Examples.GossipKw
+      SMCDEL.Examples.GossipS5
+      SMCDEL.Examples.LetterPassing
+      SMCDEL.Examples.MuddyChildren
+      SMCDEL.Examples.MuddyPlanning
+      SMCDEL.Examples.Prisoners
+      SMCDEL.Examples.RussianCards
+      SMCDEL.Examples.SallyAnne
+      SMCDEL.Examples.SimpleK
+      SMCDEL.Examples.SimpleS5
+      SMCDEL.Examples.SumAndProduct
+      SMCDEL.Examples.WhatSum
+      SMCDEL.Explicit.DEMO_S5
+      SMCDEL.Explicit.K
+      SMCDEL.Explicit.S5
+      SMCDEL.Internal.Help
+      SMCDEL.Internal.Lex
+      SMCDEL.Internal.MyHaskCUDD
+      SMCDEL.Internal.Parse
+      SMCDEL.Internal.TaggedBDD
+      SMCDEL.Internal.TexDisplay
+      SMCDEL.Internal.Token
+      SMCDEL.Language
+      SMCDEL.Other.BDD2Form
+      SMCDEL.Other.MCTRIANGLE
+      SMCDEL.Other.Planning
+      SMCDEL.Symbolic.K
+      SMCDEL.Symbolic.S5
+      SMCDEL.Symbolic.S5_CUDD
+      SMCDEL.Translations.Convert
+      SMCDEL.Translations.K
+      SMCDEL.Translations.S5
+  other-modules:
+      Paths_smcdel
+  hs-source-dirs:
+      src
+  ghc-options: -Wall
+  build-depends:
+      HasCacBDD >=0.1.0.3 && <0.2
+    , QuickCheck
+    , array
+    , base >=4.8 && <5
+    , containers
+    , cudd ==0.1.0.0
+    , graphviz
+    , process
+    , tagged
+    , temporary
+    , text
+    , time
+  default-language: Haskell2010
+
+executable smcdel
+  main-is: smcdel.hs
+  other-modules:
+      Paths_smcdel
+  hs-source-dirs:
+      exec
+  ghc-options: -Wall
+  build-depends:
+      ansi-terminal
+    , base >=4.8 && <5
+    , directory
+    , filepath
+    , process
+    , smcdel
+  default-language: Haskell2010
+
+executable smcdel-web
+  main-is: smcdel-web.hs
+  other-modules:
+      Paths_smcdel
+  hs-source-dirs:
+      exec
+  ghc-options: -Wall -threaded
+  build-depends:
+      HasCacBDD >=0.1.0.1 && <0.2
+    , base >=4.8 && <5
+    , file-embed
+    , js-jquery >=3
+    , scotty
+    , smcdel
+    , template-haskell
+    , text
+  default-language: Haskell2010
+
+test-suite examples
+  type: exitcode-stdio-1.0
+  main-is: test/Examples.hs
+  other-modules:
+      Paths_smcdel
+  ghc-options: -Wall
+  build-depends:
+      QuickCheck
+    , base >=4.8 && <5
+    , hspec
+    , smcdel
+  default-language: Haskell2010
+
+test-suite k
+  type: exitcode-stdio-1.0
+  main-is: test/K.hs
+  other-modules:
+      Paths_smcdel
+  ghc-options: -Wall
+  build-depends:
+      base >=4.8 && <5
+    , containers
+    , hspec
+    , smcdel
+  default-language: Haskell2010
+
+test-suite translations
+  type: exitcode-stdio-1.0
+  main-is: test/Translations.hs
+  other-modules:
+      Paths_smcdel
+  ghc-options: -Wall
+  build-depends:
+      base >=4.8 && <5
+    , hspec
+    , smcdel
+  default-language: Haskell2010
+
+benchmark bench-diningcrypto
+  type: exitcode-stdio-1.0
+  main-is: diningcrypto.hs
+  other-modules:
+      Paths_smcdel
+  hs-source-dirs:
+      bench
+  ghc-options: -Wall
+  build-depends:
+      base >=4.8 && <5
+    , smcdel
+    , time
+  default-language: Haskell2010
+
+benchmark bench-muddychildren
+  type: exitcode-stdio-1.0
+  main-is: muddychildren.hs
+  other-modules:
+      Paths_smcdel
+  hs-source-dirs:
+      bench
+  ghc-options: -Wall
+  build-depends:
+      base >=4.8 && <5
+    , criterion
+    , smcdel
+  default-language: Haskell2010
+
+benchmark bench-sumandproduct
+  type: exitcode-stdio-1.0
+  main-is: sumandproduct.hs
+  other-modules:
+      Paths_smcdel
+  hs-source-dirs:
+      bench
+  ghc-options: -Wall
+  build-depends:
+      base >=4.8 && <5
+    , criterion
+    , smcdel
+    , time
+  default-language: Haskell2010
