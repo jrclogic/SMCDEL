@@ -81,7 +81,7 @@ instance Arbitrary KripkeModelS5 where
       ) defaultAgents
     return $ KrMS5 worlds parts val
   shrink m@(KrMS5 worlds _ _) =
-    [ m `withoutWorld` w | not (null worlds), w <- worlds ]
+    [ m `withoutWorld` w | w <- worlds, not (null $ delete w worlds) ]
 
 eval :: PointedModelS5 -> Form -> Bool
 eval _ Top = True
