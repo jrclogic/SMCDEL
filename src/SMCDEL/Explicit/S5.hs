@@ -282,7 +282,7 @@ instance HasPrecondition ActionModelS5 where
 instance HasPrecondition PointedActionModelS5 where
   preOf (ActMS5 acts _, actual) = fst (acts ! actual)
 
-instance Pointed ActionModelS5 [World]
+instance Pointed ActionModelS5 [Action]
 type MultipointedActionModelS5 = (ActionModelS5,[Action])
 
 instance HasPrecondition MultipointedActionModelS5 where
