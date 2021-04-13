@@ -3,7 +3,7 @@
 module SMCDEL.Symbolic.S5_CUDD where
 
 import SMCDEL.Internal.MyHaskCUDD
-import Data.List ((\\))
+import Data.List ((\\), sort)
 import SMCDEL.Internal.Help (apply)
 import SMCDEL.Language
 
@@ -38,7 +38,7 @@ pubAnnounce kns@(KnS props lawbdd obs) psi = KnS props newlawbdd obs where
 announce :: KnowStruct -> [Agent] -> Form -> KnowStruct
 announce kns@(KnS props lawbdd obs) ags psi = KnS newprops newlawbdd newobs where
   proppsi@(P k) = freshp props
-  newprops  = proppsi:props
+  newprops  = sort $ proppsi : props
   newlawbdd = con lawbdd (equ (var k) (bddOf kns psi))
   newobs    = [(i, apply obs i ++ [proppsi | i `elem` ags]) | i <- map fst obs]
 
