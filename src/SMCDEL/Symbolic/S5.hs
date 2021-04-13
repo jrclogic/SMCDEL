@@ -123,7 +123,7 @@ eval scn (Dia (Dyn dynLabel d) f) = case fromDynamic d of
 announce :: KnowStruct -> [Agent] -> Form -> KnowStruct
 announce kns@(KnS props lawbdd obs) ags psi = KnS newprops newlawbdd newobs where
   proppsi@(P k) = freshp props
-  newprops  = proppsi:props
+  newprops  = sort $ proppsi : props
   newlawbdd = con lawbdd (equ (var k) (bddOf kns psi))
   newobs    = [(i, obs ! i ++ [proppsi | i `elem` ags]) | i <- map fst obs]
 
@@ -298,7 +298,7 @@ data KnowTransformer = KnTrf
   Form             -- addLaw
   [(Prp,Bdd)]      -- changeLaw
   [(Agent,[Prp])]  -- addObs
-  deriving (Show)
+  deriving (Eq,Show)
 
 noChange :: ([Prp] -> Form -> [(Prp,Bdd)] -> [(Agent,[Prp])] -> KnowTransformer)
           -> [Prp] -> Form                -> [(Agent,[Prp])] -> KnowTransformer

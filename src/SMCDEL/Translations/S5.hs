@@ -98,7 +98,7 @@ obsnobs m@(KrMS5 _ rel val) i = (obs,nobs) where
 
 -- | Test if all relations can be described using observariables.
 descableRels :: KripkeModelS5 -> Bool
-descableRels m@(KrMS5 ws rel val) = all descable (map fst rel) where
+descableRels m@(KrMS5 ws rel val) = all (descable . fst) rel where
   wpairs = [ (v,w) | v <- ws, w <- ws ]
   descable i = cover && correct where
     (obs,nobs) = obsnobs m i

@@ -23,7 +23,7 @@ instance Arbitrary Prp where
   arbitrary = elements defaultVocabulary
 
 freshp :: [Prp] -> Prp
-freshp [] = P 1
+freshp []   = P 1
 freshp prps = P (maximum (map fromEnum prps) + 1)
 
 class HasVocab a where
@@ -240,7 +240,7 @@ substit q psi (AnnounceW ags f g) = AnnounceW ags (substit q psi f) (substit q p
 substit _ _   (Dia _ _)           = undefined -- TODO needs substit in dynop! Dia dynop (substit q psi f)
 
 substitSet :: [(Prp,Form)] -> Form -> Form
-substitSet [] f = f
+substitSet []             f = f
 substitSet ((q,psi):rest) f = substitSet rest (substit q psi f)
 
 substitOutOf :: [Prp] -> [Prp] -> Form -> Form
@@ -347,7 +347,9 @@ simStep (Equi f Top)  = simStep f
 simStep (Equi f Bot)  = Neg (simStep f)
 simStep (Equi f g)    | f==g      = Top
                       | otherwise = Equi (simStep f) (simStep g)
+simStep (Forall [] f) = simStep f
 simStep (Forall ps f) = Forall ps (simStep f)
+simStep (Exists [] f) = simStep f
 simStep (Exists ps f) = Exists ps (simStep f)
 simStep (K a f)       = K a (simStep f)
 simStep (Kw a f)      = Kw a (simStep f)

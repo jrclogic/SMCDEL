@@ -14,14 +14,14 @@ alleq = alleqWith id
 
 alleqWith :: Eq b => (a -> b) -> [a] -> Bool
 alleqWith _ [] = True
-alleqWith f (x:xs) = all (f x ==) (map f xs)
+alleqWith f (x:xs) = all ((f x ==) . f) xs
 
 anydiff :: Eq a => [a] -> Bool
 anydiff = anydiffWith id
 
 anydiffWith :: Eq b => (a -> b) -> [a] -> Bool
 anydiffWith _ [] = False
-anydiffWith f (x:xs) = any (f x /=) (map f xs)
+anydiffWith f (x:xs) = any ((f x /=) . f) xs
 
 alldiff :: Eq a => [a] -> Bool
 alldiff [] = True

@@ -383,7 +383,7 @@ instance Update MultipointedModelS5 MultipointedActionModelS5 where
       newPartsFor ag    = [ cartProd as bs | (as,bs) <- listFor ag ]
       translSingle pair = filter (`elem` newWorlds) $ map (\(_,_,x) -> x) $ copiesOf pair
       transEqClass      = concatMap translSingle
-      nTransPartsFor ag = filter (\x-> x/=[]) $ map transEqClass (newPartsFor ag)
+      nTransPartsFor ag = filter (/= []) $ map transEqClass (newPartsFor ag)
       newrel            = [ (a, nTransPartsFor a)  | a <- map fst oldrel ]
       newcurs           = concat [ map (\(_,_,x) -> x) $ copiesOf (s,a) | s <- oldcurs, a <- factions ]
       cartProd xs ys    = [ (x,y) | x <- xs, y <- ys ]
