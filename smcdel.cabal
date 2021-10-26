@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 72c1a09999f30cf259d73a79453969053fe80472a38fd3b8c9bffc923c322f27
+-- hash: 570d0cfd0066a32a916d314ca899510d327d650c0431f380a22f6ee704c3a989
 
 name:           smcdel
 version:        1.1.0
@@ -165,7 +165,8 @@ test-suite k
       alex
     , happy
   build-depends:
-      base >=4.8 && <5
+      QuickCheck
+    , base >=4.8 && <5
     , containers
     , hspec
     , smcdel

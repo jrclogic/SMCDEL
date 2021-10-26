@@ -234,8 +234,7 @@ determinedVocabOf strct =
   filter (\p -> validViaBdd strct (PrpF p) || validViaBdd strct (Neg $ PrpF p)) (vocabOf strct)
 
 nonobsVocabOf  :: KnowStruct -> [Prp]
-nonobsVocabOf (KnS vocab _ obs) = filter (`notElem` usedVars) vocab where
-  usedVars = sort $ concatMap snd obs
+nonobsVocabOf (KnS vocab _ obs) = filter (`notElem` concatMap snd obs) vocab
 
 equivExtraVocabOf :: [Prp] -> KnowStruct -> [(Prp,Prp)]
 equivExtraVocabOf mainVocab kns =
@@ -261,9 +260,22 @@ withoutProps propsToDel (KnS oldProps oldLawBdd oldObs) =
     (existsSet (map fromEnum propsToDel) oldLawBdd)
     [(i,os \\ propsToDel) | (i,os) <- oldObs]
 
+instance Optimizable KnowStruct where
+  optimize myVocab oldKns = newKns where
+    intermediateKns = withoutProps (determinedVocabOf oldKns \\ myVocab) oldKns
+    newKns = fst $ replaceEquivExtra myVocab intermediateKns
+
+instance Optimizable KnowScene where
+  optimize myVocab (oldKns,oldState) = (newKns,newState) where
+    intermediateKns = withoutProps (determinedVocabOf oldKns \\ myVocab) oldKns
+    removedProps = vocabOf oldKns \\ vocabOf intermediateKns
+    intermediateState = oldState \\ removedProps
+    (newKns,replRel) = replaceEquivExtra myVocab intermediateKns
+    newState = sort $ (intermediateState \\ map fst replRel) ++ [ q | (p,q) <- replRel, p `elem` intermediateState ]
+
 instance Optimizable MultipointedKnowScene where
   optimize myVocab (oldKns,oldStatesBdd) = (newKns,newStatesBdd) where
-    intermediateKns = withoutProps ((determinedVocabOf oldKns `intersect` nonobsVocabOf oldKns) \\ myVocab) oldKns
+    intermediateKns = withoutProps (determinedVocabOf oldKns \\ myVocab) oldKns
     removedProps = vocabOf oldKns \\ vocabOf intermediateKns
     intermediateStatesBdd = existsSet (map fromEnum removedProps) oldStatesBdd
     (newKns,replRel) = replaceEquivExtra myVocab intermediateKns
@@ -486,5 +498,5 @@ instance Arbitrary KnowStruct where
       obsVars <- sublistOf myVocabulary
       return (i,obsVars)
       ) defaultAgents
-    return $ KnS defaultVocabulary (boolBddOf statelaw) obs
+    return $ KnS myVocabulary (boolBddOf statelaw) obs
   shrink kns = [ withoutProps [p] kns | length (vocabOf kns) > 1, p <- vocabOf kns \\ defaultVocabulary ]

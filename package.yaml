@@ -90,6 +90,7 @@ tests:
       - base >= 4.8 && < 5
       - containers
       - hspec
+      - QuickCheck
       - smcdel
 
 benchmarks:

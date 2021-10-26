@@ -5,6 +5,7 @@
 New:
 
 - "TRUE?" command in Web and CI interface
+- optimization of symbolic structures
 
 Changed:
 

@@ -4,6 +4,7 @@ import Data.Dynamic (toDyn)
 import Data.Map.Strict (fromList)
 import Data.List (sort)
 import Test.Hspec
+import Test.QuickCheck
 import Test.Hspec.QuickCheck
 
 import SMCDEL.Internal.Help (alleq,set)
@@ -28,6 +29,10 @@ main = hspec $ do
     prop "semanticEquivSymToExp" $ \bls f -> alleq $ semanticEquivSymToExp (bls, head (statesOf bls)) f
   describe "multipointed belief structures (all-pointed, for now)" $
     prop "semanticEquivSymToExp" $ \bls f -> alleq $ semanticEquivSymToExpMulti bls f
+  prop "optimize on belief structures preserves truth" $
+    \bls f -> isTrue (bls::SymK.BelStruct) f === isTrue (optimize defaultVocabulary bls) f
+  prop "optimize on belief structures can reduce the vocabulary" $
+    expectFailure (\bls -> length (vocabOf (bls :: SymK.BelStruct)) === length (vocabOf (optimize defaultVocabulary bls)))
 
 -- | An example model with 5 agents, 5 atomic propositions and 32 worlds.
 myMod :: ExpK.PointedModel

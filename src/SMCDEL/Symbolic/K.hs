@@ -7,7 +7,7 @@ import Data.Tagged
 import Control.Arrow ((&&&),first)
 import Data.Dynamic (fromDynamic)
 import Data.HasCacBDD hiding (Top,Bot)
-import Data.List (intercalate,sort,intersect,(\\))
+import Data.List (delete,intercalate,sort,intersect,nub,(\\))
 import qualified Data.Map.Strict as M
 import Data.Map.Strict ((!))
 import Test.QuickCheck
@@ -24,6 +24,7 @@ mvP, cpP :: Prp -> Prp
 mvP (P n) = P  (2*n)      -- represent p  in the double vocabulary
 cpP (P n) = P ((2*n) + 1) -- represent p' in the double vocabulary
 
+-- | Map p or p' in double vocabulary to p in single vocabulary.
 unmvcpP :: Prp -> Prp
 unmvcpP (P m) | even m    = P $ m `div` 2
               | otherwise = P $ (m-1) `div` 2
@@ -66,7 +67,7 @@ mvBdd b = Tagged $ relabelFun (2 *) b
 
 unmvBdd :: RelBDD -> Bdd
 unmvBdd (Tagged b) =
-  relabelFun (\n -> if even n then n `div` 2 else error ("Not even: " ++ show n)) b
+  relabelFun (\n -> if even n then n `div` 2 else error ("Not even: " ++ show n ++ "in the RelBDD " ++ show b)) b
 
 propRel2bdd :: [Prp] -> M.Map State [State] -> RelBDD
 propRel2bdd props relation = pure $ disSet (M.elems $ M.mapWithKey linkbdd relation) where
@@ -294,8 +295,9 @@ nonobsVocabOf (BlS vocab _law obs) = filter (`notElem` usedVars) vocab where
   usedVars =
     map unmvcpP
     $ sort
-    $ concatMap (map P . Data.HasCacBDD.allVarsOf . untag . snd)
-    $ M.toList obs
+    $ nub
+    $ concatMap (map P . Data.HasCacBDD.allVarsOf . untag)
+    $ M.elems obs
 
 withoutProps :: [Prp] -> BelStruct -> BelStruct
 withoutProps propsToDel (BlS oldProps oldLawBdd oldObs) =
@@ -303,6 +305,35 @@ withoutProps propsToDel (BlS oldProps oldLawBdd oldObs) =
     (oldProps \\ propsToDel)
     (existsSet (map fromEnum propsToDel) oldLawBdd)
     (M.map (fmap $ existsSet (map fromEnum propsToDel)) oldObs)
+
+equivExtraVocabOf :: [Prp] -> BelStruct -> [(Prp,Prp)]
+equivExtraVocabOf mainVocab bls =
+  [ (p,q) | p <- vocabOf bls \\ mainVocab, q <- vocabOf bls, p > q, validViaBdd bls (PrpF p `Equi` PrpF q) ]
+
+replaceWithIn :: (Prp,Prp) -> BelStruct -> BelStruct
+replaceWithIn (p,q) (BlS oldProps oldLaw oldObs) =
+  BlS (delete p oldProps) (changeBdd oldLaw) (fmap (fmap changeRelBdd) oldObs) where
+  changeBdd    = Data.HasCacBDD.relabel [ (fromEnum p, fromEnum q) ]
+  changeRelBdd = Data.HasCacBDD.relabel $ sort [ (fromEnum $ mvP p, fromEnum $ mvP q)
+                                               , (fromEnum $ cpP p, fromEnum $ cpP q) ]
+
+replaceEquivExtra :: [Prp] -> BelStruct -> (BelStruct,[(Prp,Prp)])
+replaceEquivExtra mainVocab startBls = lfp step (startBls,[]) where
+  step (bls,replRel) = case equivExtraVocabOf mainVocab bls of
+               []        -> (bls,replRel)
+               ((p,q):_) -> (replaceWithIn (p,q) bls, (p,q):replRel)
+
+instance Optimizable BelStruct where
+  optimize myVocab bls = fst $ replaceEquivExtra myVocab $
+    withoutProps ((determinedVocabOf bls `intersect` nonobsVocabOf bls) \\ myVocab) bls
+
+instance Optimizable MultipointedBelScene where
+  optimize myVocab (oldBls,oldStatesBdd) = (newKns,newStatesBdd) where
+    intermediateBls = withoutProps ((determinedVocabOf oldBls `intersect` nonobsVocabOf oldBls) \\ myVocab) oldBls
+    removedProps = vocabOf oldBls \\ vocabOf intermediateBls
+    intermediateStatesBdd = existsSet (map fromEnum removedProps) oldStatesBdd
+    (newKns,replRel) = replaceEquivExtra myVocab intermediateBls
+    newStatesBdd = Data.HasCacBDD.relabel [ (fromEnum p, fromEnum q) | (p,q) <-replRel ] intermediateStatesBdd
 
 instance Arbitrary BelStruct where
   arbitrary = do
