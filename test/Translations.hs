@@ -62,14 +62,13 @@ numOfStatesTest m@(KrMS5 oldws _ _) = numberOfStates kns == length news where
   (KrMS5 news _ _, _) = knsToKripke scn
 
 lemmaEquivTestKr :: KripkeModelS5 -> Bool
-lemmaEquivTestKr m@(KrMS5 ws _ _) = equivalentWith pm kns g where
-  pm = (m, head ws)
-  (kns,g) = kripkeToKnsWithG pm
+lemmaEquivTestKr m@(KrMS5 ws _ _) = equivalentWith (m, head ws) (kns, g (head ws)) g where
+  (kns,g) = kripkeToKnsWithG m
 
 lemmaEquivTestKnS :: KnowStruct -> Bool
-lemmaEquivTestKnS kns = equivalentWith pm scn g where
-  scn = (kns, head $ statesOf kns)
-  (pm,g) = knsToKripkeWithG scn
+lemmaEquivTestKnS kns = equivalentWith (m, w) (kns, g w) g where
+  (m, g) = knsToKripkeWithG kns
+  w = head (worldsOf m)
 
 pubAnnounceTest :: Prp -> SimplifiedForm -> Bool
 pubAnnounceTest prp (SF g) = alleq

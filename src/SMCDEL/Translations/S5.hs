@@ -1,6 +1,5 @@
 module SMCDEL.Translations.S5 where
 
-import Control.Arrow (second)
 import Data.HasCacBDD hiding (Top,Bot)
 import Data.List (groupBy,sort,(\\),elemIndex,intersect,nub)
 import Data.Maybe (listToMaybe)
@@ -38,11 +37,15 @@ findStateMap pm@(KrMS5 _ _ val, w) scn@(kns, s)
     goodMaps = filter (\g -> g w == s && equivalentWith pm scn g) allMaps
 
 knsToKripke :: KnowScene -> PointedModelS5
-knsToKripke = fst . knsToKripkeWithG
+knsToKripke (kns, curState) = (m, curWorld) where
+  (m@(KrMS5 worlds _ _), g) = knsToKripkeWithG kns
+  curWorld = case [ w | w <- worlds, g w == curState ] of
+    [cW] -> cW
+    _    -> error "knsToKripke failed: Invalid current state."
 
-knsToKripkeWithG :: KnowScene -> (PointedModelS5, StateMap)
-knsToKripkeWithG (kns@(KnS ps _ obs),currentState) =
-  ((KrMS5 worlds rel val, cur), g) where
+knsToKripkeWithG :: KnowStruct -> (KripkeModelS5, StateMap)
+knsToKripkeWithG kns@(KnS ps _ obs) =
+  (KrMS5 worlds rel val, g) where
     g w    = statesOf kns !! w
     lav    = zip (statesOf kns) [0..(length (statesOf kns)-1)]
     val    = map ( \(s,n) -> (n,state2kripkeass s) ) lav where
@@ -51,20 +54,20 @@ knsToKripkeWithG (kns@(KnS ps _ obs),currentState) =
     rfor i = map (map snd) (groupBy ( \ (x,_) (y,_) -> x==y ) (sort pairs)) where
       pairs = map (\s -> (s `intersect` (obs ! i), lav ! s)) (statesOf kns)
     worlds = map snd lav
-    cur    | currentState `elem` statesOf kns = lav ! currentState
-           | otherwise = error "knsToKripke failed: Invalid state."
 
 knsToKripkeMulti :: MultipointedKnowScene -> MultipointedModelS5
 knsToKripkeMulti (kns,statesBdd) = (m, ws) where
-  ((m,_),g) = knsToKripkeWithG (kns,undefined) -- FIXME uh oh
+  (m, g) = knsToKripkeWithG kns
   ws = filter (\w -> evaluateFun statesBdd (\k -> P k `elem` g w)) (worldsOf m)
 
 kripkeToKns :: PointedModelS5 -> KnowScene
-kripkeToKns = fst . kripkeToKnsWithG
+kripkeToKns (m, curWorld) = (kns, curState) where
+    (kns, g)  = kripkeToKnsWithG m
+    curState  = sort $ g curWorld
 
-kripkeToKnsWithG :: PointedModelS5 -> (KnowScene, StateMap)
-kripkeToKnsWithG (KrMS5 worlds rel val, cur) = ((KnS ps law obs, curs), g) where
-  v         = map fst (val ! cur)
+kripkeToKnsWithG :: KripkeModelS5 -> (KnowStruct, StateMap)
+kripkeToKnsWithG m@(KrMS5 worlds rel val) = (KnS ps law obs, g) where
+  v         = vocabOf m
   ags       = map fst rel
   newpstart = fromEnum $ freshp v -- start counting new propositions here
   amount i  = ceiling (logBase 2 (fromIntegral $ length (rel ! i)) :: Float) -- = |O_i|
@@ -77,12 +80,16 @@ kripkeToKnsWithG (KrMS5 worlds rel val, cur) = ((KnS ps law obs, curs), g) where
   ps        = v ++ concat [ newps i | i <- ags ]
   law       = disSet [ booloutof (g w) ps | w <- worlds ]
   obs       = [ (i,newps i) | i<- ags ]
-  curs      = sort $ g cur
 
 booloutof :: [Prp] -> [Prp] -> Bdd
 booloutof ps qs = conSet $
   [ var n | (P n) <- ps ] ++
   [ neg $ var n | (P n) <- qs \\ ps ]
+
+kripkeToKnsMulti :: MultipointedModelS5 -> MultipointedKnowScene
+kripkeToKnsMulti (model, curWorlds) = (kns, curStatesLaw) where
+  (kns, g) = kripkeToKnsWithG model
+  curStatesLaw = disSet [ booloutof (g w) (vocabOf kns) | w <- curWorlds ]
 
 uniqueVals :: KripkeModelS5 -> Bool
 uniqueVals (KrMS5 _ _ val) = alldiff (map snd val)
@@ -127,8 +134,33 @@ smartKripkeToKnsWithoutChecks (m@(KrMS5 worlds rel val), cur) =
     obsOf = fst.obsnobs m
     curs = map fst $ filter snd $ apply val cur
 
-actionToEvent :: PointedActionModelS5 -> Event
-actionToEvent (ActMS5 acts actrel, faction) = (KnTrf addprops addlaw changelaw addobs, efacts) where
+transformerToActionModelWithG :: KnowTransformer -> (ActionModelS5, StateMap)
+transformerToActionModelWithG trf@(KnTrf addprops addlaw changelaw addobs) = (ActMS5 acts actrel, g) where
+  actlist = zip (powerset addprops) [0..(2 ^ length addprops - 1)]
+  acts    = [ (a, (preFor ps, postsFor ps)) | (ps,a) <- actlist, preFor ps /= Bot ] where
+    preFor ps = simplify $ substitSet (zip ps (repeat Top) ++ zip (addprops\\ps) (repeat Bot)) addlaw
+    postsFor ps =
+      [ (q, formOf $ restrictSet (changelaw ! q) [(p, P p `elem` ps) | (P p) <- addprops])
+      | q <- map fst changelaw ]
+  actrel    = [(i,rFor i) | i <- agentsOf trf] where
+    rFor i  = map (map snd) (groupBy ( \ (x,_) (y,_) -> x==y ) (pairs i))
+    pairs i = sort $ map (\(set,a) -> (intersect set $ addobs ! i,a))
+                         (filter ((`elem` map fst acts) . snd) actlist)
+  g :: Action -> State
+  g a = head [ x | (x, a') <- actlist, a' == a ]
+
+eventToAction :: Event -> PointedActionModelS5
+eventToAction (trf, event) = (actm, faction) where
+  (actm@(ActMS5 acts _), g) = transformerToActionModelWithG trf
+  faction = head [ a | (a,_) <- acts, g a == event ]
+
+eventToActionMulti :: MultipointedEvent -> MultipointedActionModelS5
+eventToActionMulti (trf, actualEventLaw) = (actm, factions) where
+  (actm@(ActMS5 acts _), g) = transformerToActionModelWithG trf
+  factions = [ a | (a,_) <- acts, bddEval (g a) actualEventLaw ]
+
+actionToTransformerWithMap :: ActionModelS5 -> (KnowTransformer, StateMap)
+actionToTransformerWithMap (ActMS5 acts actrel) = (KnTrf addprops addlaw changelaw addobs, eventMap) where
   actions = map fst acts
   ags          = map fst actrel
   addprops     = actionprops ++ actrelprops
@@ -148,29 +180,20 @@ actionToEvent (ActMS5 acts actrel, faction) = (KnTrf addprops addlaw changelaw a
   copyactrel i = zip (apply actrel i) (powerset (newps i)) -- label equclasses-of-actions with subsets-of-newps
   actrelfs i   = [ Equi (booloutofForm (apply (copyactrel i) as) (newps i)) (Disj (map happens as)) | as <- apply actrel i ]
   actrelforms  = concatMap actrelfs ags
-  factsFor i   = snd $ head $ filter (\(as,_) -> faction `elem` as) (copyactrel i)
-  efacts       = ell faction ++ concatMap factsFor ags
+  factsFor a i = snd $ head $ filter (\(as,_) -> a `elem` as) (copyactrel i)
+  eventMap a   = ell a ++ concatMap (factsFor a) ags
   addlaw       = simplify $ Conj (actform : actrelforms)
   changeprops  = sort $ nub $ concatMap (\(_,(_,posts)) -> map fst posts) acts -- propositions to be changed
   changelaw    = [ (p, changeFor p) | p <- changeprops ] -- encode postconditions
   changeFor p  = disSet [ boolBddOf $ Conj [ happens a, safepost posts p ] | (a,(_,posts)) <- acts ]
   addobs       = [ (i,newps i) | i<- ags ]
 
-eventToAction' :: Event -> PointedActionModelS5
-eventToAction' event@(KnTrf addprops addlaw changelaw addobs, efacts) = (ActMS5 acts actrel, faction) where
-  actlist = zip (powerset addprops) [0..(2 ^ length addprops - 1)]
-  acts    = [ (a, (simplify $ preFor ps, postsFor ps)) | (ps,a) <- actlist ] where
-    preFor ps = substitSet (zip ps (repeat Top) ++ zip (addprops\\ps) (repeat Bot)) addlaw
-    postsFor ps =
-      [ (q, formOf $ restrictSet (changelaw ! q) [(p, P p `elem` ps) | (P p) <- addprops]) | q <- map fst changelaw ]
-  actrel    = [(i,rFor i) | i <- agentsOf event] where
-    rFor i  = map (map snd) (groupBy ( \ (x,_) (y,_) -> x==y ) (pairs i))
-    pairs i = sort $ map (\(set,a) -> (intersect set $ addobs ! i,a)) actlist
-  faction   = apply actlist efacts
+actionToEvent :: PointedActionModelS5 -> Event
+actionToEvent (actm, action) = (trf, efacts) where
+  (trf, g) = actionToTransformerWithMap actm
+  efacts = g action
 
-eventToAction :: Event -> PointedActionModelS5
-eventToAction e = (ActMS5 acts actrel, faction) where
-  (ActMS5 acts' actrel', faction) = eventToAction' e
-  acts    = filter (\(_,(pre,_)) -> pre /= Bot) acts' -- remove actions w/ contradictory precon
-  actrel  = map (second restrictRel) actrel' where
-    restrictRel r  = filter ([]/=) $ map (filter (`elem` map fst acts)) r
+actionToEventMulti :: MultipointedActionModelS5 -> MultipointedEvent
+actionToEventMulti (actm, curActions) = (trf, curActionsLaw) where
+  (trf@(KnTrf addprops _ _ _), g) = actionToTransformerWithMap actm
+  curActionsLaw = disSet [ booloutof (g w) addprops | w <- curActions ]

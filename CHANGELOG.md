@@ -5,12 +5,15 @@
 New:
 
 - "TRUE?" command in Web and CI interface
+- multipointed translations
 - optimization of symbolic structures
 
 Changed:
 
+- new definitions and functions for `MultipointedEvent = (Transformer,Bdd)`
 - use HasCacBDD-0.1.0.3
 - update ace.js and MathJax
+- check if dot2tex is available before using it
 
 
 ## v1.1.0 (2019-12-09)
