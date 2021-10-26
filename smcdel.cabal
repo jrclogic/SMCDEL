@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 5a6cc91ddacabc07f1d05439a14edd70a7e768a6788a67093bd32750768029e6
+-- hash: 72c1a09999f30cf259d73a79453969053fe80472a38fd3b8c9bffc923c322f27
 
 name:           smcdel
 version:        1.1.0
@@ -80,6 +80,9 @@ library
   hs-source-dirs:
       src
   ghc-options: -Wall
+  build-tools:
+      alex
+    , happy
   build-depends:
       HasCacBDD >=0.1.0.3 && <0.2
     , QuickCheck
@@ -87,6 +90,7 @@ library
     , base >=4.8 && <5
     , containers
     , cudd ==0.1.0.0
+    , directory
     , graphviz
     , process
     , tagged
@@ -102,6 +106,9 @@ executable smcdel
   hs-source-dirs:
       exec
   ghc-options: -Wall
+  build-tools:
+      alex
+    , happy
   build-depends:
       ansi-terminal
     , base >=4.8 && <5
@@ -118,6 +125,9 @@ executable smcdel-web
   hs-source-dirs:
       exec
   ghc-options: -Wall -threaded
+  build-tools:
+      alex
+    , happy
   build-depends:
       HasCacBDD >=0.1.0.1 && <0.2
     , base >=4.8 && <5
@@ -135,6 +145,9 @@ test-suite examples
   other-modules:
       Paths_smcdel
   ghc-options: -Wall
+  build-tools:
+      alex
+    , happy
   build-depends:
       QuickCheck
     , base >=4.8 && <5
@@ -148,6 +161,9 @@ test-suite k
   other-modules:
       Paths_smcdel
   ghc-options: -Wall
+  build-tools:
+      alex
+    , happy
   build-depends:
       base >=4.8 && <5
     , containers
@@ -161,6 +177,9 @@ test-suite translations
   other-modules:
       Paths_smcdel
   ghc-options: -Wall
+  build-tools:
+      alex
+    , happy
   build-depends:
       base >=4.8 && <5
     , hspec
@@ -175,6 +194,9 @@ benchmark bench-diningcrypto
   hs-source-dirs:
       bench
   ghc-options: -Wall
+  build-tools:
+      alex
+    , happy
   build-depends:
       base >=4.8 && <5
     , smcdel
@@ -189,10 +211,18 @@ benchmark bench-muddychildren
   hs-source-dirs:
       bench
   ghc-options: -Wall
+  build-tools:
+      alex
+    , happy
   build-depends:
-      base >=4.8 && <5
+      MissingH
+    , base >=4.8 && <5
     , criterion
+    , directory
+    , parsec
+    , scientific
     , smcdel
+    , split
   default-language: Haskell2010
 
 benchmark bench-sumandproduct
@@ -203,6 +233,9 @@ benchmark bench-sumandproduct
   hs-source-dirs:
       bench
   ghc-options: -Wall
+  build-tools:
+      alex
+    , happy
   build-depends:
       base >=4.8 && <5
     , criterion
