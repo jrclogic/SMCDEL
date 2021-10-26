@@ -10,7 +10,9 @@ New:
 
 Changed:
 
+- improve test coverage
 - new definitions and functions for `MultipointedEvent = (Transformer,Bdd)`
+- swapped argument order of `icSolves`
 - use HasCacBDD-0.1.0.3
 - update ace.js and MathJax
 - check if dot2tex is available before using it

@@ -21,8 +21,6 @@ import SMCDEL.Other.Planning
 import SMCDEL.Symbolic.S5
 import SMCDEL.Translations.S5
 import qualified SMCDEL.Explicit.S5 as Exp
-import qualified SMCDEL.Symbolic.K as SymK
-import qualified SMCDEL.Explicit.K as ExpK
 
 main :: IO ()
 main = hspec $ do
@@ -95,7 +93,9 @@ main = hspec $ do
       let (Just g) = findStateMap redundantModel myKNS in equivalentWith redundantModel myKNS g
     it "findStateMap works for minimizedModel and myKNS" $
       let (Just g) = findStateMap minimizedModel myKNS in equivalentWith minimizedModel myKNS g
-    describe "Three Muddy Children" $ do
+    it "checkPropu myPropu (fst myKNS) (fst minimizedKNS) (vocabOf myKNS)" $
+      checkPropu myPropu (fst myKNS) (fst minimizedKNS) (vocabOf myKNS)
+    describe "SMCDEL.Examples.MuddyChildren" $ do
       it "mudScn0: nobodyknows 3" $ mudScn0 |= nobodyknows 3
       it "mudScn1: nobodyknows 3" $ mudScn1 |= nobodyknows 3
       it "mudScn2: everyone knows" $ mudScn2 |= Conj [knows i | i <- [1..3]]
@@ -109,18 +109,32 @@ main = hspec $ do
       dcScn2 |= Conj [ K "1" (PrpF (P 1))
                      , Neg $ K "2" (PrpF (P 1))
                      , Neg $ K "3" (PrpF (P 1)) ]
-    it "Epistemic Planning: door mat plan succeeds" $
-      reachesOn (Do "tryTake" tryTake (Check dmGoal Stop)) dmGoal dmStart
+    describe "SMCDEL.Examples.DoorMat" $ do
+      it "tryTake reaches the goal" $
+        reachesOn (Do "tryTake" tryTake (Check dmGoal Stop)) dmGoal dmStart
+      it "the plan found with 'findPlan 3' works" $
+        reachesOn (head $ findPlan 3 dm) dmGoal dmStart
+      it "tryTake is not an IC plan" $
+        not $ [("Bob",tryTakeL)] `icSolves` dmCoop
+      it "dmPlan2 `icSolves` dmCoop2" $
+          dmPlan2 `icSolves` dmCoop2
     it "Three Prisoners: Explicit Version reaches the goal" $
       endOf prisonExpStory `isTrue` prisonGoal
     it "Three Prisoners: Symbolic Version reaches the goal" $
       endOf prisonSymStory `isTrue` prisonGoal
-    it "Russian Cards: all checks"
-      SMCDEL.Examples.RussianCards.rcAllChecks
-    it "Russian Cards: 102 solutions" $
-      length (filter checkSet allHandLists) === 102
-    it "Russian Cards: rusSCNfor (3,3,1) == rusSCN" $
-      rusSCNfor (3,3,1) === rusSCN
+    describe "SMCDEL.Examples.RussianCards" $ do
+      it "rcAllChecks"
+        SMCDEL.Examples.RussianCards.rcAllChecks
+      it "there are 102 safe hands" $
+        length safeHandLists === 102
+      it "there are 102 solutions" $
+        length (filter checkSet allHandLists) === 102
+      it "rusSCNfor (3,3,1) == rusSCN" $
+        rusSCNfor (3,3,1) === rusSCN
+      it "head rcSolutionsViaPlanning == head rcSolutions" $
+        head rcSolutionsViaPlanning === head rcSolutions
+      it "reachesOn rcPlan rcGoal rusSCN" $
+        reachesOn rcPlan rcGoal rusSCN
     it "Sum and Product: There is exactly one solution." $
       length sapSolutions === 1
     it "Sum and Product: (4,13) is a solution." $

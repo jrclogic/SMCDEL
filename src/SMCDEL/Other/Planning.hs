@@ -137,11 +137,14 @@ ppICPlan [] = ""
 ppICPlan [(agent,(label,_))] = agent ++ ":" ++ label ++ "."
 ppICPlan ((agent,(label,_)):rest) = agent ++ ":" ++ label ++ "; " ++ ppICPlan rest
 
-icSolves :: (Typeable action, Semantics state) => CoopTask state action -> ICPlan action -> Bool
-icSolves (CoopTask start acts goal) plan =
-  all (`elem` map fst acts) (map fst plan) && start |= succForm plan where
-    succForm [] = goal
-    succForm ((agent,(label,action)):rest) = K agent (dix (Dyn label (toDyn action)) (succForm rest))
+icSolves :: (Typeable action, Semantics state) => ICPlan action -> CoopTask state action -> Bool
+icSolves plan (CoopTask start acts goal) =
+  all ((`elem` map fst acts) . fst) plan && start |= icSuccForm plan goal
+
+icSuccForm :: Typeable a => [(Agent, (String, a))] -> Form -> Form
+icSuccForm [] goal = goal
+icSuccForm ((agent,(label,action)):rest) goal =
+  K agent (dix (Dyn label (toDyn action)) (icSuccForm rest goal))
 
 findSequentialIcPlan :: (Typeable action, Eq state, Update state action) => Int -> CoopTask state action -> [ICPlan action]
 findSequentialIcPlan d (CoopTask now acts goal)
@@ -153,7 +156,7 @@ findSequentialIcPlan d (CoopTask now acts goal)
                   , now |= K agent (preOf act) -- agent must know that it is executable!
                   , now /= update now act      -- ignore useless actions
                   , continue <- findSequentialIcPlan (d-1) (CoopTask (update now act) acts goal) -- DFS!
-                  , icSolves (CoopTask now acts goal) (a:continue) ]
+                  , (a:continue) `icSolves` CoopTask now acts goal  ]
 
 findSequentialIcPlanBFS :: (Typeable action, Eq state, Update state action) => Int -> CoopTask state action -> Maybe (ICPlan action)
 findSequentialIcPlanBFS maxDepth (CoopTask start acts goal) = loop [([],start)] where
