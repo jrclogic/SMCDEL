@@ -1,8 +1,18 @@
 module Main where
 
+import Control.Monad (when)
 import Criterion.Main
+import qualified Criterion.Types
+import Data.Char (isSpace)
+import Data.CSV (csvFile)
 import Data.Function
 import Data.List
+import Data.List.Split
+import Data.Maybe
+import Data.Scientific
+import Numeric
+import System.Directory
+import Text.ParserCombinators.Parsec (parse)
 
 import SMCDEL.Language
 import SMCDEL.Examples.MuddyChildren
@@ -94,7 +104,10 @@ findNumberTriangleLoop count curMod =
     else count
 
 main :: IO ()
-main = defaultMain (map mybench
+main = prepareMain >> benchMain >> convertMain
+
+benchMain :: IO ()
+benchMain = defaultMainWith myConfig (map mybench
   [ ("Triangle"  , findNumberTriangle  , [7..40] )
   , ("CacBDD"    , findNumberCacBDD    , [3..40] )
   , ("CUDD"      , findNumberCUDD      , [3..40] )
@@ -105,3 +118,42 @@ main = defaultMain (map mybench
   where
     mybench (name,f,range) = bgroup name $ map (run f) range
     run f k = bench (show k) $ whnf (\n -> f n n) k
+    myConfig = defaultConfig { Criterion.Types.csvFile = Just theCSVname }
+
+theCSVname :: String
+theCSVname = "muddychildren-results.csv"
+
+prepareMain :: IO ()
+prepareMain = do
+  oldResults <- doesFileExist theCSVname
+  when oldResults $ do
+    putStrLn "moving away old results!"
+    renameFile theCSVname ("OLD-results-" ++ theCSVname)
+    oldDATfile <- doesFileExist (theCSVname ++ ".dat")
+    when oldDATfile $ removeFile (theCSVname ++ ".dat")
+
+convertMain :: IO ()
+convertMain = do
+  putStrLn "Reading muddychildren-results.csv and converting to .dat for pgfplots."
+  c <- readFile theCSVname
+  case parse csvFile theCSVname c of
+    Left e -> error $ "could not parse the csv file:" ++ show e
+    Right csv -> do
+      let results = map (parseLine . take 2) $ tail csv
+      let columns = nub.sort $ map (fst.fst) results
+      let firstLine = longifyTo 5 "n" ++ dropWhileEnd isSpace (concatMap longify columns)
+      let resAt n col = longify $ fromMaybe "nan" $ lookup (col,n) results
+      let resultrow n = concatMap (resAt n) columns
+      let firstcol = nub.sort $ map (snd.fst) results
+      let resultrows = map (\n -> longifyTo 5 (show n) ++ dropWhileEnd isSpace (resultrow n)) firstcol
+      writeFile (theCSVname ++ ".dat") (intercalate "\n" (firstLine:resultrows) ++ "\n")
+  where
+    parseLine [namestr,numberstr] = case splitOn "/" namestr of
+      [name,nstr] -> ((name,n),valuestr) where
+        n = read nstr :: Integer
+        value = toRealFloat (read numberstr :: Scientific) :: Double
+        valuestr = Numeric.showFFloat (Just 7) value ""
+      _ -> error $ "could not parse this case: " ++ namestr
+    parseLine l = error $ "could not parse this line:\n  " ++ show l
+    longify = longifyTo 14
+    longifyTo n s = s ++ replicate (n - length s) ' '

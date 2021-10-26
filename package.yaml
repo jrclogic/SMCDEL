@@ -114,5 +114,10 @@ benchmarks:
      main:            muddychildren.hs
      dependencies:
        - base >= 4.8 && < 5
-       - smcdel
        - criterion
+       - directory
+       - MissingH
+       - parsec
+       - scientific
+       - smcdel
+       - split
