@@ -25,8 +25,8 @@ aliceBdd, bobBdd :: Bdd
 -- Privately tell alice that P 0, while bob thinks nothing happens.
 exampleGenActM :: ActionModel
 exampleGenActM = ActM $ M.fromList
-  [ (1, Act { pre = PrpF (P 0), post = M.fromList [], rel = M.fromList [(alice,[1]), (bob,[2])] } )
-  , (2, Act { pre = Top       , post = M.fromList [], rel = M.fromList [(alice,[2]), (bob,[2])] } )
+  [ (1, Act { pre = PrpF (P 0), post = M.empty, rel = M.fromList [(alice,[1]), (bob,[2])] } )
+  , (2, Act { pre = Top       , post = M.empty, rel = M.fromList [(alice,[2]), (bob,[2])] } )
   ]
 
 examplePointedActM :: PointedActionModel
@@ -42,7 +42,7 @@ exampleStart = (BlS [P 0] law obs, actual) where
   actual = [P 0]
 
 exampleEvent :: Event
-exampleEvent = (Trf [P 1] addlaw (M.fromList []) eventObs, [P 1]) where
+exampleEvent = (Trf [P 1] addlaw M.empty eventObs, [P 1]) where
   addlaw = PrpF (P 1) `Impl` PrpF (P 0)
   eventObs = M.fromList [ ("1", allsamebdd [P 1]), ("2", cpBdd . boolBddOf $ Neg (PrpF $ P 1)) ]
 

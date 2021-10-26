@@ -6,7 +6,7 @@ import SMCDEL.Symbolic.K
 
 import Control.Arrow ((&&&))
 import Data.HasCacBDD hiding (Top)
-import Data.Map.Strict (Map,fromList)
+import Data.Map.Strict (Map,fromList,empty)
 import Data.List ((\\),sort)
 
 n :: Int
@@ -32,7 +32,7 @@ call (a,b) secSetT = (callTrf,actualSet) where
   actualSet = [inCall a, inCall b] ++ map inSecT secSetT
 
 callTrf :: Transformer
-callTrf = Trf vocplus lawplus (fromList []) obsplus where
+callTrf = Trf vocplus lawplus empty obsplus where
   vocplus = sort $ map inCall [1..n] ++ map inSecT [1..n]
   lawplus = simplify $ Disj [ Conj [ thisCallHappens i j, theseSecretsAreExchanged i j ]  | i <- [1..n], j <- [1..n], i < j ] where
     thisCallHappens i j = Conj $ map (PrpF . inCall) [i,j] ++ map (Neg . PrpF . inCall) ([1..n] \\ [i,j])

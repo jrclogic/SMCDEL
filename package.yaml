@@ -22,6 +22,10 @@ extra-source-files:
   - Examples/MuddyChildren.smcdel.txt
   - Examples/DrinkingLogicians.smcdel.txt
 
+build-tools:
+  - alex
+  - happy
+
 library:
   source-dirs:
     - src

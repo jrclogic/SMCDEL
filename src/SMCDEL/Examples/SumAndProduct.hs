@@ -54,9 +54,12 @@ sapSolutions = whereViaBdd sapKnStruct sapProtocol
 
 sapExplainState :: [Prp] -> String
 sapExplainState truths = concat
-  [ "x = ", explain xProps, ", y = ", explain yProps, ", x+y = ", explain sProps
-  , " and x*y = ", explain pProps ] where explain = show . nmbr truths
+  [ "x = ", explain xProps
+  , ", y = ", explain yProps
+  , ", x+y = ", explain sProps
+  , " and x*y = ", explain pProps ] where
+  explain = show . nmbr truths
 
 nmbr :: [Prp] -> [Prp] -> Int
-nmbr truths set = fromMaybe (error "Value not found") $
-  elemIndex (set `intersect` truths) (powerset set)
+nmbr truths varProps = fromMaybe (error "Value not found") $
+  elemIndex (varProps `intersect` truths) (powerset varProps)

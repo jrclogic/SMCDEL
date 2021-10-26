@@ -2,7 +2,7 @@
 
 module SMCDEL.Explicit.K where
 
-import Control.Arrow ((&&&))
+import Control.Arrow ((&&&),second)
 import Data.Dynamic
 import Data.List (nub,sort,(\\),delete,intercalate,intersect)
 import qualified Data.Map.Strict as M
@@ -93,7 +93,7 @@ instance Arbitrary KripkeModel where
   shrink krm = [ krm `withoutWorld` w | length (worldsOf krm) > 1, w <- delete 0 (worldsOf krm) ]
 
 withoutWorld :: KripkeModel -> World -> KripkeModel
-withoutWorld (KrM m) w = KrM $ M.map (\(a, r) -> (a, M.map (delete w) r)) $ M.delete w m
+withoutWorld (KrM m) w = KrM $ M.map (second (M.map (delete w))) $ M.delete w m
 
 eval :: PointedModel -> Form -> Bool
 eval _     Top           = True
@@ -159,8 +159,8 @@ instance Update MultipointedModel Form where
 announceAction :: [Agent] -> [Agent] -> Form -> PointedActionModel
 announceAction everyone listeners f = (ActM am, 1) where
   am = M.fromList
-    [ (1, Act { pre = f,   post = M.fromList [], rel = M.fromList $ [(i,[1]) | i <- listeners] ++ [(i,[2]) | i <- everyone \\ listeners] } )
-    , (2, Act { pre = Top, post = M.fromList [], rel = M.fromList [(i,[2]) | i <- everyone] } )
+    [ (1, Act { pre = f,   post = M.empty, rel = M.fromList $ [(i,[1]) | i <- listeners] ++ [(i,[2]) | i <- everyone \\ listeners] } )
+    , (2, Act { pre = Top, post = M.empty, rel = M.fromList [(i,[2]) | i <- everyone] } )
     ]
 
 checkBisim :: Bisimulation -> KripkeModel -> KripkeModel -> Bool
