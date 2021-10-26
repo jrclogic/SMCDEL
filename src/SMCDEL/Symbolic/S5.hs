@@ -9,6 +9,7 @@ import Data.HasCacBDD hiding (Top,Bot)
 import Data.HasCacBDD.Visuals
 import Data.List ((\\),delete,dropWhileEnd,intercalate,intersect,nub,sort)
 import Data.Tagged
+import System.Directory (findExecutable)
 import System.IO (hPutStr, hGetContents, hClose)
 import System.IO.Unsafe (unsafePerformIO)
 import System.Process (runInteractiveCommand)
@@ -378,11 +379,15 @@ instance Update MultipointedKnowScene MultipointedEvent where
 
 texBddWith :: (Int -> String) -> Bdd -> String
 texBddWith myShow b = unsafePerformIO $ do
-  (i,o,_,_) <- runInteractiveCommand "dot2tex --figpreamble=\"\\huge\" --figonly -traw"
-  hPutStr i (genGraphWith myShow b ++ "\n")
-  hClose i
-  result <- hGetContents o
-  return $ dropWhileEnd isSpace $ dropWhile isSpace result
+  haveDot2tex <- findExecutable "dot2tex"
+  case haveDot2tex of
+    Nothing -> error "Please install dot2tex which is needed to show BDDs."
+    Just d2t -> do
+      (i,o,_,_) <- runInteractiveCommand $ d2t ++ " --figpreamble=\"\\huge\" --figonly -traw"
+      hPutStr i (genGraphWith myShow b ++ "\n")
+      hClose i
+      result <- hGetContents o
+      return $ dropWhileEnd isSpace $ dropWhile isSpace result
 
 texBDD :: Bdd -> String
 texBDD = texBddWith show

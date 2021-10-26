@@ -4,9 +4,10 @@ module SMCDEL.Internal.TexDisplay where
 import Control.Monad
 import Data.List
 import qualified Data.Text.Lazy as T
-import System.IO
+import System.Directory (findExecutable)
+import System.IO (hGetContents)
 import System.IO.Temp
-import System.IO.Unsafe
+import System.IO.Unsafe (unsafePerformIO)
 import System.Process
 import Data.GraphViz
 import Data.GraphViz.Types.Generalised
@@ -117,15 +118,25 @@ class KripkeLike a where
 newtype ViaDot a = ViaDot a
   deriving (Eq,Ord,Show)
 
+dot2tex :: String -> IO ()
+dot2tex args = do
+  haveDot2tex <- findExecutable "dot2tex"
+  case haveDot2tex of
+    Nothing -> error "Please install dot2tex which is needed to show this."
+    Just d2t -> runAndWait $ d2t ++ args
+
+dot2texDefaultArgs :: String
+dot2texDefaultArgs = " -ftikz -traw -p --autosize -w --usepdflatex "
+
 instance (Ord a, Show a, KripkeLike a) => TexAble (ViaDot a) where
   tex (ViaDot x) = unsafePerformIO $
     withSystemTempDirectory "smcdel" $ \tmpdir -> do
       _ <- runGraphviz (toGraph x) DotOutput (tmpdir ++ "/temp.dot")
-      runAndWait $ "dot2tex --figonly -ftikz -traw -p --autosize -w --usepdflatex "++tmpdir++"/temp.dot | sed '/^$/d' > "++tmpdir++"/temp.tex;"
-      readFile (tmpdir ++ "/temp.tex")
+      dot2tex $ dot2texDefaultArgs ++ " --figonly " ++ tmpdir ++ "/temp.dot | sed '/^$/d' > " ++ tmpdir ++ "/temp.tex;"
+      readFile (tmpdir ++ "/temp.tex") -- FIXME: avoid this by using runInteractiveCommand and buffers
   texTo (ViaDot x) filename = do
     _ <- runGraphviz (toGraph x) DotOutput (filename ++ ".dot")
-    runAndWait $ "dot2tex --figonly -ftikz -traw -p --autosize -w --usepdflatex "++filename++".dot | sed '/^$/d' > "++filename++".tex;"
+    dot2tex $ dot2texDefaultArgs ++ " --figonly " ++ filename ++ ".dot | sed '/^$/d' > " ++ filename ++ ".tex;"
   texDocumentTo (ViaDot x) filename = do
     _ <- runGraphviz (toGraph x) DotOutput (filename ++ ".dot")
-    runAndWait $ "dot2tex -ftikz -traw -p --autosize -w --usepdflatex "++filename++".dot -o "++filename++".tex;"
+    dot2tex $ dot2texDefaultArgs ++ filename ++ ".dot -o " ++ filename ++ ".tex;"

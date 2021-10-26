@@ -34,6 +34,7 @@ library:
     - array
     - containers
     - cudd == 0.1.0.0
+    - directory
     - graphviz
     - HasCacBDD >= 0.1.0.3 && < 0.2
     - process
