@@ -1,0 +1,43 @@
+cradle:
+  stack:
+    - path: "./src"
+      component: "smcdel:lib"
+
+    - path: "./exec/smcdel.hs"
+      component: "smcdel:exe:smcdel"
+
+    - path: "./exec/Paths_smcdel.hs"
+      component: "smcdel:exe:smcdel"
+
+    - path: "./exec/smcdel-web.hs"
+      component: "smcdel:exe:smcdel-web"
+
+    - path: "./exec/Paths_smcdel.hs"
+      component: "smcdel:exe:smcdel-web"
+
+    - path: "./test"
+      component: "smcdel:test:examples"
+
+    - path: "./test"
+      component: "smcdel:test:k"
+
+    - path: "./test"
+      component: "smcdel:test:translations"
+
+    - path: "./bench/diningcrypto.lhs"
+      component: "smcdel:bench:bench-diningcrypto"
+
+    - path: "./bench/Paths_smcdel.hs"
+      component: "smcdel:bench:bench-diningcrypto"
+
+    - path: "./bench/muddychildren.lhs"
+      component: "smcdel:bench:bench-muddychildren"
+
+    - path: "./bench/Paths_smcdel.hs"
+      component: "smcdel:bench:bench-muddychildren"
+
+    - path: "./bench/sumandproduct.lhs"
+      component: "smcdel:bench:bench-sumandproduct"
+
+    - path: "./bench/Paths_smcdel.hs"
+      component: "smcdel:bench:bench-sumandproduct"
