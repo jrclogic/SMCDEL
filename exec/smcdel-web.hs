@@ -68,23 +68,28 @@ main = do
                 html $ TL.concat
                   [ TL.pack "<div id='here'></div>"
                   , TL.pack "<script>document.getElementById('here').innerHTML += Viz('"
-                  , textDot myKripke
+                  , fixTeXinSVG $ textDot myKripke
                   , TL.pack "');</script>" ]
+
+fixTeXinSVG :: TL.Text -> TL.Text
+fixTeXinSVG = TL.replace "$" ""
+  . TL.replace "p_{" " "
+  . TL.replace "} " " "
 
 doJobWeb :: KnowStruct -> Job -> String
 doJobWeb mykns (TrueQ s f) = unlines
   [ "\\( (\\mathcal{F}, " ++ sStr ++ " ) "
   , if evalViaBdd (mykns, map P s) f then "\\vDash" else "\\not\\vDash"
-  , (texForm.simplify) f
-  , "\\)" ] where sStr = " \\{ " ++ intercalate "," (map (\i -> "p_{" ++ show i ++ "}") s) ++ " \\}" -- FIXME use tex
+  , (texForm . simplify) f
+  , "\\)" ] where sStr = " \\{ " ++ intercalate "," (map (\i -> "p_{" ++ show i ++ "}") s) ++ " \\}"
 doJobWeb mykns (ValidQ f) = unlines
   [ "\\( \\mathcal{F} "
   , if validViaBdd mykns f then "\\vDash" else "\\not\\vDash"
-  , (texForm.simplify) f
+  , (texForm . simplify) f
   , "\\)" ]
 doJobWeb mykns (WhereQ f) = unlines
   [ "At which states is \\("
-  , (texForm.simplify) f
+  , (texForm . simplify) f
   , "\\) true?<br /> \\("
   , intercalate "," $ map tex (whereViaBdd mykns f)
   , "\\)" ]
@@ -96,7 +101,7 @@ showStructure (KnS props lawbdd obs) = do
     ++ tex props ++ ", "
     ++ " \\begin{array}{l} {"++ " \\href{javascript:toggleLaw()}{\\theta} " ++"} \\end{array}\n "
     ++ ", \\begin{array}{l}\n"
-    ++ intercalate " \\\\\n " (map (\(i,os) -> ("O_{"++i++"}=" ++ tex os)) obs)
+    ++ intercalate " \\\\\n " (map (\(i,os) -> "O_{"++i++"}=" ++ tex os) obs)
     ++ "\\end{array}\n"
     ++ " \\right) $$ \n <div class='lawbdd' style='display:none;'> where \\(\\theta\\) is this BDD:<br /><p align='center'>" ++ svgString ++ "</p></div>"
 
