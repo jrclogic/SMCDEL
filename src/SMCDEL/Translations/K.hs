@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances, TypeOperators #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module SMCDEL.Translations.K where
 
