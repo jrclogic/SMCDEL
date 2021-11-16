@@ -7,6 +7,7 @@ import Control.Monad.IO.Class (liftIO)
 import Control.Arrow
 import Data.FileEmbed
 import Data.List (intercalate)
+import Data.Maybe (fromMaybe)
 import Data.Version (showVersion)
 import Paths_smcdel (version)
 import Web.Scotty
@@ -16,6 +17,9 @@ import qualified Data.Text.Lazy as TL
 import Data.HasCacBDD.Visuals (svgGraph)
 import qualified Language.Javascript.JQuery as JQuery
 import Language.Haskell.TH.Syntax
+import Network.Wai.Handler.Warp (defaultSettings, setHost, setPort)
+import System.Environment (lookupEnv)
+import Text.Read (readMaybe)
 
 import SMCDEL.Internal.Lex
 import SMCDEL.Internal.Parse
@@ -27,8 +31,10 @@ import SMCDEL.Language
 main :: IO ()
 main = do
   putStrLn $ "SMCDEL " ++ showVersion version ++ " -- https://github.com/jrclogic/SMCDEL"
-  putStrLn "Please open this link: http://localhost:3000/index.html"
-  scotty 3000 $ do
+  port <- fromMaybe 3000 . (readMaybe =<<) <$> lookupEnv "PORT"
+  putStrLn $ "Please open this link: http://127.0.0.1:" ++ show port ++ "/index.html"
+  let mySettings = Options 1 (setHost "127.0.0.1" $ setPort port defaultSettings)
+  scottyOpts mySettings $ do
     get "" $ redirect "index.html"
     get "/" $ redirect "index.html"
     get "/index.html"  . html . TL.fromStrict $ addVersionNumber $ embeddedFile "index.html"

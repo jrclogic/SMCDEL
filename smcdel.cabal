@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 570d0cfd0066a32a916d314ca899510d327d650c0431f380a22f6ee704c3a989
+-- hash: ac5722e3a930e73f83dc4ef3d755ae684df40ccb56e7c869b399284ec91a4f86
 
 name:           smcdel
 version:        1.1.0
@@ -137,6 +137,7 @@ executable smcdel-web
     , smcdel
     , template-haskell
     , text
+    , warp
   default-language: Haskell2010
 
 test-suite examples

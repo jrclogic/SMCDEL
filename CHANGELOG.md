@@ -16,6 +16,7 @@ Changed:
 - use HasCacBDD-0.1.0.3
 - update ace.js and MathJax
 - check if dot2tex is available before using it
+- web interface: only listen on 127.0.0.1
 
 
 ## v1.1.0 (2019-12-09)

@@ -69,6 +69,7 @@ executables:
       - smcdel
       - template-haskell
       - text
+      - warp
 
 tests:
   examples:
