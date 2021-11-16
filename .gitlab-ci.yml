@@ -1,6 +1,53 @@
-image: m4lvin/smcdel-ci:16.1
+image: haskell:8.8.4
+
+variables:
+  STACK_ROOT: "${CI_PROJECT_DIR}/.stack"
+
+cache:
+  paths:
+    - .apt
+    - .stack
+    - .stack-work
+    - target
+
+before_script:
+  - rm -f /etc/apt/apt.conf.d/docker-clean
+  - mkdir -p .apt
+  - rm -rf /var/cache/apt
+  - mkdir -p /var/cache/apt
+  - mount --bind .apt /var/cache/apt
+  - apt-get update -yqq
+  - apt-get install -y --no-install-recommends graphviz dot2tex libtinfo5 texlive-latex-base poppler-utils preview-latex-style texlive-pstricks
+  - stack config set system-ghc --global true
 
 build:
   script:
+    - stack build
+  artifacts:
+    paths:
+      - .stack-work/install/*/*/*/bin/smcdel
+      - .stack-work/install/*/*/*/bin/smcdel-web
+
+test-build:
+  needs:
+    - build
+  script:
+    - stack --no-terminal test --coverage --no-run-tests
+
+test:
+  needs:
+    - test-build
+  script:
     - stack --no-terminal test --coverage
+
+bench-build:
+  needs:
+    - build
+  script:
     - stack --no-terminal bench --no-run-benchmarks
+
+hlint:
+  needs:
+    - build
+  script:
+    - curl -sL https://raw.github.com/ndmitchell/hlint/master/misc/travis.sh | sh -s .
