@@ -5,19 +5,22 @@
 New:
 
 - "TRUE?" command in Web and CI interface
-- multipointed translations
-- optimization of symbolic structures
+- multipointed translations for S5, including actions
+- `instance Optimizable` for symbolic structures
 
 Changed:
 
 - improve test coverage
+- correction to Cheryl's Birthday example
 - new definitions and functions for `MultipointedEvent = (Transformer,Bdd)`
 - swapped argument order of `icSolves`
 - use HasCacBDD-0.1.0.3
 - update ace.js and MathJax
 - check if dot2tex is available before using it
-- web interface: only listen on 127.0.0.1
-
+- compile web with -threaded to prevent the error `file descriptor ... out of range`
+- bugfix in `SMCDEL.Internal.Help.set`
+- do no shrink to empty models
+- web: listen only on 127.0.0.1, use PORT env variable
 
 ## v1.1.0 (2019-12-09)
 
