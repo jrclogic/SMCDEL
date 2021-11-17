@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: ac5722e3a930e73f83dc4ef3d755ae684df40ccb56e7c869b399284ec91a4f86
+-- hash: c81f94d1dff60273a2774466be41e9ce66f1c6a5840d7ef9dc8a32014c3a7bf9
 
 name:           smcdel
 version:        1.1.0
@@ -54,6 +54,7 @@ library
       SMCDEL.Examples.SimpleK
       SMCDEL.Examples.SimpleS5
       SMCDEL.Examples.SumAndProduct
+      SMCDEL.Examples.Toynabi
       SMCDEL.Examples.WhatSum
       SMCDEL.Explicit.DEMO_S5
       SMCDEL.Explicit.K
