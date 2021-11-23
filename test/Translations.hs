@@ -75,9 +75,9 @@ pubAnnounceTest prp (SF g) = alleq
   [ Exp.eval mymodel (PubAnnounce f g)
   , Sym.eval (kripkeToKns mymodel) (PubAnnounce f g)
   , Sym.evalViaBdd (kripkeToKns mymodel) (PubAnnounce f g)
-  , Sym.eval (update (kripkeToKns mymodel) (actionToEvent (pubAnnounceAction (agentsOf mymodel) f))) g
+  , Sym.evalViaBdd (update (kripkeToKns mymodel) (actionToEvent (pubAnnounceAction (agentsOf mymodel) f))) g
+  , Sym.evalViaBdd (update (kripkeToKns mymodel) (publicAnnounce (agentsOf mymodel) f)) g
   , Exp.eval mymodel (Dia (Dyn dynName (toDyn $ pubAnnounceAction (agentsOf mymodel) f)) g)
-  , Sym.eval (kripkeToKns mymodel) (Dia (Dyn dynName (toDyn $ actionToEvent $ pubAnnounceAction (agentsOf mymodel) f)) g)
   , Sym.evalViaBdd (kripkeToKns mymodel) (Dia (Dyn dynName (toDyn $ actionToEvent $ pubAnnounceAction (agentsOf mymodel) f)) g)
   ] where
       f = PrpF prp
@@ -92,13 +92,12 @@ announceTest (SF f) (Group listeners) (SF g) =
       newModel = update mymodel action
     in not precon || Exp.eval newModel g
   , Exp.eval mymodel (box (Dyn ("announce " ++ show f ++ " to " ++ show listeners) (toDyn $ groupAnnounceAction (agentsOf mymodel) listeners f)) g)
-  , Sym.eval (kripkeToKns mymodel) (Announce listeners f g) -- on equivalent kns
   , Sym.evalViaBdd (kripkeToKns mymodel) (Announce listeners f g) -- BDD on equivalent kns
   , let -- apply equivalent transformer to equivalent kns
-      precon  = Sym.eval (kripkeToKns mymodel) f
+      precon  = Sym.evalViaBdd (kripkeToKns mymodel) f
       equiTrf = actionToEvent (groupAnnounceAction (agentsOf mymodel) listeners f)
       newKns  = update (kripkeToKns mymodel) equiTrf
-    in not precon || Sym.eval newKns g
+    in not precon || Sym.evalViaBdd newKns g
   ]
 
 singleActionTest :: ActionModelS5 -> Form -> [Bool]
