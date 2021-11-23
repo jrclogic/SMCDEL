@@ -337,7 +337,7 @@ instance Optimizable MultipointedBelScene where
 
 instance Arbitrary BelStruct where
   arbitrary = do
-    numExtraVars <- choose (0,3)
+    numExtraVars <- choose (0,2)
     let myVocabulary = defaultVocabulary ++ take numExtraVars [freshp defaultVocabulary ..]
     (BF statelaw) <- sized (randomboolformWith myVocabulary) `suchThat` (\(BF bf) -> boolBddOf bf /= bot)
     obs <- mapM (\i -> do

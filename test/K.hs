@@ -31,7 +31,7 @@ main = hspec $ do
     prop "semanticEquivSymToExp" $ \bls f -> alleq $ semanticEquivSymToExpMulti bls f
   prop "optimize on belief structures preserves truth" $
     \bls f -> isTrue (bls::SymK.BelStruct) f === isTrue (optimize defaultVocabulary bls) f
-  prop "optimize on belief structures can reduce the vocabulary" $
+  modifyMaxSuccess (const 1000) $ prop "optimize on belief structures can reduce the vocabulary" $
     expectFailure (\bls -> length (vocabOf (bls :: SymK.BelStruct)) === length (vocabOf (optimize defaultVocabulary bls)))
 
 -- | An example model with 5 agents, 5 atomic propositions and 32 worlds.

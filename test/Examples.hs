@@ -56,7 +56,7 @@ main = hspec $ do
     prop "optimize preserves truth" $
       \kns f -> let scene = (kns :: KnowStruct, head $ statesOf kns)
                 in isTrue scene f === isTrue (optimize defaultVocabulary scene) f
-    prop "optimize can reduce the vocabulary" $
+    modifyMaxSuccess (const 1000) $ prop "optimize can reduce the vocabulary" $
       expectFailure (\kns -> length (vocabOf (kns :: KnowStruct)) == length (vocabOf (optimize defaultVocabulary kns)))
   describe "SMCDEL.Other.BDD2Form" $ do
     prop "boolBddOf . formOf == id" $
