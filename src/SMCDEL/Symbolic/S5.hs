@@ -283,8 +283,9 @@ instance Optimizable MultipointedKnowScene where
 
 generatedSubstructure :: MultipointedKnowScene -> MultipointedKnowScene
 generatedSubstructure kns@(KnS props oldLaw obs, curBdd) = (KnS props newLaw obs, curBdd) where
-  newLaw = oldLaw `con` disSet (curBdd : [ existsSet (map fromEnum $ props \\ obs ! i) curBdd
-                                         | i <- agentsOf kns ])
+  extend this = disSet (this : [ existsSet (map fromEnum $ props \\ obs ! i) this | i <- agentsOf kns ])
+  reachable = lfp extend curBdd
+  newLaw = oldLaw `con` reachable
 
 type Propulation = Tagged Quadrupel Bdd
 

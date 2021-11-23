@@ -56,6 +56,9 @@ main = hspec $ do
     prop "optimize preserves truth" $
       \kns f -> let scene = (kns :: KnowStruct, head $ statesOf kns)
                 in isTrue scene f === isTrue (optimize defaultVocabulary scene) f
+    prop "generatedSubstructure preserves truth" $
+      \kns f -> let scene = (kns :: KnowStruct, booloutof (head $ statesOf kns) (vocabOf kns) )
+                in isTrue scene f === isTrue (generatedSubstructure scene) f
     modifyMaxSuccess (const 1000) $ prop "optimize can reduce the vocabulary" $
       expectFailure (\kns -> length (vocabOf (kns :: KnowStruct)) == length (vocabOf (optimize defaultVocabulary kns)))
   describe "SMCDEL.Other.BDD2Form" $ do

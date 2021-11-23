@@ -19,7 +19,8 @@ Changed:
 - check if dot2tex is available before using it
 - compile web with -threaded to prevent the error `file descriptor ... out of range`
 - bugfix in `SMCDEL.Internal.Help.set`
-- do no shrink to empty models
+- test coverage and bugfix for `SMCDEL.Symbolic.S5.generatedSubstructure`
+- do not shrink to empty models
 - web: listen only on 127.0.0.1, use PORT env variable
 
 ## v1.1.0 (2019-12-09)
