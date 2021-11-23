@@ -21,6 +21,7 @@ before_script:
   - stack config set system-ghc --global true
 
 build:
+  stage: build
   script:
     - stack build
   artifacts:
@@ -28,25 +29,23 @@ build:
       - .stack-work/install/*/*/*/bin/smcdel
       - .stack-work/install/*/*/*/bin/smcdel-web
 
-test-build:
-  needs:
-    - build
-  script:
-    - stack --no-terminal test --coverage --no-run-tests
-
 test:
-  needs:
-    - test-build
+  stage: test
   script:
     - stack --no-terminal test --coverage
+  artifacts:
+    paths:
+      - ".stack-work/install/*/*/*/hpc/"
 
 bench-build:
+  stage: build
   needs:
     - build
   script:
     - stack --no-terminal bench --no-run-benchmarks
 
 hlint:
+  stage: build
   needs:
     - build
   script:
