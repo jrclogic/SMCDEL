@@ -4,7 +4,8 @@ module SMCDEL.Internal.Help (
   apply,(!),set,applyPartial,(!=),
   powerset,restrict,rtc,tc,Erel,bl,fusion,seteq,subseteq,lfp
   ) where
-import Data.List ((\\),foldl',groupBy,nub,sort,sortBy,union)
+import Data.List ((\\),foldl',groupBy,sort,sortBy,union)
+import Data.Containers.ListUtils (nubOrd)
 
 type Rel a b = [(a,b)]
 type Erel a = [[a]]
@@ -56,23 +57,23 @@ powerset :: [a] -> [[a]]
 powerset []     = [[]]
 powerset (x:xs) = map (x:) pxs ++ pxs where pxs = powerset xs
 
-concatRel :: Eq a => Rel a a -> Rel a a -> Rel a a
-concatRel r s = nub [ (x,z) | (x,y) <- r, (w,z) <- s, y == w ]
+concatRel :: (Ord a, Eq a) => Rel a a -> Rel a a -> Rel a a
+concatRel r s = nubOrd [ (x,z) | (x,y) <- r, (w,z) <- s, y == w ]
 
 lfp :: Eq a => (a -> a) -> a -> a
 lfp f x | x == f x  = x
         | otherwise = lfp f (f x)
 
-dom :: Eq a => Rel a a -> [a]
-dom r = nub (foldr (\ (x,y) -> ([x,y]++)) [] r)
+dom :: (Ord a, Eq a) => Rel a a -> [a]
+dom r = nubOrd (foldr (\ (x,y) -> ([x,y]++)) [] r)
 
 restrict :: Ord a => [a] -> Erel a -> Erel a
-restrict domain =  nub . filter (/= []) . map (filter (`elem` domain))
+restrict domain =  nubOrd . filter (/= []) . map (filter (`elem` domain))
 
-rtc :: Eq a => Rel a a -> Rel a a
+rtc :: (Ord a, Eq a) => Rel a a -> Rel a a
 rtc r = lfp (\ s -> s `union` concatRel r s) [(x,x) | x <- dom r ]
 
-tc :: Eq a => Rel a a -> Rel a a
+tc :: (Ord a, Eq a) => Rel a a -> Rel a a
 tc r = lfp (\ s -> s `union` concatRel r s) r
 
 merge :: Ord a => [a] -> [a] -> [a]

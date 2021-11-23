@@ -1,7 +1,8 @@
 module SMCDEL.Translations.S5 where
 
+import Data.Containers.ListUtils (nubOrd)
 import Data.HasCacBDD hiding (Top,Bot)
-import Data.List (groupBy,sort,(\\),elemIndex,intersect,nub)
+import Data.List (groupBy,sort,(\\),elemIndex,intersect)
 import Data.Maybe (listToMaybe)
 
 import SMCDEL.Language
@@ -16,11 +17,11 @@ equivalentWith :: PointedModelS5 -> KnowScene -> StateMap -> Bool
 equivalentWith (KrMS5 ws rel val, actw) (kns@(KnS _ _ obs), curs) g =
   c1 && c2 && c3 && g actw == curs where
     c1 = all (\l -> knsLink l == kriLink l) linkSet where
-      linkSet = nub [ (i,w1,w2) | w1 <- ws, w2 <- ws, w1 <= w2, i <- map fst rel ]
+      linkSet = [ (i,w1,w2) | w1 <- ws, w2 <- ws, w1 <= w2, i <- map fst rel ]
       knsLink (i,w1,w2) = let oi = obs ! i in (g w1 `intersect` oi) `seteq` (g w2 `intersect` oi)
       kriLink (i,w1,w2) = any (\p -> w1 `elem` p && w2 `elem` p) (rel ! i)
     c2 = and [ (p `elem` g w) == ((val ! w) ! p) | w <- ws, p <- map fst (snd $ head val) ]
-    c3 = statesOf kns `seteq` nub (map g ws)
+    c3 = statesOf kns `seteq` nubOrd (map g ws)
 
 findStateMap :: PointedModelS5 -> KnowScene -> Maybe StateMap
 findStateMap pm@(KrMS5 _ _ val, w) scn@(kns, s)
@@ -183,7 +184,7 @@ actionToTransformerWithMap (ActMS5 acts actrel) = (KnTrf addprops addlaw changel
   factsFor a i = snd $ head $ filter (\(as,_) -> a `elem` as) (copyactrel i)
   eventMap a   = ell a ++ concatMap (factsFor a) ags
   addlaw       = simplify $ Conj (actform : actrelforms)
-  changeprops  = sort $ nub $ concatMap (\(_,(_,posts)) -> map fst posts) acts -- propositions to be changed
+  changeprops  = sort $ nubOrd $ concatMap (\(_,(_,posts)) -> map fst posts) acts -- propositions to be changed
   changelaw    = [ (p, changeFor p) | p <- changeprops ] -- encode postconditions
   changeFor p  = disSet [ boolBddOf $ Conj [ happens a, safepost posts p ] | (a,(_,posts)) <- acts ]
   addobs       = [ (i,newps i) | i<- ags ]

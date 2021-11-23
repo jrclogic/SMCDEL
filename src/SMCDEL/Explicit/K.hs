@@ -3,8 +3,9 @@
 module SMCDEL.Explicit.K where
 
 import Control.Arrow ((&&&),second)
+import Data.Containers.ListUtils (nubInt,nubOrd)
 import Data.Dynamic
-import Data.List (nub,sort,(\\),delete,intercalate,intersect)
+import Data.List (sort,(\\),delete,intercalate,intersect)
 import qualified Data.Map.Strict as M
 import Data.Map.Strict ((!))
 import Data.Maybe (isJust,isNothing)
@@ -25,7 +26,7 @@ instance Pointed KripkeModel [World]
 type MultipointedModel = (KripkeModel,[World])
 
 distinctVal :: KripkeModel -> Bool
-distinctVal (KrM m) = M.size m == length (nub (map fst (M.elems m)))
+distinctVal (KrM m) = M.size m == length (nubOrd (map fst (M.elems m)))
 
 instance HasWorlds KripkeModel where
   worldsOf (KrM m) = M.keys m
@@ -137,9 +138,9 @@ instance Semantics MultipointedModel where
   isTrue (m,ws) f = all (\w -> isTrue (m,w) f) ws
 
 groupRel :: KripkeModel -> [Agent] -> World -> [World]
-groupRel (KrM m) ags w = lfp extend (oneStepReachFrom w) where
+groupRel (KrM m) ags w = sort $ lfp extend (oneStepReachFrom w) where
   oneStepReachFrom x = concat [ snd (m ! x) ! a | a <- ags ]
-  extend xs = sort . nub $ xs ++ concatMap oneStepReachFrom xs
+  extend xs = nubInt $ xs ++ concatMap oneStepReachFrom xs
 
 instance Update KripkeModel Form where
   checks = [ ] -- unpointed models can always be updated with any formula
@@ -224,7 +225,7 @@ generatedSubmodel (KrM m, cur) = (KrM newm, cur) where
                  | otherwise           = Nothing
   newr = filter (`elem` M.keys newm)
   reachable = lfp follow [cur] where
-    follow xs = sort . nub $ concat [ snd (m ! x) ! a | x <- xs, a <- agentsOf (KrM m) ]
+    follow xs = sort . nubInt $ concat [ snd (m ! x) ! a | x <- xs, a <- agentsOf (KrM m) ]
 
 type PostCondition = M.Map Prp Form
 
