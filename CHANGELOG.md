@@ -7,6 +7,7 @@ New:
 - "TRUE?" command in Web and CI interface
 - multipointed translations for S5, including actions
 - `instance Optimizable` for symbolic structures
+- provide `whereViaBdd` also in `SMCDEL.Symbolic.S5_CUDD`
 
 Changed:
 
