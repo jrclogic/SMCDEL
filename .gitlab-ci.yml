@@ -24,18 +24,21 @@ build:
   stage: build
   script:
     - stack build
+  after_script:
+    - mv .stack-work/install/*/*/*/bin ./bin
   artifacts:
     paths:
-      - .stack-work/install/*/*/*/bin/smcdel
-      - .stack-work/install/*/*/*/bin/smcdel-web
+      - "bin/"
 
 test:
   stage: test
   script:
     - stack --no-terminal test --coverage
+  after_script:
+    - mv .stack-work/install/*/*/*/hpc ./hpc
   artifacts:
     paths:
-      - ".stack-work/install/*/*/*/hpc/"
+      - "hpc/"
 
 bench-build:
   stage: build

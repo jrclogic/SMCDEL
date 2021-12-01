@@ -3,6 +3,7 @@
 [![Release](https://img.shields.io/github/release/jrclogic/SMCDEL.svg)](https://github.com/jrclogic/SMCDEL/releases)
 [![Hackage](https://img.shields.io/hackage/v/smcdel.svg)](https://hackage.haskell.org/package/smcdel)
 [![GitLab CI](https://gitlab.com/m4lvin/SMCDEL/badges/master/pipeline.svg)](https://gitlab.com/m4lvin/SMCDEL/-/pipelines)
+[![Test Coverage](https://gitlab.com/m4lvin/SMCDEL/badges/master/coverage.svg)](https://gitlab.com/m4lvin/SMCDEL/-/jobs/artifacts/master/file/hpc/combined/all/hpc_index.html?job=test)
 [![DOI](https://zenodo.org/badge/36519077.svg)](https://zenodo.org/badge/latestdoi/36519077)
 
 A symbolic model checker for [Dynamic Epistemic Logic](https://plato.stanford.edu/entries/dynamic-epistemic).
