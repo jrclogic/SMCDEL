@@ -5,6 +5,8 @@ module Main where
 import Prelude
 import Control.Monad.IO.Class (liftIO)
 import Control.Arrow
+import Control.DeepSeq (force)
+import Control.Exception (evaluate, catch, SomeException)
 import Data.FileEmbed
 import Data.List (intercalate)
 import Data.Maybe (fromMaybe)
@@ -53,7 +55,7 @@ main = do
           Right (CheckInput vocabInts lawform obs jobs) -> do
             let mykns = KnS (map P vocabInts) (boolBddOf lawform) (map (second (map P)) obs)
             knstring <- liftIO $ showStructure mykns
-            let results = concatMap (\j -> "<p>" ++ doJobWeb mykns j ++ "</p>") jobs
+            results <- liftIO $ doJobsWebSafe mykns jobs
             html $ mconcat
               [ TL.pack knstring
               , "<hr />\n"
@@ -81,6 +83,16 @@ fixTeXinSVG :: TL.Text -> TL.Text
 fixTeXinSVG = TL.replace "$" ""
   . TL.replace "p_{" " "
   . TL.replace "} " " "
+
+myCatch :: String -> IO String
+myCatch f = catch (evaluate (force f) :: IO String) (\e-> return ("ERROR: " ++ show (e :: SomeException)))
+
+doJobsWebSafe :: KnowStruct -> [Job] -> IO String
+doJobsWebSafe _     [] = return ""
+doJobsWebSafe mykns (j:js) = do
+  result <- myCatch (doJobWeb mykns j)
+  rest <- doJobsWebSafe mykns js
+  return $ "<p>" ++ result ++ "</p>\n" ++ rest
 
 doJobWeb :: KnowStruct -> Job -> String
 doJobWeb mykns (TrueQ s f) = unlines

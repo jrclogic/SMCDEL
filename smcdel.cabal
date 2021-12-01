@@ -130,6 +130,7 @@ executable smcdel-web
   build-depends:
       HasCacBDD >=0.1.0.1 && <0.2
     , base >=4.8 && <5
+    , deepseq
     , file-embed
     , js-jquery >=3
     , scotty

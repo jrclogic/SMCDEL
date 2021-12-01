@@ -62,6 +62,7 @@ executables:
     ghc-options: -threaded
     dependencies:
       - base >= 4.8 && < 5
+      - deepseq
       - file-embed
       - scotty
       - HasCacBDD >= 0.1.0.1 && < 0.2
