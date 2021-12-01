@@ -76,6 +76,7 @@ tests:
     main: test/Examples.hs
     dependencies:
       - base >= 4.8 && < 5
+      - HasCacBDD
       - hspec
       - QuickCheck
       - smcdel

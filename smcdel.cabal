@@ -3,8 +3,6 @@ cabal-version: 1.12
 -- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
---
--- hash: c81f94d1dff60273a2774466be41e9ce66f1c6a5840d7ef9dc8a32014c3a7bf9
 
 name:           smcdel
 version:        1.1.0
@@ -151,7 +149,8 @@ test-suite examples
       alex
     , happy
   build-depends:
-      QuickCheck
+      HasCacBDD
+    , QuickCheck
     , base >=4.8 && <5
     , hspec
     , smcdel

@@ -13,7 +13,8 @@ boolBddOf Bot           = bot
 boolBddOf (PrpF (P n))  = var n
 boolBddOf (Neg form)    = neg$ boolBddOf form
 boolBddOf (Conj forms)  = conSet $ map boolBddOf forms
-boolBddOf (Disj forms)  = disSet  $ map boolBddOf forms
+boolBddOf (Disj forms)  = disSet $ map boolBddOf forms
+boolBddOf (Xor forms)   = xorSet $ map boolBddOf forms
 boolBddOf (Impl f g)    = imp (boolBddOf f) (boolBddOf g)
 boolBddOf (Equi f g)    = equ (boolBddOf f) (boolBddOf g)
 boolBddOf (Forall ps f) = boolBddOf (foldl singleForall f ps) where
@@ -94,3 +95,8 @@ instance Semantics KnowScene where
 
 validViaBdd :: KnowStruct -> Form -> Bool
 validViaBdd kns@(KnS _ lawbdd _) f = top == lawbdd `imp` bddOf kns f
+
+whereViaBdd :: KnowStruct -> Form -> [KnState]
+whereViaBdd kns@(KnS props lawbdd _) f =
+ map (sort . map (toEnum . fst) . filter snd) $
+   allSatsWith (map fromEnum props) $ con lawbdd (bddOf kns f)

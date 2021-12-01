@@ -21,6 +21,9 @@ import SMCDEL.Other.Planning
 import SMCDEL.Symbolic.S5
 import SMCDEL.Translations.S5
 import qualified SMCDEL.Explicit.S5 as Exp
+import qualified SMCDEL.Internal.MyHaskCUDD
+import qualified SMCDEL.Symbolic.S5_CUDD
+import qualified Data.HasCacBDD
 
 main :: IO ()
 main = hspec $ do
@@ -61,6 +64,16 @@ main = hspec $ do
                 in isTrue scene f === isTrue (generatedSubstructure scene) f
     modifyMaxSuccess (const 1000) $ prop "optimize can reduce the vocabulary" $
       expectFailure (\kns -> length (vocabOf (kns :: KnowStruct)) == length (vocabOf (optimize defaultVocabulary kns)))
+  describe "SMCDEL.Symbolic.S5_CUDD and SMCDEL.Internal.MyHaskCUDD" $ do
+    it "gfp (\b -> con b (var 3)) == var 3" $ SMCDEL.Internal.MyHaskCUDD.gfp (\b -> SMCDEL.Internal.MyHaskCUDD.con b (SMCDEL.Internal.MyHaskCUDD.var 3)) `shouldBe` SMCDEL.Internal.MyHaskCUDD.var 3
+    it "exists 1 (neg $ var 1) == top" $ SMCDEL.Internal.MyHaskCUDD.exists 1 (SMCDEL.Internal.MyHaskCUDD.neg $ SMCDEL.Internal.MyHaskCUDD.var 1) `shouldBe` SMCDEL.Internal.MyHaskCUDD.top
+    it "exists 1 (neg $ var 2) /= top" $ SMCDEL.Internal.MyHaskCUDD.exists 1 (SMCDEL.Internal.MyHaskCUDD.neg $ SMCDEL.Internal.MyHaskCUDD.var 2) `shouldNotBe` SMCDEL.Internal.MyHaskCUDD.top
+    it "forall 1 (neg $ var 1) == bot" $ SMCDEL.Internal.MyHaskCUDD.forall 1 (SMCDEL.Internal.MyHaskCUDD.neg $ SMCDEL.Internal.MyHaskCUDD.var 1) `shouldBe` SMCDEL.Internal.MyHaskCUDD.bot
+    it "forall 1 (neg $ var 2) /= bot" $ SMCDEL.Internal.MyHaskCUDD.forall 1 (SMCDEL.Internal.MyHaskCUDD.neg $ SMCDEL.Internal.MyHaskCUDD.var 2) `shouldNotBe` SMCDEL.Internal.MyHaskCUDD.bot
+    prop "HasCacBDD and CUDD give same allSats" $
+      \(BF bf) -> sort (Data.HasCacBDD.allSats (boolBddOf bf)) === sort (SMCDEL.Internal.MyHaskCUDD.allSats (SMCDEL.Symbolic.S5_CUDD.boolBddOf bf))
+    prop "HasCacBDD and CUDD give same anySat" $
+      \(BF bf) -> Data.HasCacBDD.anySat (boolBddOf bf) === SMCDEL.Internal.MyHaskCUDD.anySat (SMCDEL.Symbolic.S5_CUDD.boolBddOf bf)
   describe "SMCDEL.Other.BDD2Form" $ do
     prop "boolBddOf . formOf == id" $
       \b -> b === boolBddOf (formOf b)
