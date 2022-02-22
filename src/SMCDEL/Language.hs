@@ -296,6 +296,28 @@ propsInForm (Dia _dynOp _f)    = undefined -- TODO needs HasVocab dynop!
 propsInForms :: [Form] -> [Prp]
 propsInForms fs = nub $ concatMap propsInForm fs
 
+agentsInForm :: Form -> [Agent]
+agentsInForm Top                = []
+agentsInForm Bot                = []
+agentsInForm (PrpF _)           = []
+agentsInForm (Neg f)            = agentsInForm f
+agentsInForm (Conj fs)          = nub $ concatMap agentsInForm fs
+agentsInForm (Disj fs)          = nub $ concatMap agentsInForm fs
+agentsInForm (Xor  fs)          = nub $ concatMap agentsInForm fs
+agentsInForm (Impl f g)         = nub $ concatMap agentsInForm [f,g]
+agentsInForm (Equi f g)         = nub $ concatMap agentsInForm [f,g]
+agentsInForm (Forall _ f)       = agentsInForm f
+agentsInForm (Exists _ f)       = agentsInForm f
+agentsInForm (K i f)            = nub $ i : agentsInForm f
+agentsInForm (Kw i f)           = nub $ i : agentsInForm f
+agentsInForm (Ck is f)          = nub $ is ++ agentsInForm f
+agentsInForm (Ckw is f)         = nub $ is ++ agentsInForm f
+agentsInForm (Announce is f g)  = nub $ is ++ agentsInForm f ++ agentsInForm g
+agentsInForm (AnnounceW is f g) = nub $ is ++ agentsInForm f ++ agentsInForm g
+agentsInForm (PubAnnounce f g)  = nub $ agentsInForm f ++ agentsInForm g
+agentsInForm (PubAnnounceW f g) = nub $ agentsInForm f ++ agentsInForm g
+agentsInForm (Dia _dynOp _f)    = undefined -- TODO needs HasVocab dynop!
+
 instance TexAble Prp where
   tex (P 0) = " p "
   tex (P n) = " p_{" ++ show n ++ "} "

@@ -3,6 +3,7 @@
 module Main where
 
 import Prelude
+import Control.Monad (unless)
 import Control.Monad.IO.Class (liftIO)
 import Control.Arrow
 import Control.DeepSeq (force)
@@ -25,6 +26,7 @@ import Text.Read (readMaybe)
 
 import SMCDEL.Internal.Lex
 import SMCDEL.Internal.Parse
+import SMCDEL.Internal.Sanity
 import SMCDEL.Symbolic.S5
 import SMCDEL.Internal.TexDisplay
 import SMCDEL.Translations.S5
@@ -49,35 +51,41 @@ main = do
     post "/check" $ do
       smcinput <- param "smcinput"
       case alexScanTokensSafe smcinput of
-        Left pos -> webError "Lex" pos
+        Left pos -> webError Lex (Just pos) []
         Right lexResult -> case parse lexResult of
-          Left pos -> webError "Parse" pos
-          Right (CheckInput vocabInts lawform obs jobs) -> do
-            let mykns = KnS (map P vocabInts) (boolBddOf lawform) (map (second (map P)) obs)
-            knstring <- liftIO $ showStructure mykns
-            results <- liftIO $ doJobsWebSafe mykns jobs
-            html $ mconcat
-              [ TL.pack knstring
-              , "<hr />\n"
-              , TL.pack results ]
+          Left pos -> webError Parse (Just pos) []
+          Right ci@(CheckInput vocabInts lawform obs jobs) -> case sanityCheck ci of
+            msgs@(_:_) -> do
+              webError Sanity Nothing (msgs)
+            [] -> do
+              let mykns = KnS (map P vocabInts) (boolBddOf lawform) (map (second (map P)) obs)
+              knstring <- liftIO $ showStructure mykns
+              results <- liftIO $ doJobsWebSafe mykns jobs
+              html $ mconcat
+                [ TL.pack knstring
+                , "<hr />\n"
+                , TL.pack results ]
     post "/knsToKripke" $ do
       smcinput <- param "smcinput"
       case alexScanTokensSafe smcinput of
-        Left pos -> webError "Lex" pos
+        Left pos -> webError Lex (Just pos) []
         Right lexResult -> case parse lexResult of
-          Left pos -> webError "Parse" pos
-          Right (CheckInput vocabInts lawform obs _) -> do
-            let mykns = KnS (map P vocabInts) (boolBddOf lawform) (map (second (map P)) obs)
-            _ <- liftIO $ showStructure mykns -- this moves parse errors to scotty
-            if numberOfStates mykns > 32
-              then html . TL.pack $ "Sorry, I will not draw " ++ show (numberOfStates mykns) ++ " states!"
-              else do
-                let (myKripke, _) = knsToKripke (mykns, head $ statesOf mykns) -- ignore actual world
-                html $ TL.concat
-                  [ TL.pack "<div id='here'></div>"
-                  , TL.pack "<script>document.getElementById('here').innerHTML += Viz('"
-                  , fixTeXinSVG $ textDot myKripke
-                  , TL.pack "');</script>" ]
+          Left pos -> webError Parse (Just pos) []
+          Right ci@(CheckInput vocabInts lawform obs _) -> case sanityCheck ci of
+            msgs@(_:_) -> webError Sanity Nothing (msgs)
+            [] -> do
+              unless (null (sanityCheck ci)) (webError Sanity Nothing (sanityCheck ci))
+              let mykns = KnS (map P vocabInts) (boolBddOf lawform) (map (second (map P)) obs)
+              _ <- liftIO $ showStructure mykns -- this moves parse errors to scotty
+              if numberOfStates mykns > 32
+                then html . TL.pack $ "Sorry, I will not draw " ++ show (numberOfStates mykns) ++ " states!"
+                else do
+                  let (myKripke, _) = knsToKripke (mykns, head $ statesOf mykns) -- ignore actual world
+                  html $ TL.concat
+                    [ TL.pack "<div id='here'></div>"
+                    , TL.pack "<script>document.getElementById('here').innerHTML += Viz('"
+                    , fixTeXinSVG $ textDot myKripke
+                    , TL.pack "');</script>" ]
 
 fixTeXinSVG :: TL.Text -> TL.Text
 fixTeXinSVG = TL.replace "$" ""
@@ -138,13 +146,21 @@ embeddedFile s = case s of
 addVersionNumber :: T.Text -> T.Text
 addVersionNumber = T.replace "<!-- VERSION NUMBER -->" (T.pack $ showVersion version)
 
-webError :: String -> (Int,Int) -> ActionM ()
-webError kind (lin,col) = html $ TL.pack $ concat
-  [ "<p class='error'>", kind, " error in line ", show lin, ", column ", show col, "</p>\n"
-  , "<script>"
-  , "editor.clearSelection();"
-  , "editor.moveCursorTo(", show (lin - 1), ",", show col, ");"
-  , "editor.renderer.scrollCursorIntoView({row: ", show (lin - 1),", column: ", show col, "}, 0.5);"
-  , "editor.focus();"
-  , "</script>"
+data WebErrorKind = Parse | Lex | Sanity deriving (Show)
+
+webError :: WebErrorKind -> Maybe (Int,Int) -> [String] -> ActionM ()
+webError kind mpos msgs = html $ TL.pack $ concat
+  [ "<p class='error'>", show kind, " error"
+  , if (not (null msgs)) then ": " ++ intercalate "<br />" msgs else ""
+  , case mpos of
+      Just (lin,col) -> concat
+        [ " in line ", show lin, ", column ", show col, "</p>\n"
+        , "<script>"
+        , "editor.clearSelection();"
+        , "editor.moveCursorTo(", show (lin - 1), ",", show col, ");"
+        , "editor.renderer.scrollCursorIntoView({row: ", show (lin - 1),", column: ", show col, "}, 0.5);"
+        , "editor.focus();"
+        , "</script>"
+        ]
+      Nothing -> ""
   ]

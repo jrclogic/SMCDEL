@@ -61,6 +61,7 @@ library
       SMCDEL.Internal.Lex
       SMCDEL.Internal.MyHaskCUDD
       SMCDEL.Internal.Parse
+      SMCDEL.Internal.Sanity
       SMCDEL.Internal.TaggedBDD
       SMCDEL.Internal.TexDisplay
       SMCDEL.Internal.Token

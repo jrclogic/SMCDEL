@@ -12,8 +12,10 @@ import System.Exit (exitFailure)
 import System.Process (system)
 import System.FilePath.Posix (takeBaseName)
 import System.IO (Handle,hClose,hPutStrLn,stderr,stdout,openTempFile)
+
 import SMCDEL.Internal.Lex
 import SMCDEL.Internal.Parse
+import SMCDEL.Internal.Sanity
 import SMCDEL.Internal.TexDisplay
 import SMCDEL.Language
 import SMCDEL.Symbolic.S5
@@ -30,20 +32,22 @@ main = do
   when texMode $ hPutStrLn outHandle texPrelude
   case parse $ alexScanTokens input of
     Left (lin,col) -> error ("Parse error in line " ++ show lin ++ ", column " ++ show col)
-    Right (CheckInput vocabInts lawform obs jobs) -> do
-      let mykns = KnS (map P vocabInts) (boolBddOf lawform) (map (second (map P)) obs)
-      when texMode $
-        hPutStrLn outHandle $ unlines
-          [ "\\section{Given Knowledge Structure}", "\\[ (\\mathcal{F},s) = (" ++ tex ((mykns,[])::KnowScene) ++ ") \\]", "\n\n\\section{Results}" ]
-      mapM_ (doJob outHandle texMode mykns) jobs
-      when texMode $ hPutStrLn outHandle texEnd
-      when showMode $ do
-        hClose outHandle
-        let command = "cd /tmp && pdflatex -interaction=nonstopmode " ++ takeBaseName texFilePath ++ ".tex > " ++ takeBaseName texFilePath ++ ".pdflatex.log && xdg-open "++ takeBaseName texFilePath ++ ".pdf"
-        putStrLn $ "Now running: " ++ command
-        _ <- system command
-        return ()
-      putStrLn "\nDoei!"
+    Right ci@(CheckInput vocabInts lawform obs jobs) -> case sanityCheck ci of
+      msgs@(_:_) -> error $ "Sanity check failed:\n  " ++ intercalate "\n  " msgs
+      [] -> do
+        let mykns = KnS (map P vocabInts) (boolBddOf lawform) (map (second (map P)) obs)
+        when texMode $
+          hPutStrLn outHandle $ unlines
+            [ "\\section{Given Knowledge Structure}", "\\[ (\\mathcal{F},s) = (" ++ tex ((mykns,[])::KnowScene) ++ ") \\]", "\n\n\\section{Results}" ]
+        mapM_ (doJob outHandle texMode mykns) jobs
+        when texMode $ hPutStrLn outHandle texEnd
+        when showMode $ do
+          hClose outHandle
+          let command = "cd /tmp && pdflatex -interaction=nonstopmode " ++ takeBaseName texFilePath ++ ".tex > " ++ takeBaseName texFilePath ++ ".pdflatex.log && xdg-open "++ takeBaseName texFilePath ++ ".pdf"
+          putStrLn $ "Now running: " ++ command
+          _ <- system command
+          return ()
+        putStrLn "\nDoei!"
 
 doJob :: Handle -> Bool -> KnowStruct -> Job -> IO ()
 doJob outHandle texMode mykns (TrueQ s f) = do
