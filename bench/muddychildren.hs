@@ -3,16 +3,17 @@ module Main where
 import Control.Monad (when)
 import Criterion.Main
 import qualified Criterion.Types
+import qualified Data.ByteString.Lazy as BL
 import Data.Char (isSpace)
-import Data.CSV (csvFile)
+import Data.Csv
 import Data.Function
 import Data.List
 import Data.List.Split
 import Data.Maybe
 import Data.Scientific
+import qualified Data.Vector as V
 import Numeric
 import System.Directory
-import Text.ParserCombinators.Parsec (parse)
 
 import SMCDEL.Language
 import SMCDEL.Examples.MuddyChildren
@@ -135,14 +136,14 @@ prepareMain = do
 convertMain :: IO ()
 convertMain = do
   putStrLn "Reading muddychildren-results.csv and converting to .dat for pgfplots."
-  c <- readFile theCSVname
-  case parse csvFile theCSVname c of
+  c <- BL.readFile theCSVname
+  case decode NoHeader c of
     Left e -> error $ "could not parse the csv file:" ++ show e
     Right csv -> do
-      let results = map (parseLine . take 2) $ tail csv
+      let results = map (parseLine . take 2) $ tail $ V.toList (csv :: V.Vector [String])
       let columns = nub.sort $ map (fst.fst) results
       let firstLine = longifyTo 5 "n" ++ dropWhileEnd isSpace (concatMap longify columns)
-      let resAt n col = longify $ fromMaybe "nan" $ lookup (col,n) results
+      let resAt n col = longify $ fromMaybe "nan" $ Data.List.lookup (col,n) results
       let resultrow n = concatMap (resAt n) columns
       let firstcol = nub.sort $ map (snd.fst) results
       let resultrows = map (\n -> longifyTo 5 (show n) ++ dropWhileEnd isSpace (resultrow n)) firstcol

@@ -115,14 +115,15 @@ benchmarks:
       - time
 
   bench-muddychildren:
-     source-dirs:     bench
-     main:            muddychildren.hs
-     dependencies:
-       - base >= 4.8 && < 5
-       - criterion
-       - directory
-       - MissingH
-       - parsec
-       - scientific
-       - smcdel
-       - split
+    source-dirs: bench
+    main: muddychildren.hs
+    dependencies:
+      - base >= 4.8 && < 5
+      - bytestring
+      - cassava
+      - criterion
+      - directory
+      - scientific
+      - smcdel
+      - split
+      - vector

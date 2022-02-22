@@ -218,14 +218,16 @@ benchmark bench-muddychildren
       alex
     , happy
   build-depends:
-      MissingH
-    , base >=4.8 && <5
+      base >=4.8 && <5
+    , bytestring
+    , cassava
     , criterion
     , directory
     , parsec
     , scientific
     , smcdel
     , split
+    , vector
   default-language: Haskell2010
 
 benchmark bench-sumandproduct
