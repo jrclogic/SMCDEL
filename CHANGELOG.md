@@ -2,6 +2,9 @@
 
 ## upcoming
 
+
+## v1.2.0 (2022-02-22)
+
 New:
 
 - "TRUE?" command in Web and CLI interface to check truth at a single state
