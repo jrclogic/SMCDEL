@@ -24,6 +24,9 @@ cradle:
     - path: "./test"
       component: "smcdel:test:translations"
 
+    - path: "./test"
+      component: "smcdel:test:web"
+
     - path: "./bench/diningcrypto.lhs"
       component: "smcdel:bench:bench-diningcrypto"
 

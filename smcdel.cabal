@@ -189,6 +189,24 @@ test-suite translations
     , smcdel
   default-language: Haskell2010
 
+test-suite web
+  type: exitcode-stdio-1.0
+  main-is: test/Web.hs
+  other-modules:
+      Paths_smcdel
+  ghc-options: -Wall
+  build-tools:
+      alex
+    , happy
+  build-depends:
+      base
+    , process
+    , sandwich
+    , sandwich-webdriver
+    , text
+    , webdriver
+  default-language: Haskell2010
+
 benchmark bench-diningcrypto
   type: exitcode-stdio-1.0
   main-is: diningcrypto.hs

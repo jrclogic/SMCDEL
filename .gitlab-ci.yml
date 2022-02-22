@@ -17,14 +17,16 @@ before_script:
   - mkdir -p /var/cache/apt
   - mount --bind .apt /var/cache/apt
   - apt-get update -yqq
-  - apt-get install -y --no-install-recommends graphviz dot2tex libtinfo5 texlive-latex-base poppler-utils preview-latex-style texlive-pstricks
+  - apt-get install -y --no-install-recommends graphviz dot2tex libtinfo5 texlive-latex-base poppler-utils preview-latex-style texlive-pstricks wget
   - stack config set system-ghc --global true
 
 build:
   stage: build
   script:
+    - rm -rf .stack-work/install/*/*/*/bin
     - stack build
   after_script:
+    - rm -rf ./bin
     - mv .stack-work/install/*/*/*/bin ./bin
   artifacts:
     paths:
@@ -33,23 +35,28 @@ build:
 test:
   stage: test
   script:
+    - apt-get install -y firefox-esr openjdk-11-jre-headless
+    - rm -rf .stack-work/install/*/*/*/hpc
     - stack --no-terminal test --coverage
   after_script:
+    - rm -rf ./hpc
     - mv .stack-work/install/*/*/*/hpc ./hpc
   artifacts:
     paths:
       - "hpc/"
+  cache:
+    policy: pull
 
 bench-build:
-  stage: build
-  needs:
-    - build
+  stage: test
   script:
     - stack --no-terminal bench --no-run-benchmarks
+  cache:
+    policy: pull
 
 hlint:
-  stage: build
-  needs:
-    - build
+  stage: test
   script:
     - curl -sL https://raw.github.com/ndmitchell/hlint/master/misc/travis.sh | sh -s .
+  cache:
+    policy: pull

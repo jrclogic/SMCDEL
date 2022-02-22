@@ -95,6 +95,15 @@ tests:
       - hspec
       - QuickCheck
       - smcdel
+  web:
+    main: test/Web.hs
+    dependencies:
+      - base
+      - process
+      - sandwich
+      - sandwich-webdriver
+      - text
+      - webdriver
 
 benchmarks:
   bench-diningcrypto:
