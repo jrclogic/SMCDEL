@@ -1,13 +1,13 @@
-name:                 smcdel
-version:              1.1.0
-synopsis:             Symbolic Model Checking for Dynamic Epistemic Logic
-description:          See README.md and SMCDEL.pdf for references and documentation.
-maintainer:           Malvin Gattinger <malvin@w4eg.eu>
-license:              GPL-2
-github:               jrclogic/SMCDEL
-category:             Logic
+name: smcdel
+version: 1.2.0
+synopsis: Symbolic Model Checking for Dynamic Epistemic Logic
+description: See README.md and SMCDEL.pdf for references and documentation.
+maintainer: Malvin Gattinger <malvin@w4eg.eu>
+license: GPL-2
+github: jrclogic/SMCDEL
+category: Logic
 
-ghc-options:          -Wall
+ghc-options: -Wall
 
 extra-source-files:
   - README.md
@@ -107,16 +107,16 @@ tests:
 
 benchmarks:
   bench-diningcrypto:
-    source-dirs:     bench
-    main:            diningcrypto.hs
+    source-dirs: bench
+    main: diningcrypto.hs
     dependencies:
       - base >= 4.8 && < 5
       - smcdel
       - time
 
   bench-sumandproduct:
-    source-dirs:     bench
-    main:            sumandproduct.hs
+    source-dirs: bench
+    main: sumandproduct.hs
     dependencies:
       - base >= 4.8 && < 5
       - criterion

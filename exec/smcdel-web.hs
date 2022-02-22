@@ -56,7 +56,7 @@ main = do
           Left pos -> webError Parse (Just pos) []
           Right ci@(CheckInput vocabInts lawform obs jobs) -> case sanityCheck ci of
             msgs@(_:_) -> do
-              webError Sanity Nothing (msgs)
+              webError Sanity Nothing msgs
             [] -> do
               let mykns = KnS (map P vocabInts) (boolBddOf lawform) (map (second (map P)) obs)
               knstring <- liftIO $ showStructure mykns
@@ -72,7 +72,7 @@ main = do
         Right lexResult -> case parse lexResult of
           Left pos -> webError Parse (Just pos) []
           Right ci@(CheckInput vocabInts lawform obs _) -> case sanityCheck ci of
-            msgs@(_:_) -> webError Sanity Nothing (msgs)
+            msgs@(_:_) -> webError Sanity Nothing msgs
             [] -> do
               unless (null (sanityCheck ci)) (webError Sanity Nothing (sanityCheck ci))
               let mykns = KnS (map P vocabInts) (boolBddOf lawform) (map (second (map P)) obs)
@@ -151,7 +151,7 @@ data WebErrorKind = Parse | Lex | Sanity deriving (Show)
 webError :: WebErrorKind -> Maybe (Int,Int) -> [String] -> ActionM ()
 webError kind mpos msgs = html $ TL.pack $ concat
   [ "<p class='error'>", show kind, " error"
-  , if (not (null msgs)) then ": " ++ intercalate "<br />" msgs else ""
+  , if not (null msgs) then ": " ++ intercalate "<br />" msgs else ""
   , case mpos of
       Just (lin,col) -> concat
         [ " in line ", show lin, ", column ", show col, "</p>\n"

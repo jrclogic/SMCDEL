@@ -4,8 +4,8 @@
 
 New:
 
-- "TRUE?" command in Web and CI interface
-- multipointed translations for S5, including actions
+- "TRUE?" command in Web and CLI interface to check truth at a single state
+- multipointed translations for S5, including action models
 - `instance Optimizable` for symbolic structures
 - provide `whereViaBdd` also in `SMCDEL.Symbolic.S5_CUDD`
 - sanity check input for Web and CLI interface

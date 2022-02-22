@@ -5,7 +5,7 @@ cabal-version: 1.12
 -- see: https://github.com/sol/hpack
 
 name:           smcdel
-version:        1.1.0
+version:        1.2.0
 synopsis:       Symbolic Model Checking for Dynamic Epistemic Logic
 description:    See README.md and SMCDEL.pdf for references and documentation.
 category:       Logic
@@ -242,7 +242,6 @@ benchmark bench-muddychildren
     , cassava
     , criterion
     , directory
-    , parsec
     , scientific
     , smcdel
     , split
