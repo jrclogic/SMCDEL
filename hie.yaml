@@ -27,19 +27,19 @@ cradle:
     - path: "./test"
       component: "smcdel:test:web"
 
-    - path: "./bench/diningcrypto.lhs"
+    - path: "./bench/diningcrypto.hs"
       component: "smcdel:bench:bench-diningcrypto"
 
     - path: "./bench/Paths_smcdel.hs"
       component: "smcdel:bench:bench-diningcrypto"
 
-    - path: "./bench/muddychildren.lhs"
+    - path: "./bench/muddychildren.hs"
       component: "smcdel:bench:bench-muddychildren"
 
     - path: "./bench/Paths_smcdel.hs"
       component: "smcdel:bench:bench-muddychildren"
 
-    - path: "./bench/sumandproduct.lhs"
+    - path: "./bench/sumandproduct.hs"
       component: "smcdel:bench:bench-sumandproduct"
 
     - path: "./bench/Paths_smcdel.hs"
