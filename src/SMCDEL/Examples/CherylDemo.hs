@@ -17,7 +17,7 @@ start,step1,step2,step3,step4,step5 :: DEMO_S5.EpistM MyWorld
 
 start = DEMO_S5.Mo states agents [] rels points where
   states = allStates
-  agents = map DEMO_S5.Ag [1] -- a single observer agent
+  agents = [DEMO_S5.Ag 1] -- a single observer agent
   rels = [ (DEMO_S5.Ag 1, [states]) ] -- nothing known
   points = allStates
 

@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances, TupleSections #-}
 
 module SMCDEL.Translations.K where
 
@@ -69,7 +69,7 @@ eventToAction :: Event -> PointedActionModel
 eventToAction (t@(Trf addprops addlaw changelaw eventObs), efacts) = (ActM am, faction) where
   actlist    = zip (powerset addprops) [0..]
   am         = M.fromList [ (a, Act (preFor ps) (postFor ps) (relFor ps)) | (ps,a) <- actlist, preFor ps /= Bot ]
-  preFor ps  = simplify $ substitSet (zip ps (repeat Top) ++ zip (addprops \\ ps) (repeat Bot)) addlaw
+  preFor ps  = simplify $ substitSet (map (, Top) ps ++ map (, Bot) (addprops \\ ps)) addlaw
   postFor ps = M.fromList [ (q, formOf $ (changelaw ! q) `restrictSet` [(p, P p `elem` ps) | (P p) <- addprops]) | q <- M.keys changelaw ]
   relFor ps  = M.fromList [(i,rFor i) | i <- agentsOf t] where
     rFor i   = concatMap (\(qs,b) -> [ b | tagBddEval (mv ps ++ cp qs) (eventObs ! i), preFor qs /= Bot ]) actlist

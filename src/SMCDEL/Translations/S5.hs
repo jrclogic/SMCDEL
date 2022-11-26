@@ -1,3 +1,5 @@
+{-# LANGUAGE TupleSections #-}
+
 module SMCDEL.Translations.S5 where
 
 import Data.Containers.ListUtils (nubOrd)
@@ -139,7 +141,7 @@ transformerToActionModelWithG :: KnowTransformer -> (ActionModelS5, StateMap)
 transformerToActionModelWithG trf@(KnTrf addprops addlaw changelaw addobs) = (ActMS5 acts actrel, g) where
   actlist = zip (powerset addprops) [0..(2 ^ length addprops - 1)]
   acts    = [ (a, (preFor ps, postsFor ps)) | (ps,a) <- actlist, preFor ps /= Bot ] where
-    preFor ps = simplify $ substitSet (zip ps (repeat Top) ++ zip (addprops\\ps) (repeat Bot)) addlaw
+    preFor ps = simplify $ substitSet (map (, Top) ps ++ map (, Bot) (addprops \\ ps)) addlaw
     postsFor ps =
       [ (q, formOf $ restrictSet (changelaw ! q) [(p, P p `elem` ps) | (P p) <- addprops])
       | q <- map fst changelaw ]
