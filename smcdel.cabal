@@ -39,6 +39,7 @@ library
       SMCDEL.Examples.CherylDemo
       SMCDEL.Examples.CoinFlip
       SMCDEL.Examples.DiningCrypto
+      SMCDEL.Examples.DiningCrypto.General
       SMCDEL.Examples.DoorMat
       SMCDEL.Examples.DrinkLogic
       SMCDEL.Examples.GossipKw
@@ -52,6 +53,7 @@ library
       SMCDEL.Examples.SimpleK
       SMCDEL.Examples.SimpleS5
       SMCDEL.Examples.SumAndProduct
+      SMCDEL.Examples.SumAndProduct.General
       SMCDEL.Examples.Toynabi
       SMCDEL.Examples.WhatSum
       SMCDEL.Explicit.DEMO_S5
@@ -70,6 +72,9 @@ library
       SMCDEL.Other.MCTRIANGLE
       SMCDEL.Other.Planning
       SMCDEL.Symbolic.K
+      SMCDEL.Symbolic.K_CUDD
+      SMCDEL.Symbolic.Ki
+      SMCDEL.Symbolic.Ki_CUDD
       SMCDEL.Symbolic.S5
       SMCDEL.Symbolic.S5_CUDD
       SMCDEL.Translations.Convert
@@ -90,9 +95,12 @@ library
     , base >=4.8 && <5
     , containers
     , cudd ==0.1.0.0
+    , deepseq
     , directory
+    , filepath
     , graphviz
     , process
+    , regex
     , tagged
     , temporary
     , text
@@ -139,6 +147,54 @@ executable smcdel-web
     , template-haskell
     , text
     , warp
+  default-language: Haskell2010
+
+test-suite CUDD_K
+  type: exitcode-stdio-1.0
+  main-is: test/CUDD_K.hs
+  other-modules:
+      Paths_smcdel
+  ghc-options: -Wall
+  build-tools:
+      alex
+    , happy
+  build-depends:
+      base >=4.8 && <5
+    , containers
+    , hspec
+    , smcdel
+  default-language: Haskell2010
+
+test-suite CUDD_Ki
+  type: exitcode-stdio-1.0
+  main-is: test/CUDD_Ki.hs
+  other-modules:
+      Paths_smcdel
+  ghc-options: -Wall
+  build-tools:
+      alex
+    , happy
+  build-depends:
+      base >=4.8 && <5
+    , containers
+    , hspec
+    , smcdel
+  default-language: Haskell2010
+
+test-suite CUDD_S5
+  type: exitcode-stdio-1.0
+  main-is: test/CUDD_S5.hs
+  other-modules:
+      Paths_smcdel
+  ghc-options: -Wall
+  build-tools:
+      alex
+    , happy
+  build-depends:
+      base >=4.8 && <5
+    , containers
+    , hspec
+    , smcdel
   default-language: Haskell2010
 
 test-suite examples
@@ -264,4 +320,73 @@ benchmark bench-sumandproduct
     , criterion
     , smcdel
     , time
+  default-language: Haskell2010
+
+benchmark sizes-diningcryptographers
+  type: exitcode-stdio-1.0
+  main-is: diningcryptographers.hs
+  other-modules:
+      Paths_smcdel
+  hs-source-dirs:
+      sizeExperiments
+  ghc-options: -Wall
+  build-tools:
+      alex
+    , happy
+  build-depends:
+      base >=4.8 && <5
+    , bytestring
+    , cassava
+    , criterion
+    , directory
+    , scientific
+    , smcdel
+    , split
+    , vector
+  default-language: Haskell2010
+
+benchmark sizes-muddychildren
+  type: exitcode-stdio-1.0
+  main-is: muddychildren.hs
+  other-modules:
+      Paths_smcdel
+  hs-source-dirs:
+      sizeExperiments
+  ghc-options: -Wall
+  build-tools:
+      alex
+    , happy
+  build-depends:
+      base >=4.8 && <5
+    , bytestring
+    , cassava
+    , criterion
+    , directory
+    , scientific
+    , smcdel
+    , split
+    , vector
+  default-language: Haskell2010
+
+benchmark sizes-sumandproduct
+  type: exitcode-stdio-1.0
+  main-is: sumandproduct.hs
+  other-modules:
+      Paths_smcdel
+  hs-source-dirs:
+      sizeExperiments
+  ghc-options: -Wall
+  build-tools:
+      alex
+    , happy
+  build-depends:
+      base >=4.8 && <5
+    , bytestring
+    , cassava
+    , criterion
+    , directory
+    , scientific
+    , smcdel
+    , split
+    , vector
   default-language: Haskell2010

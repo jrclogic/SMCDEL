@@ -43,6 +43,9 @@ library:
     - temporary
     - text
     - time
+    - regex
+    - deepseq
+    - filepath
 
 executables:
   smcdel:
@@ -105,6 +108,28 @@ tests:
       - text
       - webdriver
 
+  CUDD_S5:
+    main: test/CUDD_S5.hs
+    dependencies:
+      - base >= 4.8 && < 5
+      - containers
+      - hspec
+      - smcdel
+  CUDD_K:
+    main: test/CUDD_K.hs
+    dependencies:
+      - base >= 4.8 && < 5
+      - containers
+      - hspec
+      - smcdel
+  CUDD_Ki:
+    main: test/CUDD_Ki.hs
+    dependencies:
+      - base >= 4.8 && < 5
+      - containers
+      - hspec
+      - smcdel
+
 benchmarks:
   bench-diningcrypto:
     source-dirs: bench
@@ -136,3 +161,46 @@ benchmarks:
       - smcdel
       - split
       - vector
+
+  sizes-muddychildren:
+    source-dirs:     sizeExperiments
+    main:            muddychildren.hs
+    dependencies:
+      - base >= 4.8 && < 5
+      - bytestring
+      - cassava
+      - criterion
+      - directory
+      - scientific
+      - smcdel
+      - split
+      - vector
+
+  sizes-diningcryptographers:
+    source-dirs:     sizeExperiments
+    main:            diningcryptographers.hs
+    dependencies:
+      - base >= 4.8 && < 5
+      - bytestring
+      - cassava
+      - criterion
+      - directory
+      - scientific
+      - smcdel
+      - split
+      - vector
+
+  sizes-sumandproduct:
+    source-dirs:     sizeExperiments
+    main:            sumandproduct.hs
+    dependencies:
+      - base >= 4.8 && < 5
+      - bytestring
+      - cassava
+      - criterion
+      - directory
+      - scientific
+      - smcdel
+      - split
+      - vector
+

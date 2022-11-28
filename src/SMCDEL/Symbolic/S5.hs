@@ -41,6 +41,9 @@ boolEvalViaBdd truths = bddEval truths . boolBddOf
 bddEval :: [Prp] -> Bdd -> Bool
 bddEval truths querybdd = evaluateFun querybdd (\n -> P n `elem` truths)
 
+size :: Bdd -> Int
+size b = if sizeOf b == 0 then sizeOf b + 1 else sizeOf b + 2
+
 relabelWith :: [(Prp,Prp)] -> Bdd -> Bdd
 relabelWith r = relabel (sort $ map (fromEnum *** fromEnum) r)
 
