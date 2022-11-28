@@ -18,6 +18,7 @@ import System.Directory
 import SMCDEL.Language
 import SMCDEL.Examples.MuddyChildren
 import SMCDEL.Internal.Help (apply)
+import SMCDEL.Internal.MyHaskCUDD
 import qualified SMCDEL.Explicit.DEMO_S5 as DEMO_S5
 import qualified SMCDEL.Explicit.S5
 import qualified SMCDEL.Symbolic.S5
@@ -46,9 +47,15 @@ findNumberCacBDD :: Int -> Int -> Int
 findNumberCacBDD = findNumberWith (cacMudScnInit,SMCDEL.Symbolic.S5.evalViaBdd) where
   cacMudScnInit n m = ( SMCDEL.Symbolic.S5.KnS (mudPs n) (SMCDEL.Symbolic.S5.boolBddOf Top) [ (show i,delete (P i) (mudPs n)) | i <- [1..n] ], mudPs m )
 
-findNumberCUDD :: Int -> Int -> Int
-findNumberCUDD = findNumberWith (cuddMudScnInit,SMCDEL.Symbolic.S5_CUDD.evalViaBdd) where
-  cuddMudScnInit n m = ( SMCDEL.Symbolic.S5_CUDD.KnS (mudPs n) (SMCDEL.Symbolic.S5_CUDD.boolBddOf Top) [ (show i,delete (P i) (mudPs n)) | i <- [1..n] ], mudPs m )
+findNumberCUDD :: Manager -> Int -> Int -> Int
+findNumberCUDD mgr n m =
+  let cuddMudScnInit = ( SMCDEL.Symbolic.S5_CUDD.KnS mgr (mudPs n) (SMCDEL.Symbolic.S5_CUDD.boolDdOf mgr Top :: Dd B F1 S1) [ (show i, delete (P i) (mudPs n)) | i <- [1..n] ], mudPs m )
+  in findNumberWith (const $ const cuddMudScnInit, SMCDEL.Symbolic.S5_CUDD.evalViaDd) n m
+
+findNumberCUDDz :: Manager -> Int -> Int -> Int
+findNumberCUDDz mgr n m =
+  let cuddMudScnInit = ( SMCDEL.Symbolic.S5_CUDD.KnS mgr (mudPs n) (SMCDEL.Symbolic.S5_CUDD.boolDdOf mgr Top :: Dd Z F1 S1) [ (show i, delete (P i) (mudPs n)) | i <- [1..n] ], mudPs m )
+  in findNumberWith (const $ const cuddMudScnInit, SMCDEL.Symbolic.S5_CUDD.evalViaDd) n m
 
 findNumberTrans :: Int -> Int -> Int
 findNumberTrans = findNumberWith (start,SMCDEL.Symbolic.S5.evalViaBdd) where
@@ -108,14 +115,17 @@ main :: IO ()
 main = prepareMain >> benchMain >> convertMain
 
 benchMain :: IO ()
-benchMain = defaultMainWith myConfig (map mybench
-  [ ("Triangle"  , findNumberTriangle  , [7..40] )
-  , ("CacBDD"    , findNumberCacBDD    , [3..40] )
-  , ("CUDD"      , findNumberCUDD      , [3..40] )
-  , ("K"         , findNumberK         , [3..12] )
-  , ("DEMOS5"    , findNumberDemoS5    , [3..12] )
-  , ("Trans"     , findNumberTrans     , [3..12] )
-  , ("TransK"    , findNumberTransK    , [3..11] ) ])
+benchMain = do
+  mgr <- makeManagerZ 40 -- one CUDD manager for BDDs and ZDDs
+  defaultMainWith myConfig (map mybench
+    [ ("Triangle"  , findNumberTriangle  , [7..40] )
+    , ("CacBDD"    , findNumberCacBDD    , [3..40] )
+    , ("CUDD"      , findNumberCUDD mgr  , [3..40] )
+    , ("CUDDz"     , findNumberCUDDz mgr , [3..40] )
+    , ("K"         , findNumberK         , [3..12] )
+    , ("DEMOS5"    , findNumberDemoS5    , [3..12] )
+    , ("Trans"     , findNumberTrans     , [3..12] )
+    , ("TransK"    , findNumberTransK    , [3..11] ) ])
   where
     mybench (name,f,range) = bgroup name $ map (run f) range
     run f k = bench (show k) $ whnf (\n -> f n n) k
