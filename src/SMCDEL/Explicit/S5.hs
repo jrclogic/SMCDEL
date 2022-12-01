@@ -137,7 +137,9 @@ instance Semantics PointedModelS5 where
 instance Semantics MultipointedModelS5 where
   isTrue (m,ws) f = all (\w -> isTrue (m,w) f) ws
 
+-- | Public announcements on Kripke models.
 instance Update KripkeModelS5 Form where
+  checks = [] -- allow updating with formulas that are not globally true.
   unsafeUpdate m@(KrMS5 sts rel val) form = KrMS5 newsts newrel newval where
     newsts = filter (\s -> eval (m,s) form) sts
     newrel = map (second relfil) rel
