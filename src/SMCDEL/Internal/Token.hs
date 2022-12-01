@@ -3,7 +3,7 @@ data Token a -- == AlexPn
   = TokenVARS              {apn :: a}
   | TokenLAW               {apn :: a}
   | TokenOBS               {apn :: a}
-  | TokenTRUEQ            {apn :: a}
+  | TokenTRUEQ             {apn :: a}
   | TokenVALIDQ            {apn :: a}
   | TokenWHEREQ            {apn :: a}
   | TokenColon             {apn :: a}
@@ -33,6 +33,8 @@ data Token a -- == AlexPn
   | TokenEqui              {apn :: a}
   | TokenForall            {apn :: a}
   | TokenExists            {apn :: a}
+  | TokenPrefixK           {apn :: a}
+  | TokenPrefixKw          {apn :: a}
   | TokenInfixKnowWhether  {apn :: a}
   | TokenInfixKnowThat     {apn :: a}
   | TokenInfixCKnowWhether {apn :: a}

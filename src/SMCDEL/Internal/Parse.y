@@ -6,7 +6,10 @@ import SMCDEL.Internal.Lex
 import SMCDEL.Language
 }
 
-%name parse CheckInput
+%name parseCheckInput CheckInput
+%name parseForm Form
+%name parseFormList FormList
+
 %tokentype { Token AlexPosn }
 %error { parseError }
 
@@ -43,6 +46,8 @@ import SMCDEL.Language
   STR    { TokenStr $$ _ }
   INT    { TokenInt $$ _ }
   'iff'  { TokenEqui   _ }
+  K      { TokenPrefixK _ }
+  Kw     { TokenPrefixKw _ }
   KNOWSTHAT    { TokenInfixKnowThat     _ }
   KNOWSWHETHER { TokenInfixKnowWhether  _ }
   CKNOWTHAT    { TokenInfixCKnowThat    _ }
@@ -76,6 +81,8 @@ Form : TOP { Top }
      | XOR '(' FormList ')' { Xor $3 }
      | Form 'iff' Form { Equi $1 $3 }
      | INT { PrpF (P $1) }
+     | K String Form { K $2 $3 }
+     | Kw String Form { Kw $2 $3 }
      | String KNOWSTHAT Form { K $1 $3 }
      | String KNOWSWHETHER Form { Kw $1 $3 }
      | StringList CKNOWTHAT Form { Ck $1 $3 }
@@ -121,4 +128,30 @@ parseError :: [Token AlexPosn] -> ParseResult a
 parseError []     = Left (1,1)
 parseError (t:ts) = Left (lin,col)
   where (AlexPn abs lin col) = apn t
+
+class Parse a where
+  parse :: [Token AlexPosn] -> Either (Int,Int) a
+  parseS :: String -> Either (Int,Int) a
+  parseS input =
+    case alexScanTokensSafe input of
+      Left pos -> Left pos
+      Right lexResult -> case parse lexResult of
+        Left pos -> Left pos
+        Right x -> Right x
+  unsafeParseS :: String -> a
+  unsafeParseS input =
+    case alexScanTokensSafe input of
+      Left pos -> error $ "Lex error at " ++ show pos
+      Right lexResult -> case parse lexResult of
+        Left pos -> error $ "Parse error at " ++ show pos
+        Right x -> x
+
+instance Parse CheckInput where
+  parse = parseCheckInput
+
+instance Parse Form where
+  parse = parseForm
+
+instance Parse FormList where
+  parse = parseFormList
 }

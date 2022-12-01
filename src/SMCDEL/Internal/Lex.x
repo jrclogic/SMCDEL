@@ -36,11 +36,15 @@ tokens :-
   "Top"             { \ p _ -> TokenTop               p }
   "Bot"             { \ p _ -> TokenBot               p }
   "~"               { \ p _ -> TokenNeg               p }
+  "¬"               { \ p _ -> TokenNeg               p }
   "Not"             { \ p _ -> TokenNeg               p }
   "not"             { \ p _ -> TokenNeg               p }
   "&"               { \ p _ -> TokenBinCon            p }
+  "∧"               { \ p _ -> TokenBinCon            p }
   "|"               { \ p _ -> TokenBinDis            p }
+  "∨"               { \ p _ -> TokenBinDis            p }
   "->"              { \ p _ -> TokenImpl              p }
+  "→"               { \ p _ -> TokenImpl              p }
   "iff"             { \ p _ -> TokenEqui              p }
   "AND"             { \ p _ -> TokenCon               p }
   "OR"              { \ p _ -> TokenDis               p }
@@ -48,6 +52,8 @@ tokens :-
   "ForAll"          { \ p _ -> TokenForall            p }
   "Forall"          { \ p _ -> TokenForall            p }
   "Exists"          { \ p _ -> TokenExists            p }
+  "K"               { \ p _ -> TokenPrefixK           p }
+  "Kw"              { \ p _ -> TokenPrefixKw          p }
   "knows whether"   { \ p _ -> TokenInfixKnowWhether  p }
   "knows that"      { \ p _ -> TokenInfixKnowThat     p }
   "comknow whether" { \ p _ -> TokenInfixCKnowWhether p }
