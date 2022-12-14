@@ -3,6 +3,7 @@
 module SMCDEL.Internal.TexDisplay where
 import Control.Monad
 import Data.List
+import Control.Concurrent (threadDelay)
 import qualified Data.Text.Lazy as T
 import System.Directory (findExecutable)
 import System.IO (hGetContents)
@@ -48,7 +49,8 @@ class TexAble a where
     ts <- round <$> getPOSIXTime
     let filename = tmpdir ++ "/disp-" ++ show (ts :: Int)
     pdfTo x filename
-    runIgnoreAndWait $ "/usr/bin/okular " ++ filename ++ ".pdf"
+    runIgnoreAndWait $ "/usr/bin/xdg-open " ++ filename ++ ".pdf"
+    threadDelay 3000000 -- give viewer three seconds before deleting tmpdir
   svgViaTex :: a -> String
   svgViaTex !x = unsafePerformIO $ withSystemTempDirectory "smcdel" $ \tmpdir -> do
     ts <- round <$> getPOSIXTime
@@ -133,7 +135,7 @@ instance (Ord a, Show a, KripkeLike a) => TexAble (ViaDot a) where
     withSystemTempDirectory "smcdel" $ \tmpdir -> do
       _ <- runGraphviz (toGraph x) DotOutput (tmpdir ++ "/temp.dot")
       dot2tex $ dot2texDefaultArgs ++ " --figonly " ++ tmpdir ++ "/temp.dot | sed '/^$/d' > " ++ tmpdir ++ "/temp.tex;"
-      readFile (tmpdir ++ "/temp.tex") -- FIXME: avoid this by using runInteractiveCommand and buffers
+      readFile (tmpdir ++ "/temp.tex")
   texTo (ViaDot x) filename = do
     _ <- runGraphviz (toGraph x) DotOutput (filename ++ ".dot")
     dot2tex $ dot2texDefaultArgs ++ " --figonly " ++ filename ++ ".dot | sed '/^$/d' > " ++ filename ++ ".tex;"
