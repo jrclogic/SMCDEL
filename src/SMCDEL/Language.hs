@@ -132,8 +132,14 @@ class (Show a, Show b, HasAgents a, Semantics a, HasPrecondition b) => Update a 
                    , "\n  checkResults: ", show checkResults ]
                where checkResults = [ c x y | c <- checks ]
 
+-- | Execute a list of updates, return the final resulting state.
 updates :: Update a b => a -> [b] -> a
 updates = foldl update
+
+-- | Execute a list of updates, return the list of starting, intermediate and final result states.
+updateSequence :: Update a b => a -> [b] -> [a]
+updateSequence x []    = [x]
+updateSequence x (y:ys) = let next = x `update` y in x : updateSequence next ys
 
 haveSameAgents :: (HasAgents a, HasAgents b) => a -> b -> Bool
 haveSameAgents x y = agentsOf x == agentsOf y
