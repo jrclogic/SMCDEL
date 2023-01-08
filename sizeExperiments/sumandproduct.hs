@@ -1,6 +1,8 @@
 {-# LANGUAGE AllowAmbiguousTypes, TypeApplications, ScopedTypeVariables #-}
 module Main (main) where
-import System.Environment (getArgs)
+
+import Data.List
+
 import SMCDEL.Examples.SumAndProduct.General
 import SMCDEL.Language
 import qualified SMCDEL.Symbolic.S5_CUDD as S5_CUDD
@@ -9,47 +11,36 @@ import qualified SMCDEL.Internal.MyHaskCUDD as MyHaskCUDD
 import SMCDEL.Internal.MyHaskCUDD (B, Z, F1, F0, S1, S0, DdCtx)
 
 main :: IO ()
-main = do
-  gatherSizeData [ 64]
+main = gatherSizeData [50] -- TODO: getArgs
 
-infoCudd :: S5_CUDD.KnowStruct a b c -> Int
-infoCudd (S5_CUDD.KnS mgr _ lawb _) = MyHaskCUDD.size mgr lawb
+genSapSizesCac :: Int -> [Int]
+genSapSizesCac n = map (\(S5_CAC.KnS _ lawb _) -> S5_CAC.size lawb) $
+  updateSequence (genSapKnStruct n) [ genSapForm1 n, genSapForm2 n, genSapForm3 n ]
 
-genSapWhereWithSizeCac :: Int -> [Int]
-genSapWhereWithSizeCac n = getSizePerUpdate where
-  info (S5_CAC.KnS _ lawb _) = S5_CAC.size lawb
-  getSizePerUpdate = map info
-    [ genSapKnStruct n
-    , genSapKnStruct n `update` genSapForm1 n
-    , genSapKnStruct n `update` genSapForm1 n `update` genSapForm2 n
-    , genSapKnStruct n `update` genSapForm1 n `update` genSapForm2 n `update` genSapForm3 n ]
-
-
-genSapWhereWithSizeCudd ::  forall a b c . DdCtx a b c => Int -> IO [Int]
-genSapWhereWithSizeCudd n = do
+genSapSizesCudd ::  forall a b c . DdCtx a b c => Int -> IO [Int]
+genSapSizesCudd n = do
   start <- genSapKnStructCudd @a @b @c n -- also creates manager!
-  let resultsPerUpdate = map infoCudd
-        [ start
-        , start `unsafeUpdate` genSapForm1 n
-        , start `unsafeUpdate` genSapForm1 n `unsafeUpdate` genSapForm2 n
-        , start `unsafeUpdate` genSapForm1 n `unsafeUpdate` genSapForm2 n `unsafeUpdate` genSapForm3 n]
-  -- let checkAnswer = start `unsafeUpdate` genSapForm1 n `unsafeUpdate` genSapForm2 n `unsafeUpdate` genSapForm3 n
-  return resultsPerUpdate
+  return $ map (\(S5_CUDD.KnS mgr _ lawb _) -> MyHaskCUDD.size mgr lawb) $
+    updateSequence start  [ genSapForm1 n, genSapForm2 n, genSapForm3 n ]
 
 gatherSizeData :: [Int] -> IO ()
 gatherSizeData ns = do
-  writeFile "size_data_sap.txt" "Sum and product \n\n"
-  mapM_ writeData ns
+  putStrLn $ "Running SAP benchmark for ns=" ++ show ns ++ " and writing results to sap.dat ..."
+  writeFile "sap.dat" $ firstLine ++ "\n"
+  mapM_ linesFor ns
+  putStrLn "Done."
   where
-    writeData i = do
-      let resultb = genSapWhereWithSizeCac i
-      resultbc <- genSapWhereWithSizeCudd @B @F1 @S1 i
-      resultf1s1 <- genSapWhereWithSizeCudd @Z @F1 @S1 i
-      resultf1s0 <- genSapWhereWithSizeCudd @Z @F1 @S0 i
-      resultf0s1 <- genSapWhereWithSizeCudd @Z @F0 @S1 i
-      resultf0s0 <- genSapWhereWithSizeCudd @Z @F0 @S0 i
-      mapM_ write [("Bdd", resultb),("Bdd-complement", resultbc),("ZF1S1", resultf1s1),("ZF1S0", resultf1s0),("ZF0S1", resultf0s1),("ZF0S0", resultf0s0)]
-      appendFile "size_data_sap.txt" "\n"
-      where
-        write (name, result) = appendFile "size_data_sap.txt" (name ++ ", n: " ++ show i ++ ", size: " ++ show result ++ "\n")
-
+    firstLine = intercalate "\t" $ ["n","round"] ++ map fst variants
+    variants =
+      [ ("BDD", return . genSapSizesCac)
+      , ("BDD-c", genSapSizesCudd @B @F1 @S1)
+      , ("ZF1S1", genSapSizesCudd @Z @F1 @S1)
+      , ("ZF1S0", genSapSizesCudd @Z @F1 @S0)
+      , ("ZF0S1", genSapSizesCudd @Z @F0 @S1)
+      , ("ZF0S0", genSapSizesCudd @Z @F0 @S0)
+      ]
+    linesFor n = do
+      putStrLn $ "Running for n = " ++ show n
+      results <- mapM (($ n) . snd) variants
+      appendFile "sap.dat" $ unlines [ intercalate "\t" (show n : show k : map (\xs -> show (xs !! k)) results)
+                                     | k <- [0..3] ]

@@ -33,7 +33,7 @@ nmbr truths s = fromMaybe (error "Value not found") $
 -- which can be written as a disjuction of conjunction terms, consisting of x, y, s and p.
 genSapKnStruct :: Int -> KnowStruct
 genSapKnStruct n = KnS (genSapAllProps n) law obs where
-  law = boolBddOf $ Disj [ Conj [ genxyAre (x,y) n, genSIs (x+y) n, genPIs (x*y) n ] | (x,y) <- genPairs n ]
+  law = boolBddOf $ genSapLaw n
   obs = [ (alice, genSProps n), (bob, genPProps n) ]
 
 -- from max sum to max product
@@ -75,6 +75,10 @@ genxyAre (x,y) n = Conj [ genXIs x n, genYIs y n ]
 genSapKnows :: Agent -> Int -> Form
 genSapKnows i n = Disj [ K i (genxyAre p n) | p <- genPairs n]
 
+-- State law for general SAP.
+genSapLaw :: Int -> Form
+genSapLaw n = Disj [ Conj [ genxyAre (x,y) n, genSIs (x+y) n, genPIs (x*y) n ] | (x,y) <- genPairs n ]
+
 genSapForm1, genSapForm2, genSapForm3 :: Int -> Form
 genSapForm1 n = K alice $ Neg (genSapKnows bob n) -- Sum: I knew that you didn't know the numbers.
 genSapForm2 = genSapKnows bob  -- Product: Now I know the two numbers
@@ -88,6 +92,6 @@ genSapProtocol n = Conj [ genSapForm1 n
 genSapKnStructCudd :: (MyHaskCUDD.DdCtx a b c) => Int -> IO (S5_CUDD.KnowStruct a b c)
 genSapKnStructCudd n = do
   mgr <- MyHaskCUDD.makeManagerZ (maximum (map fromEnum (genSapAllProps n)))
-  let law = S5_CUDD.boolDdOf mgr $ Disj [ Conj [ genxyAre (x,y) n, genSIs (x+y) n, genPIs (x*y) n ] | (x,y) <- genPairs n ]
+  let law = S5_CUDD.boolDdOf mgr $ genSapLaw n
   let obs = [ (alice, genSProps n), (bob, genPProps n) ]
   return $ S5_CUDD.KnS mgr (genSapAllProps n) law obs

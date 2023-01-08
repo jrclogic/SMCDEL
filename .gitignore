@@ -14,5 +14,6 @@ cabal-dev
 *.hp
 .stack-work/
 *.csv
+*.dat
 *.tix
 stack.yaml.lock
