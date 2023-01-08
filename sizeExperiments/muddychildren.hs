@@ -51,7 +51,7 @@ gatherSizeData ns ms = do
     firstLine = intercalate "\t" $ ["n","m","round"] ++ map fst variants
     variants =
       [ ("BDD", \n m -> return $ muddySizeCAC n m)
-      , ("BDD-c", muddySizeCUDD @B @F1 @S1)
+      , ("BDDc",  muddySizeCUDD @B @F1 @S1)
       , ("ZF1S1", muddySizeCUDD @Z @F1 @S1)
       , ("ZF1S0", muddySizeCUDD @Z @F1 @S0)
       , ("ZF0S1", muddySizeCUDD @Z @F0 @S1)
