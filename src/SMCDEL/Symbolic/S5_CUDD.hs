@@ -179,6 +179,7 @@ instance  (DdCtx a b c) => Semantics (KnowStruct a b c) where
   isTrue = validViaDd
 
 instance (DdCtx a b c) => Update (KnowStruct a b c) Form where
+  checks = [ ] -- unpointed structures can be updated with anything
   unsafeUpdate kns@(KnS mgr props lawdd obs) psi =
     KnS mgr props (con mgr lawdd (ddOf kns psi)) obs
 
