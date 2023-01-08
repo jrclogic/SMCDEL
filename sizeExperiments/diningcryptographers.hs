@@ -29,16 +29,9 @@ benchDcCheckForm n =
 
 genDcSizeCudd :: forall a b c . DdCtx a b c => Int -> Int -> IO [Int]
 genDcSizeCudd n m = do
-  startKns@(S5_CUDD.KnS mgr _ _ _) <- DC_Gen.genDcKnsInitCudd @a @b @c n m
-  return $ loop 0 startKns (S5_CUDD.boolDdOf mgr Top) -- final check: S5_CUDD.validViaDd startKns (genDcCheckForm n)
-  where
-  loop i startKns@(S5_CUDD.KnS mgr _ lawb _) current_law
-    | i == 0 = MyHaskCUDD.size mgr lawb : loop (i+1) startKns lawb
-    | i < n  = MyHaskCUDD.size mgr (MyHaskCUDD.con mgr current_law updateDc) : loop (i+1) startKns (MyHaskCUDD.con mgr current_law updateDc)
-    | i == n = []
-    | otherwise = error "something went wrong with loop"
-    where
-      updateDc = S5_CUDD.ddOf startKns (genDcReveal n i)
+  startKns <- DC_Gen.genDcKnsInitCudd @a @b @c n m
+  return $ map (\(S5_CUDD.KnS mgr _ lawb _) -> MyHaskCUDD.size mgr lawb) $
+    updateSequence startKns [ genDcReveal n i | i <- [1..(n-1)] ]
 
 
 benchDcValid :: Int -> Bool
