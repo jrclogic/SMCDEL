@@ -54,12 +54,11 @@ cradle:
     - path: "./bench/Paths_smcdel.hs"
       component: "smcdel:bench:bench-sumandproduct"
 
-
-    - path: "./sizeExperiments/diningcrypto.hs"
-      component: "smcdel:bench:sizes-diningcrypto"
+    - path: "./sizeExperiments/diningcryptographers.hs"
+      component: "smcdel:bench:sizes-diningcryptographers"
 
     - path: "./sizeExperiments/Paths_smcdel.hs"
-      component: "smcdel:bench:sizes-diningcrypto"
+      component: "smcdel:bench:sizes-diningcryptographers"
 
     - path: "./sizeExperiments/muddychildren.hs"
       component: "smcdel:bench:sizes-muddychildren"

@@ -11,7 +11,7 @@ import qualified SMCDEL.Internal.MyHaskCUDD as MyHaskCUDD
 import SMCDEL.Internal.MyHaskCUDD (B, Z, F1, F0, S1, S0, DdCtx)
 
 main :: IO ()
-main = gatherSizeData [50] -- TODO: getArgs
+main = gatherSizeData [60] -- TODO: getArgs
 
 genSapSizesCac :: Int -> [Int]
 genSapSizesCac n = map (\(S5_CAC.KnS _ lawb _) -> S5_CAC.size lawb) $
@@ -33,7 +33,7 @@ gatherSizeData ns = do
     firstLine = intercalate "\t" $ ["n","round"] ++ map fst variants
     variants =
       [ ("BDD", return . genSapSizesCac)
-      , ("BDD-c", genSapSizesCudd @B @F1 @S1)
+      , ("BDDc",  genSapSizesCudd @B @F1 @S1)
       , ("ZF1S1", genSapSizesCudd @Z @F1 @S1)
       , ("ZF1S0", genSapSizesCudd @Z @F1 @S0)
       , ("ZF0S1", genSapSizesCudd @Z @F0 @S1)

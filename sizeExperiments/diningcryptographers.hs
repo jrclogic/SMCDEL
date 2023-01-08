@@ -1,31 +1,17 @@
 {-# LANGUAGE AllowAmbiguousTypes, TypeApplications, ScopedTypeVariables #-}
 module Main (main) where
 
+import Data.List
 
 import SMCDEL.Language
-    ( Prp(P),
-      Form(PrpF, PubAnnounceW, Xor, Impl, Disj, Conj, Neg, K, Top),
-      pubAnnounceWhetherStack )
-import SMCDEL.Symbolic.S5 (validViaBdd)
 import SMCDEL.Symbolic.S5_CUDD as S5_CUDD
 import SMCDEL.Examples.DiningCrypto
 import qualified SMCDEL.Examples.DiningCrypto.General as DC_Gen
-import Debug.Trace ( trace )
 import qualified SMCDEL.Internal.MyHaskCUDD as MyHaskCUDD
-import SMCDEL.Internal.MyHaskCUDD (DdCtx, Dd, B, Z, F1, F0, S1, S0)
-import SMCDEL.Examples.DiningCrypto
+import SMCDEL.Internal.MyHaskCUDD
 
-
-benchDcCheckForm :: Int -> Form
-benchDcCheckForm n =
-  -- PubAnnounceW (Xor [genDcReveal n i | i<-[1..n] ]) $
-  -- faster but requires a fair central authority on announcing the XOR of the shared bits
-  pubAnnounceWhetherStack [ genDcReveal n i | i<-[1..n] ] $ -- slow!
-    Impl (Neg (PrpF $ P 1)) $
-      Disj [ K "1" (Conj [Neg $ PrpF $ P k | k <- [1..n]  ])
-           , Conj [ K "1" (Disj [ PrpF $ P k | k <- [2..n] ])
-                  , Conj [ Neg $ K "1" (PrpF $ P k) | k <- [2..n] ] ] ]
-
+main :: IO ()
+main = gatherSizeData [3,5,7,9,11,13] [1,3,5,7,9,11,13] -- TODO: getArgs
 
 genDcSizeCudd :: forall a b c . DdCtx a b c => Int -> Int -> IO [Int]
 genDcSizeCudd n m = do
@@ -33,38 +19,28 @@ genDcSizeCudd n m = do
   return $ map (\(S5_CUDD.KnS mgr _ lawb _) -> MyHaskCUDD.size mgr lawb) $
     updateSequence startKns [ genDcReveal n i | i <- [1..(n-1)] ]
 
-
-benchDcValid :: Int -> Bool
-benchDcValid n = validViaBdd (genDcKnsInit n) (benchDcCheckForm n)
-
 gatherSizeData :: [Int] -> [Int] -> IO ()
-gatherSizeData n m = do
-  writeFile "size_data_dc.txt" "Data dining cryptographers \n\n"
-  writeFile "test.txt" "Dining cryptographers \n\n"
-  let cases =
-        [ (i, j) | i <- n -- n many dining cryptographers
-                 , j <- m -- of which m are payers
-                 , j <= i -- cannot have more payers than n
-                 ]
-  mapM_ (uncurry writeData) cases
+gatherSizeData ns ms = do
+  putStrLn $ "Running DC benchmark for ns=" ++ show ns ++ " and ms=" ++ show ms ++ " and writing results to dining.dat ..."
+  writeFile "dining.dat" $ firstLine ++ "\n"
+  mapM_ linesFor cases
+  putStrLn "Done."
   where
-    writeData i j = do
-      -- resultb <- muddySizeCAC @B @F1 @S1 i j
-      resultbc <- genDcSizeCudd @B @F1 @S1 i j
-      resultf1s1 <- genDcSizeCudd @Z @F1 @S1 i j
-      resultf1s0 <- genDcSizeCudd @Z @F1 @S0 i j
-      resultf0s1 <- genDcSizeCudd @Z @F0 @S1 i j
-      resultf0s0 <- genDcSizeCudd @Z @F0 @S0 i j
-      mapM write [("BDD-complement", resultbc),("ZF1S1", resultf1s1),("ZF1S0", resultf1s0),("ZF0S1", resultf0s1),("ZF0S0", resultf0s0)]
-      appendFile "size_data_dc.txt" "\n"
-      where
-        write (name, result) = appendFile "size_data_dc.txt" (name ++ ", m: " ++ show j ++ ", n: " ++ show i ++ ", size: " ++ show result ++ "\n")
-
-
-main :: IO ()
-main = do
-  gatherSizeData [3] [1]
-
-
-debug :: c -> String -> c
-debug = flip trace
+    cases = [ (n, m) | n <- ns -- n many dining cryptographers
+                     , m <- ms -- of which m are payers
+                     , m <= n -- cannot have more payers than n
+                     ]
+    firstLine = intercalate "\t" $ ["n","m","round"] ++ map fst variants
+    variants =
+      -- Note: No CacBdd "BDD" here.
+      [ ("BDDc",  genDcSizeCudd @B @F1 @S1)
+      , ("ZF1S1", genDcSizeCudd @Z @F1 @S1)
+      , ("ZF1S0", genDcSizeCudd @Z @F1 @S0)
+      , ("ZF0S1", genDcSizeCudd @Z @F0 @S1)
+      , ("ZF0S0", genDcSizeCudd @Z @F0 @S0)
+      ]
+    linesFor (n,m) = do
+      putStrLn $ "Running for (n,m) = " ++ show (n,m)
+      results <- mapM ((\f -> f n m) . snd) variants
+      appendFile "dining.dat" $ unlines [ intercalate "\t" (show n : show m : show k : map (\xs -> show (xs !! k)) results)
+                                        | k <- [0..(length (head results) - 1)] ]
