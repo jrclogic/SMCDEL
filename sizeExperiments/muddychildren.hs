@@ -26,28 +26,21 @@ genMuddyKnStructCudd n = do
 muddySizeCUDD :: forall a b c . DdCtx a b c => Int -> Int -> IO [Int]
 muddySizeCUDD n m = do
   start <- genMuddyKnStructCudd @a @b @c n -- also creates the manager!
-  return (loop 0 start)  where
-    loop i kns
-      | i == 0 = info kns : loop (i+1) kns
-      | i < m = info (kns `update` nobodyknows n) : loop (i+1) (kns `update` nobodyknows n)
-      | i == m = [] -- final check possible here.
-      | otherwise = error ("something went wrong with loop: " ++ show i)
-      where
-        info (S5_CUDD.KnS mgr _ law _) = MyHaskCUDD.size mgr law
+  return $ map info $ updateSequence start fs where
+    info (S5_CUDD.KnS mgr _ law _) = MyHaskCUDD.size mgr law
+    fs = replicate (m-1) (nobodyknows n)
 
 muddySizeCAC :: Int -> Int -> [Int]
-muddySizeCAC n m = loop 0 cuddMudScnInit  where
-  cuddMudScnInit = S5_CAC.KnS (mudPs n) (S5_CAC.boolBddOf (father n)) [ (show x,delete (P x) (mudPs n)) | x <- [1..n] ]
-  loop i kns
-    | i == 0 = info kns : loop (i+1) kns
-    | i < m = info (kns `update` nobodyknows n) : loop (i+1) (kns `update` nobodyknows n)
-    | i == m = []
-    | otherwise = error ("something went wrong with loop: " ++ show i) where
-      info (S5_CAC.KnS _ lawb _) = S5_CAC.size lawb
+muddySizeCAC n m = map info $ updateSequence start fs  where
+  start = S5_CAC.KnS (mudPs n)
+                     (S5_CAC.boolBddOf (father n))
+                     [ (show x,delete (P x) (mudPs n)) | x <- [1..n] ]
+  info (S5_CAC.KnS _ lawb _) = S5_CAC.size lawb
+  fs = replicate (m-1) (nobodyknows n)
 
 gatherSizeData :: [Int] -> [Int] -> IO ()
 gatherSizeData ns ms = do
-  putStrLn $ "Running MC benchmark for ns=" ++ show ns ++ " and ms=" ++ show ms ++ "and writing results to mc.dat ..."
+  putStrLn $ "Running MC benchmark for ns=" ++ show ns ++ " and ms=" ++ show ms ++ " and writing results to mc.dat ..."
   writeFile "mc.dat" $ firstLine ++ "\n"
   mapM_ linesFor cases
   where
