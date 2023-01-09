@@ -156,13 +156,13 @@ ddOf bls@(BlS mgr _ _ _) (PubAnnounceW f g) =
 
 ddOf bls@(BlS mgr props law obs) (Announce ags f g) =
   imp mgr (ddOf bls f) (restrict mgr dd2 (k,True)) where
-    dd2  = ddOf (announce (BlS mgr (props ) law obs) ags f) g
+    dd2  = ddOf (announce (BlS mgr props law obs) ags f) g
     (P k) = freshp props
 
 ddOf bls@(BlS mgr props law obs) (AnnounceW ags f g) =
   ifthenelse mgr (ddOf bls f) dd2a dd2b where
-    dd2a = restrict mgr (ddOf  (announce (BlS mgr (props ) law obs) ags f      ) g) (k,True)
-    dd2b = restrict mgr (ddOf  (announce (BlS mgr (props ) law obs) ags (Neg f)) g) (k,True)
+    dd2a = restrict mgr (ddOf  (announce (BlS mgr props law obs) ags f      ) g) (k,True)
+    dd2b = restrict mgr (ddOf  (announce (BlS mgr props law obs) ags (Neg f)) g) (k,True)
     (P k) = freshp props
 
 {-ddOf bls@(BlS mgr _ _ _) (Dia (Dyn dynLabel d) f) =
@@ -222,14 +222,22 @@ instance (DdCtx a b c) => Semantics (BelStruct a b c) where
 instance (DdCtx a b c) => Semantics (BelScene a b c) where
   isTrue = evalViaDd
 
+instance (DdCtx a b c) => Semantics (MultipointedBelScene a b c) where
+  isTrue (kns@(BlS mgr _ lawBdd _), statesBdd) f =
+    let a = imp mgr lawBdd (imp mgr statesBdd (ddOf kns f))
+     in a == top mgr
+
+instance (DdCtx a b c) => Update (BelStruct a b c) Form where
+  checks = [ ] -- unpointed structures can be updated with anything
+  unsafeUpdate bls@(BlS mgr allprops lawdd obs) f =
+    BlS mgr allprops (con mgr lawdd (ddOf bls f)) obs
+
+instance (DdCtx a b c) => Update (BelScene a b c) Form where
+  unsafeUpdate (kns,s) psi = (unsafeUpdate kns psi,s)
+
 pubAnnounce :: (DdCtx a b c) => BelStruct a b c -> Form -> BelStruct a b c
 pubAnnounce bls@(BlS mgr allprops lawdd obs) f =
   BlS mgr allprops (con mgr lawdd (ddOf bls f)) obs
-
-pubAnnounceOnScn :: (DdCtx a b c) => BelScene a b c -> Form -> BelScene a b c
-pubAnnounceOnScn (bls@(BlS _ _ _ _),s) psi = if evalViaDd (bls,s) psi
-                                 then (pubAnnounce bls psi,s)
-                                 else error "Liar!"
 
 announce :: (DdCtx a b c) => BelStruct a b c -> [Agent] -> Form -> BelStruct a b c
 announce bls@(BlS mgr props lawdd odds) ags psi = BlS mgr newprops newlawdd newodds where
@@ -248,8 +256,8 @@ statesOf (BlS mgr allprops lawdd _) = map (sort.getTrues) prpsats where
   prpsats = map (map (first toEnum)) ddsats
   getTrues = map fst . filter snd-}
 
---whereViaDd :: (DdCtx a b c, Update .. ..) => BelStruct a b c -> Form -> [KnState]
---whereViaDd kns f = statesOf (kns `update` f)
+whereViaDd :: (DdCtx a b c) => BelStruct a b c -> Form -> [KnState]
+whereViaDd kns f = statesOf (kns `update` f)
 
 --Somewhat fast statesOf, faster woud be to use primitive construction of all Satifying Assignments (e.i. explicitly looping through the dd instead of using restrict).
 statesOf :: DdCtx a b c => BelStruct a b c -> [KnState]
@@ -258,13 +266,10 @@ statesOf (BlS mgr allprops lawdd _) = loop allprops lawdd where
   loop v d = r v d True ++ r v d False
   r ((P n):ns) d b
     | restrict mgr d (n,b) == bot mgr = []
-    | restrict mgr d (n,b) == top mgr = if b then map ([P n] ++) (remainingStates ns) else remainingStates ns
+    | restrict mgr d (n,b) == top mgr = if b then map ([P n] ++) (powerset ns) else powerset ns
     | otherwise =
       if b then map ([P n] ++) $ loop ns (restrict mgr d (n,b)) else loop ns (restrict mgr d (n,b))
   r [] _ _ = error "impossible?"
-
-  remainingStates :: [Prp] -> [KnState]
-  remainingStates = foldr (\a set -> set ++ map (a:) set) [[]]
 
 texRelDD :: DdCtx a b c => Cudd.Cudd.DdManager -> RelDD a b c -> String
 texRelDD mgr (Tagged b) = texDdFun mgr b texRelProp where
@@ -397,6 +402,7 @@ shiftPrepare (BlS mgr props _ _) (Trf _ addprops addlaw changelaw eventObs) =
 
 
 instance (DdCtx a b c) => Update (BelScene a b c) (Event a b c) where
+  -- TODO: check that BelScene and Event use the same mgr!
   unsafeUpdate (bls@(BlS mgr props law odds),s) (trf, eventFactsUnshifted) = (BlS mgr newprops newlaw newobs, news) where
     -- PART 1: SHIFTING addprops to ensure props and newprops are disjoint
     (Trf _ addprops addlaw changelaw addObs, shiftrel) = shiftPrepare bls trf
