@@ -15,7 +15,7 @@ import System.IO.Temp
 import System.IO.Unsafe (unsafePerformIO)
 import System.Process ( runInteractiveCommand )
 
-import SMCDEL.Internal.Help (apply)
+import SMCDEL.Internal.Help (apply,powerset)
 import SMCDEL.Internal.MyHaskCUDD
 import SMCDEL.Internal.TexDisplay
 import SMCDEL.Language
@@ -90,7 +90,7 @@ ddOf kns@(KnS mgr _ _ _) (PubAnnounceW form1 form2) =
   ifthenelse mgr (ddOf kns form1) newform2a newform2b where
     newform2a = ddOf (pubAnnounce kns form1) form2
     newform2b = ddOf (pubAnnounce kns (Neg form1)) form2
-ddOf _ (Dia _ _) = error "Dynamic operators are not implemented for CUDD."
+ddOf _ (Dia _ _) = error "Dynamic operators are not implemented in S5_CUDD."
 
 pubAnnounce :: (DdCtx a b c) => KnowStruct a b c -> Form -> KnowStruct a b c
 pubAnnounce kns@(KnS mgr props lawbdd obs) psi = KnS mgr props newlawbdd obs where
@@ -124,14 +124,10 @@ statesOf (KnS mgr allprops lawdd _) = loop allprops lawdd where
   loop v d = r v d True ++ r v d False
   r ((P n):ns) d b
     | restrict mgr d (n,b) == bot mgr = []
-    | restrict mgr d (n,b) == top mgr = if b then map ([P n] ++) (remainingStates ns) else remainingStates ns
+    | restrict mgr d (n,b) == top mgr = if b then map ([P n] ++) (powerset ns) else powerset ns
     | otherwise =
       if b then map ([P n] ++) $ loop ns (restrict mgr d (n,b)) else loop ns (restrict mgr d (n,b))
   r [] _ _ = error "impossible?"
-
-  remainingStates :: [Prp] -> [KnState]
-  remainingStates = foldr (\a set -> set ++ map (a:) set) [[]]
-
 
 boolDDoutof :: (DdCtx a b c) => Cudd.Cudd.DdManager -> [Prp] -> [Prp] -> Dd a b c
 boolDDoutof mgr ps qs = conSet mgr $
@@ -160,7 +156,6 @@ unravel mgr dd (n:ns) = Disj [ result True, result False] where
     | restrict mgr dd (n, False) == bot mgr = Bot
     | otherwise = Conj [Neg $ PrpF (P n), unravel mgr (restrict mgr dd (n, False)) ns]
 
-
 evalViaDd :: (DdCtx a b c) => KnowScene a b c -> Form -> Bool
 evalViaDd ((kns@(KnS mgr allprops _ _),s) :: KnowScene a b c) f = bool where
   bool | b== (top mgr :: Dd a b c) = True
@@ -183,8 +178,7 @@ instance (DdCtx a b c) => Update (KnowStruct a b c) Form where
   unsafeUpdate kns@(KnS mgr props lawdd obs) psi =
     KnS mgr props (con mgr lawdd (ddOf kns psi)) obs
 
--------------------------- Texable functionality
-
+-- * Visualisation functions
 
 texDdWith :: DdCtx a b c => Cudd.Cudd.DdManager -> Dd a b c -> [Prp] -> String
 texDdWith mgr d vocab = unsafePerformIO $ do
@@ -236,8 +230,6 @@ renameMyGraph dg myShow =
           x -> x
       DotGen.DE de -> DotGen.DE (renameEdge de myShow)
       x -> x
-
-
 
 renameNode :: DotGen.DotNode String -> [(String, String)] -> DotGen.DotNode String
 renameNode dn myShow = case lookup (DotGen.nodeID dn) myShow of
