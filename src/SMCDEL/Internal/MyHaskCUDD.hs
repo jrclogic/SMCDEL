@@ -47,15 +47,14 @@ import Data.Maybe (fromJust)
 -- | A Binary Decision diagram with any of the five node eliminations.
 -- Note that the constrains represent what is left specified instead of what is eliminated.
 newtype Dd x y z = ToDd Cudd.Cudd.DdNode deriving stock (Eq,Show)
--- | The first field can either be B or Z,
--- |   indicating whether dont care nodes (equal child nodes, traditional BDD rule) are removed or
--- |   those where the negative child leads to the 1 leaf node (THEN -> 0, traditional ZDD rule).
+-- | The first field indicates whether don't care nodes (B, traditional BDD rule) are removed
+-- or those where "Then" leads to the 0 leaf node (Z, traditional ZDD rule).
 data B
 data Z
 -- | The second field represents whether the 1 set (F1) of a given boolean function is represented or its complement, the 0 set (F0).
 -- | Because the traditional BDD rule is symetric, complementing it does not change the size of the structure.
 -- | Because the traditional ZDD rule is asymmetric towards the leaf nodes (and the edge types), complementing it can change the structure drastically.
--- When representing a model (not) complementing the stored information is similar to either storing all possible "states"/"truths" or all impossible "states"/"truths".
+-- When representing a model (not) complementing the stored information is similar to either storing all possible states or all impossible states.
 data F1
 data F0
 -- | The third field represents whether each variable is interpreted as its complement (S0) or not (S1). Conversion between S1 and S0 is done by swapping the children of all nodes.
@@ -311,13 +310,13 @@ restrictSet mgr = foldl' (restrict mgr)
 
 -- | Restrict with a law. Note that the law is the second parameter!
 restrictLaw :: (DdCtx a b c) => Cudd.Cudd.DdManager -> [Prp] -> Dd a b c -> Dd a b c -> Dd a b c
-restrictLaw mgr v d b = loop (getDependentVars mgr v d) d b where
+restrictLaw mgr v d = loop (getDependentVars mgr v d) d where
   loop (n:ns) bdd law
     | law == top mgr = bdd -- the law completely covers the bdd thus all nodes are restricted out
     | (bdd == top mgr) || (bdd == bot mgr) = bdd -- the bdd is already top/bot, restricting it further does not change anything
     | law == bot mgr = top mgr
     -- otherwise do the recursive restriction until terminal cases are met
-    | otherwise = (var mgr n `conj` loop ns (restr bdd (n, True)) (restr law (n, True) )) `disj` ((neg mgr $ var mgr n) `conj` loop ns (restr bdd (n, False)) (restr law (n, False) )) where
+    | otherwise = (var mgr n `conj` loop ns (restr bdd (n, True)) (restr law (n, True) )) `disj` (neg mgr (var mgr n) `conj` loop ns (restr bdd (n, False)) (restr law (n, False))) where
       disj = dis mgr
       conj = con mgr
       restr = restrict mgr
@@ -354,7 +353,7 @@ relabelFun mgr v rF dd = loop dd disjointListOfLists
   splitCompare [] [] = []
   splitCompare [] _ = error "varlists used for relabeling do not have equal length."
   splitCompare _ [] = error "varlists used for relabeling do not have equal length."
-  splitCompare l1 l2 = (l1\\fst (getOverlap l1 l2),l2\\snd (getOverlap l1 l2)) : splitCompare (fst $ newOverlap l1 l2) (snd $ newOverlap l1 l2)
+  splitCompare l1 l2 = (l1\\fst (getOverlap l1 l2),l2\\snd (getOverlap l1 l2)) : uncurry splitCompare (newOverlap l1 l2)
 
   -- apply the function above to the support variable integers and the resulting integers from applying rf (the Remapping Function)
   -- and turn the integers into DD nodes (as ddSwapVars requires this)
@@ -365,6 +364,7 @@ relabelFun mgr v rF dd = loop dd disjointListOfLists
   loop b (n:ns) = loop (uncurry (ddSwapVars mgr b) n) ns
   loop b [] = b
 
+-- | Relabel a DD with a list of pairs.
 relabelWith :: (DdCtx a b c) => Cudd.Cudd.DdManager -> [(Prp,Prp)] -> Dd a b c -> Dd a b c
 relabelWith mgr r dd = loop dd disjointListOfLists where
   --get indexes of "overlapping" integers positions (integers in l2 that also occur in L1)
@@ -383,7 +383,7 @@ relabelWith mgr r dd = loop dd disjointListOfLists where
   splitCompare [] [] = []
   splitCompare [] _ = error "varlists used for relabeling do not have equal length."
   splitCompare _ [] = error "varlists used for relabeling do not have equal length."
-  splitCompare l1 l2 = (l1\\fst (getOverlap l1 l2),l2\\snd (getOverlap l1 l2)) : splitCompare (fst $ newOverlap l1 l2) (snd $ newOverlap l1 l2)
+  splitCompare l1 l2 = (l1\\fst (getOverlap l1 l2),l2\\snd (getOverlap l1 l2)) : uncurry splitCompare (newOverlap l1 l2)
 
   -- apply the function above to the support variable integers and the resulting integers from applying rf (the Remapping Function)
   -- and turn the integers into BDD nodes (as ddSwapVars requires this)
@@ -396,27 +396,33 @@ relabelWith mgr r dd = loop dd disjointListOfLists where
   (listVars1,listVars2) = unzip listIntPairs
 
 
--- | supporting functions
+-- * supporting functions
+
 returnDot :: DdCtx a b c => Cudd.Cudd.DdManager -> Dd a b c -> String
 returnDot mgr d = unsafePerformIO $ withSystemTempDirectory "smcdel" $ \tmpdir -> do
     writeToDot mgr d (tmpdir ++ "/temp.dot")
     readFile (tmpdir ++ "/temp.dot")
+
 forceCheckDd :: DdCtx a b c => Cudd.Cudd.DdManager -> Dd a b c  -> String -- ugly fix to ensure evaluation of dd
 forceCheckDd mgr d = unsafePerformIO $! do
   withSystemTempDirectory "smcdel" $ \tmpdir -> do
     writeToDot mgr d (tmpdir ++ "/temp.dot")
     readFile (tmpdir ++ "/temp.dot")
+
 printDdInfo :: Cudd.Cudd.DdManager -> Dd a b c  -> String -> IO ()
 printDdInfo mgr (ToDd zdd) str = do
   putStrLn str
   Cudd.Cudd.cuddPrintDdInfo mgr zdd
   return ()
+
 size :: Cudd.Cudd.DdManager -> Dd a b c -> Int
 size mgr (ToDd dd)
   | dd == Cudd.Cudd.cuddZddReadZero mgr = 0
   | otherwise = Cudd.Cudd.cuddDagSize dd
+
 sparsity :: Cudd.Cudd.DdManager -> Dd a b c -> Int -> Double
 sparsity mgr (ToDd b) n = Cudd.Cudd.cuddCountMinterm mgr b n / (2 ** fromIntegral n)
+
 getSupport :: Cudd.Cudd.DdManager -> Dd a b c -> [Int]
 getSupport mgr (ToDd dd) = [ fst x | x <- biList, snd x]
   where biList = zip [0..] $ Cudd.Cudd.cuddSupportIndex mgr dd
@@ -428,8 +434,7 @@ getDependentVars mgr v dd = loop v []
     loop ((P n):ns) r = if restrict mgr dd (n, True) == restrict mgr dd (n, False)  then loop ns r else loop ns (n:r)
     loop [] r = r
 
-
--- | ZDD only functions.
+-- * ZDD only functions
 
 -- restricts, but thus also removes variable from context
 sub0 :: Cudd.Cudd.DdManager -> Dd Z a b -> Int -> Dd Z a b
@@ -441,9 +446,8 @@ sub1 mgr (ToDd z) n = ToDd $ Cudd.Cudd.cuddZddSub1 mgr z n
 swap :: (DdCtx Z b c) => Cudd.Cudd.DdManager -> Dd Z b c -> Int -> Dd Z b c
 swap mgr (ToDd z) n = ToDd $ Cudd.Cudd.cuddZddChange mgr z n
 
--- * Get satsifying assignments (BDDs only)
+-- * BDD only functions
 
--- | BDD only functions.
 -- | An assignment of boolean values to variables/integers.
 type Assignment = [(Int,Bool)]
 
@@ -473,11 +477,13 @@ completeAss allvars ass =
     addvars s = allvars \\ sort (map fst s)
     extend s v = [ (v,False):s, (v,True):s ]
 
--- | Get all complete assignments, given a set of all variables.
+-- | Get all complete satisfying assignments, given a set of all variables.
 -- In particular this will include variables not in the BDD.
 allSatsWith :: (DdCtx B b c) => Cudd.Cudd.DdManager -> [Int] -> Dd B b c -> [Assignment]
 allSatsWith mgr allvars b = concatMap (completeAss allvars) (allSats mgr b)
 
+-- | Simultaneous substitution.
+-- Implemented via `ifte` and `restrict`.
 substitSimul :: (DdCtx a b c) => Cudd.Cudd.DdManager -> [(Int, Dd a b c)] -> Dd a b c -> Dd a b c
 substitSimul _ [] dd = dd
 substitSimul mgr ((n, psi) : ns) dd = ifte psi ( recurs (restr dd (n, True))) (recurs (restr dd (n, False)))
