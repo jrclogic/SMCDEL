@@ -145,11 +145,11 @@ bddOf bls@(BlS voc lawbdd (ag,obdds)) (Ck ags form) = lfp lambda top where
 bddOf bls (Ckw ags form) = dis (bddOf bls (Ck ags form)) (bddOf bls (Ck ags (Neg form)))
 
 bddOf bls (PubAnnounce f g) =
-  imp (bddOf bls f) (bddOf (pubAnnounce bls f) g)
+  imp (bddOf bls f) (bddOf (bls `update` f) g)
 bddOf bls (PubAnnounceW f g) =
   ifthenelse (bddOf bls f)
-    (bddOf (pubAnnounce bls f      ) g)
-    (bddOf (pubAnnounce bls (Neg f)) g)
+    (bddOf (bls `update` f    ) g)
+    (bddOf (bls `update` Neg f) g)
 
 bddOf bls@(BlS props _ _) (Announce ags f g) =
   imp (bddOf bls f) (restrict bdd2 (k,True)) where
@@ -216,14 +216,18 @@ instance Semantics BelStruct where
 instance Semantics BelScene where
   isTrue = evalViaBdd
 
-pubAnnounce :: BelStruct -> Form -> BelStruct
-pubAnnounce bls@(BlS allprops lawbdd obs) f =
-  BlS allprops (con lawbdd (bddOf bls f)) obs
+instance Semantics MultipointedBelScene where
+  isTrue (kns@(BlS _ lawBdd _), statesBdd) f =
+    let a = imp lawBdd (imp statesBdd (bddOf kns f))
+     in a == top
 
-pubAnnounceOnScn :: BelScene -> Form -> BelScene
-pubAnnounceOnScn (bls,s) psi = if evalViaBdd (bls,s) psi
-                                 then (pubAnnounce bls psi,s)
-                                 else error "Liar!"
+instance Update BelStruct Form where
+  checks = [ ] -- unpointed structures can be updated with anything
+  unsafeUpdate bls@(BlS allprops lawdd obs) f =
+    BlS allprops (con lawdd (bddOf bls f)) obs
+
+instance Update BelScene Form where
+  unsafeUpdate (kns,s) psi = (unsafeUpdate kns psi,s)
 
 announce :: BelStruct -> [Agent] -> Form -> BelStruct
 announce bls@(BlS props lawbdd (ag,obdds)) ags psi = BlS newprops newlawbdd (ag,newobdds) where

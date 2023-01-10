@@ -157,11 +157,11 @@ ddOf bls@(BlS mgr voc (lawdd :: Dd a b c) (ag, odds)) (Ck ags form) = lfp lambda
 ddOf bls@(BlS mgr _ _ _) (Ckw ags form) = dis mgr (ddOf bls (Ck ags form)) (ddOf bls (Ck ags (Neg form)))
 
 ddOf bls@(BlS mgr _ _ _) (PubAnnounce f g) =
-  imp mgr (ddOf bls f) (ddOf  (pubAnnounce bls f) g)
+  imp mgr (ddOf bls f) (ddOf (bls `update` f) g)
 ddOf bls@(BlS mgr _ _ _) (PubAnnounceW f g) =
   ifthenelse mgr (ddOf bls f)
-    (ddOf  (pubAnnounce bls f      ) g)
-    (ddOf  (pubAnnounce bls (Neg f)) g)
+    (ddOf  (bls `update` f    ) g)
+    (ddOf  (bls `update` Neg f) g)
 
 ddOf bls@(BlS mgr props _ _) (Announce ags f g) =
   imp mgr (ddOf bls f) (restrict mgr dd2 (k,True)) where
