@@ -435,7 +435,7 @@ testForm = Forall [P 3] $
 newtype BF = BF Form deriving (Eq,Ord,Show)
 
 instance Arbitrary BF where
-  arbitrary = sized $ randomboolformWith [P 1 .. P 100]
+  arbitrary = sized $ randomboolformWith defaultVocabulary
   shrink (BF f) = map BF $ shrinkform f
 
 randomboolformWith :: [Prp] -> Int -> Gen BF
