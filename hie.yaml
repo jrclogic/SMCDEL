@@ -27,14 +27,8 @@ cradle:
     - path: "./test"
       component: "smcdel:test:web"
 
-    - path: "./test/CUDD_S5.hs"
-      component: "smcdel:test:CUDD_S5"
-
-    - path: "./test/CUDD_K.hs"
-      component: "smcdel:test:CUDD_K"
-
-    - path: "./test/CUDD_Ki.hs"
-      component: "smcdel:test:CUDD_Ki"
+    - path: "./test/CUDD.hs"
+      component: "smcdel:test:CUDD"
 
     - path: "./bench/diningcrypto.hs"
       component: "smcdel:bench:bench-diningcrypto"
