@@ -107,27 +107,13 @@ tests:
       - sandwich-webdriver
       - text
       - webdriver
-
-  CUDD_S5:
-    main: test/CUDD_S5.hs
+  CUDD:
+    main: test/CUDD.hs
     dependencies:
       - base >= 4.8 && < 5
       - containers
       - hspec
-      - smcdel
-  CUDD_K:
-    main: test/CUDD_K.hs
-    dependencies:
-      - base >= 4.8 && < 5
-      - containers
-      - hspec
-      - smcdel
-  CUDD_Ki:
-    main: test/CUDD_Ki.hs
-    dependencies:
-      - base >= 4.8 && < 5
-      - containers
-      - hspec
+      - QuickCheck
       - smcdel
 
 benchmarks:

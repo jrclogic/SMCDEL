@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.4.
+-- This file has been generated from package.yaml by hpack version 0.35.1.
 --
 -- see: https://github.com/sol/hpack
 
@@ -149,9 +149,9 @@ executable smcdel-web
     , warp
   default-language: Haskell2010
 
-test-suite CUDD_K
+test-suite CUDD
   type: exitcode-stdio-1.0
-  main-is: test/CUDD_K.hs
+  main-is: test/CUDD.hs
   other-modules:
       Paths_smcdel
   ghc-options: -Wall
@@ -159,39 +159,8 @@ test-suite CUDD_K
       alex
     , happy
   build-depends:
-      base >=4.8 && <5
-    , containers
-    , hspec
-    , smcdel
-  default-language: Haskell2010
-
-test-suite CUDD_Ki
-  type: exitcode-stdio-1.0
-  main-is: test/CUDD_Ki.hs
-  other-modules:
-      Paths_smcdel
-  ghc-options: -Wall
-  build-tools:
-      alex
-    , happy
-  build-depends:
-      base >=4.8 && <5
-    , containers
-    , hspec
-    , smcdel
-  default-language: Haskell2010
-
-test-suite CUDD_S5
-  type: exitcode-stdio-1.0
-  main-is: test/CUDD_S5.hs
-  other-modules:
-      Paths_smcdel
-  ghc-options: -Wall
-  build-tools:
-      alex
-    , happy
-  build-depends:
-      base >=4.8 && <5
+      QuickCheck
+    , base >=4.8 && <5
     , containers
     , hspec
     , smcdel
