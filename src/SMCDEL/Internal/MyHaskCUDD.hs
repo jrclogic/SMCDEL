@@ -37,7 +37,6 @@ import qualified Cudd.Cudd
 import System.IO.Unsafe ( unsafePerformIO )
 import System.IO.Temp ( withSystemTempDirectory )
 import SMCDEL.Language (Prp (P))
-import Control.DeepSeq (rnf)
 import Control.Arrow ((***))
 import Data.List
 import Data.Maybe (fromJust)
@@ -71,11 +70,7 @@ type Manager = Cudd.Cudd.DdManager
 
 -- | Manager construction. When using ZDDs, CUDD requires initialisation of the variables beforehand.
 makeManagerZ :: Int -> IO Cudd.Cudd.DdManager
-makeManagerZ vocabCap = do
-  mgr <- makeManager
-  let v = (var mgr vocabCap :: Dd Z F1 S1)
-  _ <- return $! rnf (forceCheckDd mgr v)
-  return mgr
+makeManagerZ vocabCap = Cudd.Cudd.cuddInitZ (vocabCap +1)
 
 -- | Manager construction when only using BDDs.
 makeManager :: IO Cudd.Cudd.DdManager
