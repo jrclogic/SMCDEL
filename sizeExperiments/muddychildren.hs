@@ -2,6 +2,7 @@
 module Main where
 
 import Data.List
+import System.IO
 
 import SMCDEL.Language
 import SMCDEL.Examples.MuddyChildren
@@ -11,7 +12,9 @@ import qualified SMCDEL.Internal.MyHaskCUDD as MyHaskCUDD
 import SMCDEL.Internal.MyHaskCUDD
 
 main :: IO ()
-main = gatherSizeData [5,10,20] [5,10,20] -- TODO: getArgs
+main = do
+  hSetBuffering stdout NoBuffering
+  gatherSizeData [5,10,20] [5,10,20] -- TODO: getArgs
 
 mudPs :: Int -> [Prp]
 mudPs n = [P 1 .. P n]
