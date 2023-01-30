@@ -2,6 +2,7 @@
 module Main (main) where
 
 import Data.List
+import System.IO
 
 import SMCDEL.Language
 import SMCDEL.Symbolic.S5_CUDD as S5_CUDD
@@ -11,7 +12,9 @@ import qualified SMCDEL.Internal.MyHaskCUDD as MyHaskCUDD
 import SMCDEL.Internal.MyHaskCUDD
 
 main :: IO ()
-main = gatherSizeData [3,5,7,9,11,13] [1,3,5,7,9,11,13] -- TODO: getArgs
+main = do
+  hSetBuffering stdout NoBuffering
+  gatherSizeData [3,5,7,9,11,13] [1,3,5,7,9,11,13] -- TODO: getArgs
 
 genDcSizeCudd :: forall a b c . DdCtx a b c => Int -> Int -> IO [Int]
 genDcSizeCudd n m = do

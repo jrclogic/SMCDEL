@@ -2,6 +2,7 @@
 module Main (main) where
 
 import Data.List
+import System.IO
 
 import SMCDEL.Examples.SumAndProduct.General
 import SMCDEL.Language
@@ -11,7 +12,9 @@ import qualified SMCDEL.Internal.MyHaskCUDD as MyHaskCUDD
 import SMCDEL.Internal.MyHaskCUDD (B, Z, F1, F0, S1, S0, DdCtx)
 
 main :: IO ()
-main = gatherSizeData [60] -- TODO: getArgs
+main = do
+  hSetBuffering stdout NoBuffering
+  gatherSizeData [60] -- TODO: getArgs
 
 genSapSizesCac :: Int -> [Int]
 genSapSizesCac n = map (\(S5_CAC.KnS _ lawb _) -> S5_CAC.size lawb) $
