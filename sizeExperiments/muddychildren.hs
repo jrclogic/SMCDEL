@@ -44,7 +44,7 @@ muddySizeCAC n m = map info $ updateSequence start fs  where
 gatherSizeData :: [Int] -> [Int] -> IO ()
 gatherSizeData ns ms = do
   putStrLn $ "Running MC benchmark for ns=" ++ show ns ++ " and ms=" ++ show ms ++ " and writing results to mc.dat ..."
-  writeFile "mc.dat" $ firstLine ++ "\n"
+  writeFile "mc.dat" $ "Note that these results are formulated/grouped by their elimination rule labels, and not their Input/Output complement labels as we use in our program. The labels used in our program translate to their elimination rule equivalence as follows: B O1 I1 -> EQ (nodes with equal children are eliminated), Z O1 I1 -> T0 (nodes with THEN edges pointing towards 0 leaf node are removed), Z O1 I0 -> E0, Z O0 I1 -> T1, Z O1 I0 -> E1.\n\n" ++ firstLine ++ "\n"
   mapM_ linesFor cases
   where
     cases = [ (n, m) | n <- ns -- n many children
@@ -54,11 +54,11 @@ gatherSizeData ns ms = do
     firstLine = intercalate "\t" $ ["n","m","round"] ++ map fst variants
     variants =
       [ ("BDD", \n m -> return $ muddySizeCAC n m)
-      , ("BDDc",  muddySizeCUDD @B @F1 @S1)
-      , ("ZF1S1", muddySizeCUDD @Z @F1 @S1)
-      , ("ZF1S0", muddySizeCUDD @Z @F1 @S0)
-      , ("ZF0S1", muddySizeCUDD @Z @F0 @S1)
-      , ("ZF0S0", muddySizeCUDD @Z @F0 @S0)
+      , ("BDDc",  muddySizeCUDD @B @O1 @I1)
+      , ("ZO1I1", muddySizeCUDD @Z @O1 @I1)
+      , ("ZO1I0", muddySizeCUDD @Z @O1 @I0)
+      , ("ZO0I1", muddySizeCUDD @Z @O0 @I1)
+      , ("ZO0I0", muddySizeCUDD @Z @O0 @I0)
       ]
     linesFor (n,m) = do
       putStrLn $ "Running for (n,m) = " ++ show (n,m)

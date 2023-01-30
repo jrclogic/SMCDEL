@@ -49,12 +49,12 @@ findNumberCacBDD = findNumberWith (cacMudScnInit,SMCDEL.Symbolic.S5.evalViaBdd) 
 
 findNumberCUDD :: Manager -> Int -> Int -> Int
 findNumberCUDD mgr n m =
-  let cuddMudScnInit = ( SMCDEL.Symbolic.S5_CUDD.KnS mgr (mudPs n) (SMCDEL.Symbolic.S5_CUDD.boolDdOf mgr Top :: Dd B F1 S1) [ (show i, delete (P i) (mudPs n)) | i <- [1..n] ], mudPs m )
+  let cuddMudScnInit = ( SMCDEL.Symbolic.S5_CUDD.KnS mgr (mudPs n) (SMCDEL.Symbolic.S5_CUDD.boolDdOf mgr Top :: Dd B O1 I1) [ (show i, delete (P i) (mudPs n)) | i <- [1..n] ], mudPs m )
   in findNumberWith (const $ const cuddMudScnInit, SMCDEL.Symbolic.S5_CUDD.evalViaDd) n m
 
 findNumberCUDDz :: Manager -> Int -> Int -> Int
 findNumberCUDDz mgr n m =
-  let cuddMudScnInit = ( SMCDEL.Symbolic.S5_CUDD.KnS mgr (mudPs n) (SMCDEL.Symbolic.S5_CUDD.boolDdOf mgr Top :: Dd Z F1 S1) [ (show i, delete (P i) (mudPs n)) | i <- [1..n] ], mudPs m )
+  let cuddMudScnInit = ( SMCDEL.Symbolic.S5_CUDD.KnS mgr (mudPs n) (SMCDEL.Symbolic.S5_CUDD.boolDdOf mgr Top :: Dd Z O1 I1) [ (show i, delete (P i) (mudPs n)) | i <- [1..n] ], mudPs m )
   in findNumberWith (const $ const cuddMudScnInit, SMCDEL.Symbolic.S5_CUDD.evalViaDd) n m
 
 findNumberTrans :: Int -> Int -> Int
