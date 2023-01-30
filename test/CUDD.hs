@@ -36,14 +36,14 @@ main = do
 
 testRestrictlaw :: MyHaskCUDD.Manager -> [Prp] -> BF -> BF -> [Bool]
 testRestrictlaw mgr v (BF a) (BF b) =
-  [ imp mgr (S5_CUDD.boolDdOf mgr b) (equ mgr (restrictLaw mgr v (S5_CUDD.boolDdOf mgr a) (S5_CUDD.boolDdOf mgr b)) (S5_CUDD.boolDdOf mgr a)) == (top mgr :: Dd B F1 S1)
-  , imp mgr (S5_CUDD.boolDdOf mgr b) (equ mgr (restrictLaw mgr v (S5_CUDD.boolDdOf mgr a) (S5_CUDD.boolDdOf mgr b)) (S5_CUDD.boolDdOf mgr a)) == (top mgr :: Dd B F0 S1)
-  , imp mgr (S5_CUDD.boolDdOf mgr b) (equ mgr (restrictLaw mgr v (S5_CUDD.boolDdOf mgr a) (S5_CUDD.boolDdOf mgr b)) (S5_CUDD.boolDdOf mgr a)) == (top mgr :: Dd B F1 S0)
-  , imp mgr (S5_CUDD.boolDdOf mgr b) (equ mgr (restrictLaw mgr v (S5_CUDD.boolDdOf mgr a) (S5_CUDD.boolDdOf mgr b)) (S5_CUDD.boolDdOf mgr a)) == (top mgr :: Dd B F0 S0)
-  , imp mgr (S5_CUDD.boolDdOf mgr b) (equ mgr (restrictLaw mgr v (S5_CUDD.boolDdOf mgr a) (S5_CUDD.boolDdOf mgr b)) (S5_CUDD.boolDdOf mgr a)) == (top mgr :: Dd Z F1 S1)
-  , imp mgr (S5_CUDD.boolDdOf mgr b) (equ mgr (restrictLaw mgr v (S5_CUDD.boolDdOf mgr a) (S5_CUDD.boolDdOf mgr b)) (S5_CUDD.boolDdOf mgr a)) == (top mgr :: Dd Z F0 S1)
-  , imp mgr (S5_CUDD.boolDdOf mgr b) (equ mgr (restrictLaw mgr v (S5_CUDD.boolDdOf mgr a) (S5_CUDD.boolDdOf mgr b)) (S5_CUDD.boolDdOf mgr a)) == (top mgr :: Dd Z F1 S0)
-  , imp mgr (S5_CUDD.boolDdOf mgr b) (equ mgr (restrictLaw mgr v (S5_CUDD.boolDdOf mgr a) (S5_CUDD.boolDdOf mgr b)) (S5_CUDD.boolDdOf mgr a)) == (top mgr :: Dd Z F0 S0)
+  [ imp mgr (S5_CUDD.boolDdOf mgr b) (equ mgr (restrictLaw mgr v (S5_CUDD.boolDdOf mgr a) (S5_CUDD.boolDdOf mgr b)) (S5_CUDD.boolDdOf mgr a)) == (top mgr :: Dd B O1 I1)
+  , imp mgr (S5_CUDD.boolDdOf mgr b) (equ mgr (restrictLaw mgr v (S5_CUDD.boolDdOf mgr a) (S5_CUDD.boolDdOf mgr b)) (S5_CUDD.boolDdOf mgr a)) == (top mgr :: Dd B O0 I1)
+  , imp mgr (S5_CUDD.boolDdOf mgr b) (equ mgr (restrictLaw mgr v (S5_CUDD.boolDdOf mgr a) (S5_CUDD.boolDdOf mgr b)) (S5_CUDD.boolDdOf mgr a)) == (top mgr :: Dd B O1 I0)
+  , imp mgr (S5_CUDD.boolDdOf mgr b) (equ mgr (restrictLaw mgr v (S5_CUDD.boolDdOf mgr a) (S5_CUDD.boolDdOf mgr b)) (S5_CUDD.boolDdOf mgr a)) == (top mgr :: Dd B O0 I0)
+  , imp mgr (S5_CUDD.boolDdOf mgr b) (equ mgr (restrictLaw mgr v (S5_CUDD.boolDdOf mgr a) (S5_CUDD.boolDdOf mgr b)) (S5_CUDD.boolDdOf mgr a)) == (top mgr :: Dd Z O1 I1)
+  , imp mgr (S5_CUDD.boolDdOf mgr b) (equ mgr (restrictLaw mgr v (S5_CUDD.boolDdOf mgr a) (S5_CUDD.boolDdOf mgr b)) (S5_CUDD.boolDdOf mgr a)) == (top mgr :: Dd Z O0 I1)
+  , imp mgr (S5_CUDD.boolDdOf mgr b) (equ mgr (restrictLaw mgr v (S5_CUDD.boolDdOf mgr a) (S5_CUDD.boolDdOf mgr b)) (S5_CUDD.boolDdOf mgr a)) == (top mgr :: Dd Z O1 I0)
+  , imp mgr (S5_CUDD.boolDdOf mgr b) (equ mgr (restrictLaw mgr v (S5_CUDD.boolDdOf mgr a) (S5_CUDD.boolDdOf mgr b)) (S5_CUDD.boolDdOf mgr a)) == (top mgr :: Dd Z O0 I0)
   ]
 
 -- * S5_CUDD
@@ -60,14 +60,14 @@ myDefaultObservables = [("1", [P 1 .. P 4]), ("2", [P 1, P 2]), ("3", []), ("4",
 ddKindTest :: MyHaskCUDD.Manager -> SimplifiedForm -> [Bool]
 ddKindTest mgr (SF f) =
   [ S5.evalViaBdd (myKnScac, defaultVocabulary) f
-  , S5_CUDD.evalViaDd ((myKnS mgr, defaultVocabulary) :: S5_CUDD.KnowScene B F1 S1) f
-  , S5_CUDD.evalViaDd ((myKnS mgr, defaultVocabulary) :: S5_CUDD.KnowScene B F1 S0) f
-  , S5_CUDD.evalViaDd ((myKnS mgr, defaultVocabulary) :: S5_CUDD.KnowScene B F0 S1) f
-  , S5_CUDD.evalViaDd ((myKnS mgr, defaultVocabulary) :: S5_CUDD.KnowScene B F0 S0) f
-  , S5_CUDD.evalViaDd ((myKnS mgr, defaultVocabulary) :: S5_CUDD.KnowScene Z F1 S1) f
-  , S5_CUDD.evalViaDd ((myKnS mgr, defaultVocabulary) :: S5_CUDD.KnowScene Z F1 S0) f
-  , S5_CUDD.evalViaDd ((myKnS mgr, defaultVocabulary) :: S5_CUDD.KnowScene Z F0 S1) f
-  , S5_CUDD.evalViaDd ((myKnS mgr, defaultVocabulary) :: S5_CUDD.KnowScene Z F0 S0) f
+  , S5_CUDD.evalViaDd ((myKnS mgr, defaultVocabulary) :: S5_CUDD.KnowScene B O1 I1) f
+  , S5_CUDD.evalViaDd ((myKnS mgr, defaultVocabulary) :: S5_CUDD.KnowScene B O1 I0) f
+  , S5_CUDD.evalViaDd ((myKnS mgr, defaultVocabulary) :: S5_CUDD.KnowScene B O0 I1) f
+  , S5_CUDD.evalViaDd ((myKnS mgr, defaultVocabulary) :: S5_CUDD.KnowScene B O0 I0) f
+  , S5_CUDD.evalViaDd ((myKnS mgr, defaultVocabulary) :: S5_CUDD.KnowScene Z O1 I1) f
+  , S5_CUDD.evalViaDd ((myKnS mgr, defaultVocabulary) :: S5_CUDD.KnowScene Z O1 I0) f
+  , S5_CUDD.evalViaDd ((myKnS mgr, defaultVocabulary) :: S5_CUDD.KnowScene Z O0 I1) f
+  , S5_CUDD.evalViaDd ((myKnS mgr, defaultVocabulary) :: S5_CUDD.KnowScene Z O0 I0) f
   ]
 
 -- * K_CUDD
@@ -89,14 +89,14 @@ myObsLaws formToDd = M.fromList
 ddKindTestK :: MyHaskCUDD.Manager -> SimplifiedForm -> [Bool]
 ddKindTestK mgr (SF f) =
   [ K.evalViaBdd (myBlScac, defaultVocabulary) f
-  , K_CUDD.evalViaDd ((myBlS mgr, defaultVocabulary) :: K_CUDD.BelScene B F1 S1) f
-  , K_CUDD.evalViaDd ((myBlS mgr, defaultVocabulary) :: K_CUDD.BelScene B F1 S0) f
-  , K_CUDD.evalViaDd ((myBlS mgr, defaultVocabulary) :: K_CUDD.BelScene B F0 S1) f
-  , K_CUDD.evalViaDd ((myBlS mgr, defaultVocabulary) :: K_CUDD.BelScene B F0 S0) f
-  , K_CUDD.evalViaDd ((myBlS mgr, defaultVocabulary) :: K_CUDD.BelScene Z F1 S1) f
-  , K_CUDD.evalViaDd ((myBlS mgr, defaultVocabulary) :: K_CUDD.BelScene Z F1 S0) f
-  , K_CUDD.evalViaDd ((myBlS mgr, defaultVocabulary) :: K_CUDD.BelScene Z F0 S1) f
-  , K_CUDD.evalViaDd ((myBlS mgr, defaultVocabulary) :: K_CUDD.BelScene Z F0 S0) f
+  , K_CUDD.evalViaDd ((myBlS mgr, defaultVocabulary) :: K_CUDD.BelScene B O1 I1) f
+  , K_CUDD.evalViaDd ((myBlS mgr, defaultVocabulary) :: K_CUDD.BelScene B O1 I0) f
+  , K_CUDD.evalViaDd ((myBlS mgr, defaultVocabulary) :: K_CUDD.BelScene B O0 I1) f
+  , K_CUDD.evalViaDd ((myBlS mgr, defaultVocabulary) :: K_CUDD.BelScene B O0 I0) f
+  , K_CUDD.evalViaDd ((myBlS mgr, defaultVocabulary) :: K_CUDD.BelScene Z O1 I1) f
+  , K_CUDD.evalViaDd ((myBlS mgr, defaultVocabulary) :: K_CUDD.BelScene Z O1 I0) f
+  , K_CUDD.evalViaDd ((myBlS mgr, defaultVocabulary) :: K_CUDD.BelScene Z O0 I1) f
+  , K_CUDD.evalViaDd ((myBlS mgr, defaultVocabulary) :: K_CUDD.BelScene Z O0 I0) f
   ]
 
 -- * Ki_CUDD
@@ -114,12 +114,12 @@ myBlSKi mgr = Ki_CUDD.BlS mgr defaultVocabulary (S5_CUDD.boolDdOf mgr Top) myObs
 
 ddKindTestKi :: MyHaskCUDD.Manager -> SimplifiedForm -> [Bool]
 ddKindTestKi mgr (SF f) =
-  [ Ki_CUDD.evalViaDd ((myBlSKi mgr, defaultVocabulary) :: Ki_CUDD.BelScene B F1 S1) f
-  , Ki_CUDD.evalViaDd ((myBlSKi mgr, defaultVocabulary) :: Ki_CUDD.BelScene B F1 S0) f
-  , Ki_CUDD.evalViaDd ((myBlSKi mgr, defaultVocabulary) :: Ki_CUDD.BelScene B F0 S1) f
-  , Ki_CUDD.evalViaDd ((myBlSKi mgr, defaultVocabulary) :: Ki_CUDD.BelScene B F0 S0) f
-  , Ki_CUDD.evalViaDd ((myBlSKi mgr, defaultVocabulary) :: Ki_CUDD.BelScene Z F1 S1) f
-  , Ki_CUDD.evalViaDd ((myBlSKi mgr, defaultVocabulary) :: Ki_CUDD.BelScene Z F1 S0) f
-  , Ki_CUDD.evalViaDd ((myBlSKi mgr, defaultVocabulary) :: Ki_CUDD.BelScene Z F0 S1) f
-  , Ki_CUDD.evalViaDd ((myBlSKi mgr, defaultVocabulary) :: Ki_CUDD.BelScene Z F0 S0) f
+  [ Ki_CUDD.evalViaDd ((myBlSKi mgr, defaultVocabulary) :: Ki_CUDD.BelScene B O1 I1) f
+  , Ki_CUDD.evalViaDd ((myBlSKi mgr, defaultVocabulary) :: Ki_CUDD.BelScene B O1 I0) f
+  , Ki_CUDD.evalViaDd ((myBlSKi mgr, defaultVocabulary) :: Ki_CUDD.BelScene B O0 I1) f
+  , Ki_CUDD.evalViaDd ((myBlSKi mgr, defaultVocabulary) :: Ki_CUDD.BelScene B O0 I0) f
+  , Ki_CUDD.evalViaDd ((myBlSKi mgr, defaultVocabulary) :: Ki_CUDD.BelScene Z O1 I1) f
+  , Ki_CUDD.evalViaDd ((myBlSKi mgr, defaultVocabulary) :: Ki_CUDD.BelScene Z O1 I0) f
+  , Ki_CUDD.evalViaDd ((myBlSKi mgr, defaultVocabulary) :: Ki_CUDD.BelScene Z O0 I1) f
+  , Ki_CUDD.evalViaDd ((myBlSKi mgr, defaultVocabulary) :: Ki_CUDD.BelScene Z O0 I0) f
   ]

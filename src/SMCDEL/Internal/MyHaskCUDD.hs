@@ -9,9 +9,9 @@
 
 module SMCDEL.Internal.MyHaskCUDD (
   -- * Types
-  Dd, B, Z, F1, F0, S1, S0, Manager,
+  Dd, B, Z, O1, O0, I1, I0, Manager,
   -- * conversion functions
-  toB, toZ, toF1, toF0, toS1, toS0,
+  toB, toZ, toO1, toO0, toI1, toI0,
   -- * Building and manipulating Dds
   top, bot, var, --base elements
   neg, swapChildNodes, --outer/output and inner/input negation
@@ -44,24 +44,28 @@ import Data.Maybe (fromJust)
 
 
 -- | A Binary Decision diagram with any of the five node eliminations.
--- Note that the constrains represent what is left specified instead of what is eliminated.
 newtype Dd x y z = ToDd Cudd.Cudd.DdNode deriving stock (Eq,Show)
+
 -- | The first field indicates whether don't care nodes (B, traditional BDD rule) are removed
 -- or those where "Then" leads to the 0 leaf node (Z, traditional ZDD rule).
 data B
 data Z
--- | The second field represents whether the 1 set (F1) of a given boolean function is represented or its complement, the 0 set (F0).
--- | Because the traditional BDD rule is symetric, complementing it does not change the size of the structure.
--- | Because the traditional ZDD rule is asymmetric towards the leaf nodes (and the edge types), complementing it can change the structure drastically.
+-- | The second field represents whether the 1 set (O1) of a given boolean function is represented or its complement, the 0 set (O0).
+-- Because the traditional BDD rule is symetric, complementing it does not change the size of the structure.
+-- Because the traditional ZDD rule is asymmetric towards the leaf nodes (and the edge types), complementing it can change the structure drastically.
+-- Applying (output) negation on a traditional ZDD structure corresponds to changing the elimination Then 0 to Then 1.
 -- When representing a model (not) complementing the stored information is similar to either storing all possible states or all impossible states.
-data F1
-data F0
--- | The third field represents whether each variable is interpreted as its complement (S0) or not (S1). Conversion between S1 and S0 is done by swapping the children of all nodes.
--- | Because the traditional BDD rule is symetric, flipping its child edges does not change the size of the structure.
--- | Because the traditional ZDD rule is asymmetric towards the edge types (and the leaf nodes), complementing it can change the structure drastically.
--- Traditional ZDD is in S1, the elimination rule targeting THEN -> 0 changes to ELSE -> 0 when converting to S0.
-data S1
-data S0
+data O1
+data O0
+-- | The third field represents whether each variable is interpreted as its complement (I0) or not (I1).
+-- Conversion between I1 and I0 is done by swapping the children of all nodes.
+-- This changes the result of any Input assignment to the result of the complement Input assignment, and vice versa.
+-- Because the traditional BDD rule is symetric, flipping its child edges does not change the size of the structure.
+-- Because the traditional ZDD rule is asymmetric towards the edge types (and the leaf nodes), complementing it can change the structure drastically.
+-- Applying input negation on a traditional ZDD structure corresponds to changing the elimination Then 0 to Else 0.
+-- Applying both output and input negation results in the dual of the original stored boolean function.
+data I1
+data I0
 
 -- | Collection of all contraints, in order to easily apply them when needed.
 type DdCtx a b c = (DdTFS a b c, DdTF a b, DdT a, DdF a b, DdS a b c)
@@ -84,53 +88,53 @@ class DdTFS a b c  where
     var :: Cudd.Cudd.DdManager -> Int -> Dd a b c
     restrict :: Cudd.Cudd.DdManager -> Dd a b c -> (Int, Bool) -> Dd a b c
 
-instance DdTFS B F1 S1 where
+instance DdTFS B O1 I1 where
   bot mgr = ToDd (Cudd.Cudd.cuddReadLogicZero mgr)
   top mgr = ToDd (Cudd.Cudd.cuddReadOne mgr)
   var mgr n = ToDd (Cudd.Cudd.cuddBddIthVar mgr n)
   restrict mgr bz@(ToDd zb) (n,bit) = ToDd $ Cudd.Cudd.cuddBddLICompaction mgr zb res where
     ToDd res = if bit then var mgr n `asTypeOf` bz else neg mgr (var mgr n `asTypeOf` bz)
 
-instance DdTFS B F1 S0 where
+instance DdTFS B O1 I0 where
   bot mgr = ToDd (Cudd.Cudd.cuddReadLogicZero mgr)
   top mgr = ToDd (Cudd.Cudd.cuddReadOne mgr)
   var mgr n = neg mgr $ ToDd (Cudd.Cudd.cuddBddIthVar mgr n)
   restrict mgr bz@(ToDd zb) (n,bit) = ToDd $ Cudd.Cudd.cuddBddLICompaction mgr zb res where
     ToDd res = if bit then var mgr n `asTypeOf` bz else neg mgr (var mgr n `asTypeOf` bz) --double negation to make the restrict S independent
 
-instance DdTFS B F0 S1 where
+instance DdTFS B O0 I1 where
   bot mgr = ToDd (Cudd.Cudd.cuddReadOne mgr)
   top mgr = ToDd (Cudd.Cudd.cuddReadLogicZero mgr)
   var mgr n = neg mgr $ ToDd (Cudd.Cudd.cuddBddIthVar mgr n)
   restrict mgr bz@(ToDd zb) (n,bit) = ToDd $ Cudd.Cudd.cuddBddLICompaction mgr zb res where
     ToDd res = if bit then neg mgr (var mgr n `asTypeOf` bz) else var mgr n `asTypeOf` bz
 
-instance DdTFS B F0 S0 where
+instance DdTFS B O0 I0 where
   bot mgr = ToDd (Cudd.Cudd.cuddReadOne mgr)
   top mgr = ToDd (Cudd.Cudd.cuddReadLogicZero mgr)
   var mgr n = neg mgr $ ToDd (Cudd.Cudd.cuddBddIthVar mgr n)
   restrict mgr bz@(ToDd zb) (n,bit) = ToDd $ Cudd.Cudd.cuddBddLICompaction mgr zb res where
     ToDd res = if bit then neg mgr (var mgr n `asTypeOf` bz) else var mgr n `asTypeOf` bz
 
-instance DdTFS Z F1 S1 where
+instance DdTFS Z O1 I1 where
   bot mgr = ToDd (Cudd.Cudd.cuddZddReadZero mgr)
   top mgr = ToDd (Cudd.Cudd.cuddZddReadOne mgr)
   var mgr n = ToDd (Cudd.Cudd.cuddZddIthVar mgr n)
   restrict mgr zdd (n,bit) = if bit then dis mgr (sub1 mgr zdd n)(swap mgr (sub1 mgr zdd n) n) else dis mgr (sub0 mgr zdd n)(swap mgr (sub0 mgr zdd n) n)
 
-instance DdTFS Z F1 S0 where
+instance DdTFS Z O1 I0 where
   bot mgr = ToDd (Cudd.Cudd.cuddZddReadZero mgr)
   top mgr = ToDd (Cudd.Cudd.cuddZddReadOne mgr)
   var mgr n = neg mgr $ ToDd (Cudd.Cudd.cuddZddIthVar mgr n)
   restrict mgr zdd (n,bit) = if bit then dis mgr (sub0 mgr zdd n)(swap mgr (sub0 mgr zdd n) n) else dis mgr (sub1 mgr zdd n)(swap mgr (sub1 mgr zdd n) n)
 
-instance DdTFS Z F0 S1 where
+instance DdTFS Z O0 I1 where
   bot mgr = ToDd (Cudd.Cudd.cuddZddReadOne mgr)
   top mgr = ToDd (Cudd.Cudd.cuddZddReadZero mgr)
   var mgr n = neg mgr $ ToDd (Cudd.Cudd.cuddZddIthVar mgr n)
   restrict mgr zdd (n,bit) = if bit then con mgr (sub1 mgr zdd n)(swap mgr (sub1 mgr zdd n) n) else con mgr (sub0 mgr zdd n)(swap mgr (sub0 mgr zdd n) n)
 
-instance DdTFS Z F0 S0 where
+instance DdTFS Z O0 I0 where
   bot mgr = ToDd (Cudd.Cudd.cuddZddReadOne mgr)
   top mgr = ToDd (Cudd.Cudd.cuddZddReadZero mgr)
   var mgr n = ToDd (Cudd.Cudd.cuddZddIthVar mgr n)
@@ -202,7 +206,7 @@ instance DdT Z where
   writeToDot mgr (ToDd zdd) = Cudd.Cudd.cuddZddToDot mgr zdd
 
 
--- | functions where B/Z and F1/0 need to be specified
+-- | functions where B/Z and O1/0 need to be specified
 class DdTF a b where
   con :: DdCtx a b c => Cudd.Cudd.DdManager -> Dd a b c -> Dd a b c -> Dd a b c
   dis :: DdCtx a b c => Cudd.Cudd.DdManager -> Dd a b c -> Dd a b c -> Dd a b c
@@ -215,7 +219,7 @@ class DdTF a b where
   existsSet :: DdCtx a b c => Cudd.Cudd.DdManager -> [Int] -> Dd a b c -> Dd a b c
   forallSet :: DdCtx a b c => Cudd.Cudd.DdManager -> [Int] -> Dd a b c -> Dd a b c
 
-instance DdTF Z F1 where
+instance DdTF Z O1 where
   con mgr (ToDd z1) (ToDd z2) = ToDd (Cudd.Cudd.cuddZddIntersect mgr z1 z2)
   dis mgr (ToDd z1) (ToDd z2) = ToDd (Cudd.Cudd.cuddZddUnion mgr z1 z2)
   exists mgr n z = dis mgr (restrict mgr z (n, False)) (restrict mgr z (n, True))
@@ -227,7 +231,7 @@ instance DdTF Z F1 where
   forallSet mgr [n] z = forall mgr n z
   forallSet mgr (n:ns) z = con mgr (restrict mgr (forallSet mgr ns z) (n, False)) (restrict mgr (forallSet mgr ns z) (n, True))
 
-instance DdTF Z F0 where
+instance DdTF Z O0 where
   con mgr (ToDd z1) (ToDd z2) = ToDd (Cudd.Cudd.cuddZddUnion mgr z1 z2)
   dis mgr (ToDd z1) (ToDd z2) = ToDd (Cudd.Cudd.cuddZddIntersect mgr z1 z2)
   exists mgr n z = dis mgr (restrict mgr z (n, False)) (restrict mgr z (n, True))
@@ -239,7 +243,7 @@ instance DdTF Z F0 where
   forallSet mgr (n:ns) z = con mgr (restrict mgr (forallSet mgr ns z) (n, False)) (restrict mgr (forallSet mgr ns z) (n, True))
   forallSet _ [] z = z
 
-instance DdTF B F1 where
+instance DdTF B O1 where
   con mgr (ToDd b1) (ToDd b2) = ToDd $ Cudd.Cudd.cuddBddAnd mgr b1 b2
   dis mgr (ToDd b1) (ToDd b2) = ToDd $ Cudd.Cudd.cuddBddOr mgr b1 b2
   xor mgr (ToDd b1) (ToDd b2) = ToDd $ Cudd.Cudd.cuddBddXor mgr b1 b2
@@ -248,7 +252,7 @@ instance DdTF B F1 where
   existsSet mgr n (ToDd b) = ToDd $ Cudd.Cudd.cuddBddExistAbstract mgr b ( Cudd.Cudd.cuddIndicesToCube mgr n)
   forallSet mgr n (ToDd b) = ToDd $ Cudd.Cudd.cuddBddUnivAbstract mgr b ( Cudd.Cudd.cuddIndicesToCube mgr n)
 
-instance DdTF B F0 where
+instance DdTF B O0 where
   con mgr (ToDd b1) (ToDd b2) = ToDd $ Cudd.Cudd.cuddBddOr mgr b1 b2
   dis mgr (ToDd b1) (ToDd b2) = ToDd $ Cudd.Cudd.cuddBddAnd mgr b1 b2
   xor mgr (ToDd b1) (ToDd b2) = neg mgr $ ToDd $ Cudd.Cudd.cuddBddXor mgr b1 b2
@@ -257,34 +261,34 @@ instance DdTF B F0 where
   existsSet mgr n (ToDd b) = ToDd $ Cudd.Cudd.cuddBddUnivAbstract mgr b ( Cudd.Cudd.cuddIndicesToCube mgr n)
   forallSet mgr n (ToDd b) = ToDd $ Cudd.Cudd.cuddBddExistAbstract mgr b ( Cudd.Cudd.cuddIndicesToCube mgr n)
 
--- | functions where only F1/0 needs to specified
+-- | functions where only O1/0 needs to specified
 class DdF a b where
-    toF0 :: (DdCtx a F0 c) => Cudd.Cudd.DdManager -> Dd a b c -> Dd a F0 c
-    toF1 :: (DdCtx a F1 c) => Cudd.Cudd.DdManager -> Dd a b c -> Dd a F1 c
+    toO0 :: (DdCtx a O0 c) => Cudd.Cudd.DdManager -> Dd a b c -> Dd a O0 c
+    toO1 :: (DdCtx a O1 c) => Cudd.Cudd.DdManager -> Dd a b c -> Dd a O1 c
     ifthenelse :: DdCtx a b c  => Cudd.Cudd.DdManager -> Dd a b c -> Dd a b c -> Dd a b c -> Dd a b c
 
-instance DdF a F1 where
-  toF0 mgr (ToDd d :: Dd a b c) = neg mgr (ToDd d :: Dd a F0 c)
-  toF1 _ d = d
+instance DdF a O1 where
+  toO0 mgr (ToDd d :: Dd a b c) = neg mgr (ToDd d :: Dd a O0 c)
+  toO1 _ d = d
   ifthenelse mgr d1 d2 d3 = ite mgr d1 d2 d3
 
-instance DdF a F0 where
-  toF0 _ d = d
-  toF1 mgr (ToDd d :: Dd a b c) = neg mgr (ToDd d :: Dd a F1 c)
+instance DdF a O0 where
+  toO0 _ d = d
+  toO1 mgr (ToDd d :: Dd a b c) = neg mgr (ToDd d :: Dd a O1 c)
   ifthenelse mgr d1 d2 d3 = ite mgr d1 d3 d2
 
--- | functions where only S1/0 needs to specified
+-- | functions where only I1/0 needs to specified
 class DdS a b c where
-    toS0 :: (DdCtx a b S0) => Cudd.Cudd.DdManager -> Dd a b c -> [Int] -> Dd a b S0
-    toS1 :: (DdCtx a b S1) => Cudd.Cudd.DdManager -> Dd a b c -> [Int] -> Dd a b S1
+    toI0 :: (DdCtx a b I0) => Cudd.Cudd.DdManager -> Dd a b c -> [Int] -> Dd a b I0
+    toI1 :: (DdCtx a b I1) => Cudd.Cudd.DdManager -> Dd a b c -> [Int] -> Dd a b I1
 
-instance DdS a b S1 where
-  toS0 mgr (ToDd d :: Dd a b c) context = swapChildNodes mgr (ToDd d :: Dd a b S0) (map fromEnum context)
-  toS1 _ d _ = d
+instance DdS a b I1 where
+  toI0 mgr (ToDd d :: Dd a b c) context = swapChildNodes mgr (ToDd d :: Dd a b I0) (map fromEnum context)
+  toI1 _ d _ = d
 
-instance DdS a b S0 where
-  toS0 _ d _ = d
-  toS1 mgr (ToDd d :: Dd a b c) context = swapChildNodes mgr (ToDd d :: Dd a b S1) (map fromEnum context)
+instance DdS a b I0 where
+  toI0 _ d _ = d
+  toI1 mgr (ToDd d :: Dd a b c) context = swapChildNodes mgr (ToDd d :: Dd a b I1) (map fromEnum context)
 
 -- | functions where no specification is needed.
 -- todo add these under the general class, instead of them being standalone functions?

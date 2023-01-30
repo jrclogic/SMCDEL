@@ -25,7 +25,8 @@ genDcSizeCudd n m = do
 gatherSizeData :: [Int] -> [Int] -> IO ()
 gatherSizeData ns ms = do
   putStrLn $ "Running DC benchmark for ns=" ++ show ns ++ " and ms=" ++ show ms ++ " and writing results to dining.dat ..."
-  writeFile "dining.dat" $ firstLine ++ "\n"
+  writeFile "dining.dat" $
+    "Note that these results are formulated/grouped by their elimination rule labels, and not their Input/Output complement labels as we use in our program. The labels used in our program translate to their elimination rule equivalence as follows: B O1 I1 -> EQ (nodes with equal children are eliminated), Z O1 I1 -> T0 (nodes with THEN edges pointing towards 0 leaf node are removed), Z O1 I0 -> E0, Z O0 I1 -> T1, Z O1 I0 -> E1.\n\n" ++ firstLine ++ "\n"
   mapM_ linesFor cases
   putStrLn "Done."
   where
@@ -36,11 +37,11 @@ gatherSizeData ns ms = do
     firstLine = intercalate "\t" $ ["n","m","round"] ++ map fst variants
     variants =
       -- Note: No CacBdd "BDD" here.
-      [ ("BDDc",  genDcSizeCudd @B @F1 @S1)
-      , ("ZF1S1", genDcSizeCudd @Z @F1 @S1)
-      , ("ZF1S0", genDcSizeCudd @Z @F1 @S0)
-      , ("ZF0S1", genDcSizeCudd @Z @F0 @S1)
-      , ("ZF0S0", genDcSizeCudd @Z @F0 @S0)
+      [ ("BDDc",  genDcSizeCudd @B @O1 @I1)
+      , ("ZO1I1", genDcSizeCudd @Z @O1 @I1)
+      , ("ZO1I0", genDcSizeCudd @Z @O1 @I0)
+      , ("ZO0I1", genDcSizeCudd @Z @O0 @I1)
+      , ("ZO0I0", genDcSizeCudd @Z @O0 @I0)
       ]
     linesFor (n,m) = do
       putStrLn $ "Running for (n,m) = " ++ show (n,m)
