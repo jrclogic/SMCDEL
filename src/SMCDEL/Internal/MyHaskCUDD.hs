@@ -12,6 +12,7 @@ module SMCDEL.Internal.MyHaskCUDD (
   Dd, B, Z, O1, O0, I1, I0, Manager,
   -- * conversion functions
   toB, toZ, toO1, toO0, toI1, toI0,
+  Convert, convertToZDD,
   -- * Building and manipulating Dds
   top, bot, var, --base elements
   neg, swapChildNodes, --outer/output and inner/input negation
@@ -263,9 +264,9 @@ instance DdTF B O0 where
 
 -- | functions where only O1/0 needs to specified
 class DdF a b where
-    toO0 :: (DdCtx a O0 c) => Cudd.Cudd.DdManager -> Dd a b c -> Dd a O0 c
-    toO1 :: (DdCtx a O1 c) => Cudd.Cudd.DdManager -> Dd a b c -> Dd a O1 c
-    ifthenelse :: DdCtx a b c  => Cudd.Cudd.DdManager -> Dd a b c -> Dd a b c -> Dd a b c -> Dd a b c
+  toO0 :: (DdCtx a O0 c) => Cudd.Cudd.DdManager -> Dd a b c -> Dd a O0 c
+  toO1 :: (DdCtx a O1 c) => Cudd.Cudd.DdManager -> Dd a b c -> Dd a O1 c
+  ifthenelse :: DdCtx a b c  => Cudd.Cudd.DdManager -> Dd a b c -> Dd a b c -> Dd a b c -> Dd a b c
 
 instance DdF a O1 where
   toO0 mgr (ToDd d :: Dd a b c) = neg mgr (ToDd d :: Dd a O0 c)
@@ -279,16 +280,25 @@ instance DdF a O0 where
 
 -- | functions where only I1/0 needs to specified
 class DdS a b c where
-    toI0 :: (DdCtx a b I0) => Cudd.Cudd.DdManager -> Dd a b c -> [Int] -> Dd a b I0
-    toI1 :: (DdCtx a b I1) => Cudd.Cudd.DdManager -> Dd a b c -> [Int] -> Dd a b I1
+  toI0 :: (DdCtx a b I0) => Cudd.Cudd.DdManager -> [Int] -> Dd a b c -> Dd a b I0
+  toI1 :: (DdCtx a b I1) => Cudd.Cudd.DdManager -> [Int] -> Dd a b c -> Dd a b I1
 
 instance DdS a b I1 where
-  toI0 mgr (ToDd d :: Dd a b c) context = swapChildNodes mgr (ToDd d :: Dd a b I0) (map fromEnum context)
-  toI1 _ d _ = d
+  toI0 mgr context (ToDd d :: Dd a b c) = swapChildNodes mgr (ToDd d :: Dd a b I0) (map fromEnum context)
+  toI1 _ _ d = d
 
 instance DdS a b I0 where
-  toI0 _ d _ = d
-  toI1 mgr (ToDd d :: Dd a b c) context = swapChildNodes mgr (ToDd d :: Dd a b I1) (map fromEnum context)
+  toI0 _ _ d = d
+  toI1 mgr context (ToDd d :: Dd a b c) = swapChildNodes mgr (ToDd d :: Dd a b I1) (map fromEnum context)
+
+-- | Convert a BDD to one of the four ZDD kinds.
+class (Convert b c) where
+  convertToZDD :: Cudd.Cudd.DdManager -> [Int] -> Dd B O1 I1 -> Dd Z b c
+
+instance Convert O1 I1 where convertToZDD mgr _       =                               toZ mgr
+instance Convert O1 I0 where convertToZDD mgr context = toI0 mgr context            . toZ mgr
+instance Convert O0 I1 where convertToZDD mgr _       =                    toO0 mgr . toZ mgr
+instance Convert O0 I0 where convertToZDD mgr context = toI0 mgr context . toO0 mgr . toZ mgr
 
 -- | functions where no specification is needed.
 -- todo add these under the general class, instead of them being standalone functions?
