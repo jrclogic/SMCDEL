@@ -37,7 +37,6 @@ module SMCDEL.Internal.MyHaskCUDD (
 import qualified Cudd.Cudd
 import System.IO.Unsafe ( unsafePerformIO )
 import System.IO.Temp ( withSystemTempDirectory )
-import SMCDEL.Language (Prp (P))
 import Control.Arrow ((***))
 import Data.List
 import Data.Maybe (fromJust)
@@ -318,7 +317,7 @@ restrictSet :: DdCtx a b c => Cudd.Cudd.DdManager -> Dd a b c -> [(Int, Bool)] -
 restrictSet mgr = foldl' (restrict mgr)
 
 -- | Restrict with a law. Note that the law is the second parameter!
-restrictLaw :: (DdCtx a b c) => Cudd.Cudd.DdManager -> [Prp] -> Dd a b c -> Dd a b c -> Dd a b c
+restrictLaw :: (DdCtx a b c) => Cudd.Cudd.DdManager -> [Int] -> Dd a b c -> Dd a b c -> Dd a b c
 restrictLaw mgr v d = loop (getDependentVars mgr v d) d where
   loop (n:ns) bdd law
     | law == top mgr = bdd -- the law completely covers the bdd thus all nodes are restricted out
@@ -342,7 +341,7 @@ restrictLawBDD mgr (ToDd b) (ToDd law) = ToDd $ Cudd.Cudd.cuddBddRestrict mgr b 
 -}
 
 -- | Relabel a DD with a function. Assumption: no int is mapped to itself by rF.
-relabelFun :: (DdCtx a b c) => Cudd.Cudd.DdManager -> [Prp] -> (Int -> Int) -> Dd a b c -> Dd a b c
+relabelFun :: (DdCtx a b c) => Cudd.Cudd.DdManager -> [Int] -> (Int -> Int) -> Dd a b c -> Dd a b c
 relabelFun mgr v rF dd = loop dd disjointListOfLists
   where
 
@@ -374,7 +373,7 @@ relabelFun mgr v rF dd = loop dd disjointListOfLists
   loop b [] = b
 
 -- | Relabel a DD with a list of pairs.
-relabelWith :: (DdCtx a b c) => Cudd.Cudd.DdManager -> [(Prp,Prp)] -> Dd a b c -> Dd a b c
+relabelWith :: (DdCtx a b c) => Cudd.Cudd.DdManager -> [(Int,Int)] -> Dd a b c -> Dd a b c
 relabelWith mgr r dd = loop dd disjointListOfLists where
   --get indexes of "overlapping" integers positions (integers in l2 that also occur in L1)
   --and use that to return the corresponding elements in a tuple
@@ -404,14 +403,25 @@ relabelWith mgr r dd = loop dd disjointListOfLists where
   listIntPairs = sort $ map (fromEnum *** fromEnum) $ filter (uncurry (/=)) r
   (listVars1,listVars2) = unzip listIntPairs
 
+-- | Simultaneous substitution.
+-- Implemented via `ifte` and `restrict`.
+substitSimul :: (DdCtx a b c) => Cudd.Cudd.DdManager -> [(Int, Dd a b c)] -> Dd a b c -> Dd a b c
+substitSimul _ [] dd = dd
+substitSimul mgr ((n, psi) : ns) dd = ifte psi ( recurs (restr dd (n, True))) (recurs (restr dd (n, False)))
+  where
+  recurs = substitSimul mgr ns
+  ifte = ifthenelse mgr
+  restr = restrict mgr
 
 -- * supporting functions
 
+-- FIXME: make this an IO function?
 returnDot :: DdCtx a b c => Cudd.Cudd.DdManager -> Dd a b c -> String
 returnDot mgr d = unsafePerformIO $ withSystemTempDirectory "smcdel" $ \tmpdir -> do
     writeToDot mgr d (tmpdir ++ "/temp.dot")
     readFile (tmpdir ++ "/temp.dot")
 
+-- TODO: remove this after changing makeManagerZ
 forceCheckDd :: DdCtx a b c => Cudd.Cudd.DdManager -> Dd a b c  -> String -- ugly fix to ensure evaluation of dd
 forceCheckDd mgr d = unsafePerformIO $! do
   withSystemTempDirectory "smcdel" $ \tmpdir -> do
@@ -429,19 +439,17 @@ size mgr (ToDd dd)
   | dd == Cudd.Cudd.cuddZddReadZero mgr = 0
   | otherwise = Cudd.Cudd.cuddDagSize dd
 
+-- | Given a DD and the maximum variable, calculate the sparsity of the encoded set of state.
 sparsity :: Cudd.Cudd.DdManager -> Dd a b c -> Int -> Double
 sparsity mgr (ToDd b) n = Cudd.Cudd.cuddCountMinterm mgr b n / (2 ** fromIntegral n)
 
 getSupport :: Cudd.Cudd.DdManager -> Dd a b c -> [Int]
-getSupport mgr (ToDd dd) = [ fst x | x <- biList, snd x]
-  where biList = zip [0..] $ Cudd.Cudd.cuddSupportIndex mgr dd
+getSupport mgr (ToDd dd) = [ n | (n,True) <- zip [0..] $ Cudd.Cudd.cuddSupportIndex mgr dd ]
 
--- support does not give the dependent variables for ZDDs, thus we need a more general function.
-getDependentVars :: (DdCtx a b c) => Cudd.Cudd.DdManager -> [Prp] -> Dd a b c -> [Int]
-getDependentVars mgr v dd = loop v []
-  where
-    loop ((P n):ns) r = if restrict mgr dd (n, True) == restrict mgr dd (n, False)  then loop ns r else loop ns (n:r)
-    loop [] r = r
+-- | Given the full vocabulary and a DD, return the list of variables that the DD depends on.
+-- Note that for ZDDs the support is not the same as the set of dependent variables.
+getDependentVars :: (DdCtx a b c) => Cudd.Cudd.DdManager -> [Int] -> Dd a b c -> [Int]
+getDependentVars mgr v dd = filter (\n -> restrict mgr dd (n, True) /= restrict mgr dd (n, False)) v
 
 -- * ZDD only functions
 
@@ -490,13 +498,3 @@ completeAss allvars ass =
 -- In particular this will include variables not in the BDD.
 allSatsWith :: (DdCtx B b c) => Cudd.Cudd.DdManager -> [Int] -> Dd B b c -> [Assignment]
 allSatsWith mgr allvars b = concatMap (completeAss allvars) (allSats mgr b)
-
--- | Simultaneous substitution.
--- Implemented via `ifte` and `restrict`.
-substitSimul :: (DdCtx a b c) => Cudd.Cudd.DdManager -> [(Int, Dd a b c)] -> Dd a b c -> Dd a b c
-substitSimul _ [] dd = dd
-substitSimul mgr ((n, psi) : ns) dd = ifte psi ( recurs (restr dd (n, True))) (recurs (restr dd (n, False)))
-  where
-  recurs = substitSimul mgr ns
-  ifte = ifthenelse mgr
-  restr = restrict mgr

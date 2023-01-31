@@ -3,6 +3,7 @@
 
 module SMCDEL.Symbolic.K_CUDD where
 
+import Data.Bifunctor
 import Data.Tagged
 
 import Control.Arrow (Arrow ((&&&)))
@@ -57,14 +58,13 @@ class TagDd t a b c where
 instance TagDd Dubbel a b c
 
 cpDd :: (DdCtx a b c) => Cudd.Cudd.DdManager -> [Prp] -> Dd a b c -> RelDD a b c
-cpDd mgr vocab b = Tagged $ relabelWith mgr (zip vocab (map cpP vocab)) b
+cpDd mgr vocab b = Tagged $ relabelWith mgr (zipWith (curry (bimap fromEnum fromEnum)) vocab (map cpP vocab)) b
 
 mvDd :: (DdCtx a b c) => Cudd.Cudd.DdManager -> [Prp] -> Dd a b c -> RelDD a b c
-mvDd mgr vocab b = Tagged $ relabelWith mgr (zip vocab (map mvP vocab)) b
+mvDd mgr vocab b = Tagged $ relabelWith mgr (zipWith (curry (bimap fromEnum fromEnum)) vocab (map mvP vocab)) b
 
 unmvDd :: (DdCtx a b c) => Cudd.Cudd.DdManager -> [Prp] -> RelDD a b c -> Dd a b c
-unmvDd mgr vocab (Tagged b) = relabelWith mgr (zip (map mvP vocab) vocab) b
-
+unmvDd mgr vocab (Tagged b) = relabelWith mgr (zipWith (curry (bimap fromEnum fromEnum)) (map mvP vocab) vocab) b
 
 propRel2dd :: (DdCtx a b c) => Cudd.Cudd.DdManager -> [Prp] -> M.Map KnState [KnState] -> RelDD a b c
 propRel2dd mgr props relation = pure $ disSet mgr (M.elems $ M.mapWithKey linkdd relation) where
@@ -308,7 +308,7 @@ instance DdCtx a b c => TexAble (MultipointedBelScene a b c) where
 
 cleanupObsLaw :: (DdCtx a b c) => BelScene a b c -> BelScene a b c
 cleanupObsLaw (BlS mgr vocab law obs, s) = (BlS mgr vocab law (M.map clean obs), s) where
-  clean reldd = restrictLaw mgr vocab <$> reldd <*> (con mgr <$> cpDd mgr vocab law <*> mvDd mgr vocab law)
+  clean reldd = restrictLaw mgr (map fromEnum vocab) <$> reldd <*> (con mgr <$> cpDd mgr vocab law <*> mvDd mgr vocab law)
 
 determinedVocabOf :: (DdCtx a b c) => BelStruct a b c -> [Prp]
 determinedVocabOf strct = filter (\p -> validViaDd strct (PrpF p) || validViaDd strct (Neg $ PrpF p)) (vocabOf strct)
@@ -318,7 +318,7 @@ nonobsVocabOf (BlS mgr vocab _law obs) = filter (`notElem` usedVars) vocab where
   usedVars =
     map unmvcpP
     $ sort
-    $ concatMap (map P . getDependentVars mgr vocab . untag . snd)
+    $ concatMap (map P . getDependentVars mgr (map fromEnum vocab) . untag . snd)
     $ M.toList obs
 
 withoutProps :: (DdCtx a b c) => [Prp] -> BelStruct a b c -> BelStruct a b c
@@ -394,11 +394,11 @@ shiftPrepare (BlS mgr props _ _) (Trf _ addprops addlaw changelaw eventObs) =
     shiftaddprops = map snd shiftrel
     -- apply the shifting to addlaw, changelaw and eventObs:
     addlawShifted    = replPsInF shiftrel addlaw
-    changelawShifted = M.map (relabelWith mgr shiftrel) changelaw
+    changelawShifted = M.map (relabelWith mgr (map (bimap fromEnum fromEnum) shiftrel)) changelaw
     -- to shift addObs we need shiftrel in the double vocabulary:
     shiftrelMVCP = sort $ zip (mv addprops) (mv shiftaddprops)
                        ++ zip (cp addprops) (cp shiftaddprops)
-    eventObsShifted  = M.map (fmap $ relabelWith mgr shiftrelMVCP) eventObs
+    eventObsShifted  = M.map (fmap $ relabelWith mgr (map (bimap fromEnum fromEnum) shiftrelMVCP)) eventObs
 
 
 instance (DdCtx a b c) => Update (BelScene a b c) (Event a b c) where
@@ -412,12 +412,14 @@ instance (DdCtx a b c) => Update (BelScene a b c) (Event a b c) where
     changeprops = M.keys changelaw
     copyrel = zip changeprops [(freshp $ props ++ addprops)..]
     copychangeprops = map snd copyrel
-    copyrelMVCP = sort $ zip (mv changeprops) (mv copychangeprops)
+    copyrelMVCP = map (bimap fromEnum fromEnum) $
+                  sort $ zip (mv changeprops) (mv copychangeprops)
                       ++ zip (cp changeprops) (cp copychangeprops)
     -- PART 3: actual transformation
     newprops = sort $ props ++ addprops ++ copychangeprops
-    newlaw = conSet mgr $ relabelWith mgr copyrel (con mgr law (ddOf bls addlaw))
-                    : [equ mgr (var mgr (fromEnum q)) (relabelWith mgr copyrel (changelaw ! q)) | q <- changeprops]
+    copyRelInt = map (bimap fromEnum fromEnum) copyrel
+    newlaw = conSet mgr $ relabelWith mgr copyRelInt (con mgr law (ddOf bls addlaw))
+                    : [equ mgr (var mgr (fromEnum q)) (relabelWith mgr copyRelInt (changelaw ! q)) | q <- changeprops]
     newobs = M.mapWithKey (\i oldobs -> con mgr <$> (relabelWith mgr copyrelMVCP <$> oldobs) <*> (addObs ! i)) odds
     news = sort $ concat
             [ s \\ changeprops
@@ -450,7 +452,7 @@ instance (DdCtx a b c) => Update (BelStruct a b c) (Transformer a b c) where
 -- todo test trfPost with addprops for dependentVars call, although it likely works
 trfPost :: (DdCtx a b c) => Event a b c -> Prp -> Dd a b c
 trfPost (Trf mgr addprops _ changelaw _, x) p
-  | p `elem` M.keys changelaw = restrictLaw mgr addprops (changelaw ! p) (boolDDoutof mgr x addprops)
+  | p `elem` M.keys changelaw = restrictLaw mgr (map fromEnum addprops) (changelaw ! p) (boolDDoutof mgr x addprops)
   | otherwise                 = boolDdOf mgr $ PrpF p
 
 reduce :: (DdCtx a b c) => Event a b c -> Form -> Maybe Form
