@@ -135,18 +135,18 @@ boolDDoutof mgr ps qs = conSet mgr $
   [ neg mgr $ var mgr n | (P n) <- qs \\ ps ]
 
 ddToForm :: (DdCtx a b c) => Cudd.Cudd.DdManager -> [Prp] -> Dd a b c -> Form
-ddToForm mgr v dd = unravel mgr dd (getDependentVars mgr v dd)
+ddToForm mgr v dd = unravel mgr dd (map P $ getDependentVars mgr (map fromEnum v) dd)
 
-unravel :: (DdCtx a b c) => Cudd.Cudd.DdManager -> Dd a b c -> [Int] -> Form
+unravel :: (DdCtx a b c) => Cudd.Cudd.DdManager -> Dd a b c -> [Prp] -> Form
 unravel _ _ [] = Top
-unravel mgr dd [n] = Disj [ result True, result False] where
+unravel mgr dd [P n] = Disj [ result True, result False] where
   result True
     | restrict mgr dd (n, True) == bot mgr = Bot
     | otherwise = PrpF (P n)
   result False
     | restrict mgr dd (n, False) == bot mgr = Bot
     | otherwise  = Neg $ PrpF (P n)
-unravel mgr dd (n:ns) = Disj [ result True, result False] where
+unravel mgr dd (P n:ns) = Disj [ result True, result False] where
   result True
     | restrict mgr dd (n, True) == top mgr = PrpF (P n)
     | restrict mgr dd (n, True) == bot mgr = Bot

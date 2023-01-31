@@ -3,6 +3,7 @@
 
 module SMCDEL.Symbolic.Ki_CUDD where
 
+import Data.Bifunctor
 import Data.Tagged
 
 import Control.Arrow (Arrow ((&&&)))
@@ -24,8 +25,8 @@ mvP m (P n) = P  ((2*n) + m)           -- represent p  in the double vocabulary
 cpP m (P n) = P  ((2*n) + 1 + m)       -- represent p' in the double vocabulary
 
 unmvcpP :: Int -> Prp -> Prp
-unmvcpP m (P n) | even (n-m)    = P $ (n-m) `div` 2
-                | otherwise = P $ (n-1-m) `div` 2
+unmvcpP m (P n) | even (n-m) = P $ (n-m) `div` 2
+                | otherwise  = P $ (n-1-m) `div` 2
 
 mv, cp :: Int -> [Prp] -> [Prp]
 mv m = map (mvP m)
@@ -57,27 +58,22 @@ class TagDd t a b c where
 
 instance TagDd Dubbel a b c
 
+-- TODO use relabelFun instead for cpDd, mvDd, unmvDd below?
+
 cpDd :: (DdCtx a b c) => Cudd.Cudd.DdManager -> Int -> [Prp] -> Dd a b c -> RelDD a b c
-cpDd mgr m vocab b = Tagged $ relabelWith mgr (zip vocab (map (cpP m) vocab)) b
+cpDd mgr m vocab b = Tagged $ relabelWith mgr (zipWith (curry (bimap fromEnum fromEnum)) vocab (map (cpP m) vocab)) b
 
 mvDd :: (DdCtx a b c) => Cudd.Cudd.DdManager -> Int -> [Prp] -> Dd a b c -> RelDD a b c
-mvDd mgr m vocab b = Tagged $ relabelWith mgr (zip vocab (map (mvP m) vocab)) b
+mvDd mgr m vocab b = Tagged $ relabelWith mgr (zipWith (curry (bimap fromEnum fromEnum)) vocab (map (mvP m) vocab)) b
 
 unmvDd :: (DdCtx a b c) => Cudd.Cudd.DdManager -> Int -> [Prp] -> RelDD a b c -> Dd a b c
-unmvDd mgr m vocab (Tagged b) = relabelWith mgr (zip (map (mvP m) vocab) vocab) b
+unmvDd mgr m vocab (Tagged b) = relabelWith mgr (zipWith (curry (bimap fromEnum fromEnum)) (map (mvP m) vocab) vocab) b
 
 propRel2dd :: (DdCtx a b c) => Cudd.Cudd.DdManager -> Int -> [Prp] -> M.Map KnState [KnState] -> RelDD a b c
 propRel2dd mgr m props relation = pure $ disSet mgr (M.elems $ M.mapWithKey linkdd relation) where
   linkdd here theres =
     con mgr (boolDDoutof mgr (mv m here) (mv m props))
         (disSet mgr [ boolDDoutof mgr (cp m there) (cp m props) | there <- theres ] )
-
-samplerel ::  M.Map KnState [KnState]
-samplerel = M.fromList [
-  ( []        , [ [],[P 1],[P 2],[P 1, P 2] ] ),
-  ( [P 1]     , [    [P 1],      [P 1, P 2] ] ),
-  ( [P 2]     , [    [P 2],      [P 1, P 2] ] ),
-  ( [P 1, P 2], [                [P 1, P 2] ] )  ]
 
 relDdOfIn :: (DdCtx a b c) => Cudd.Cudd.DdManager -> Int -> Agent -> KripkeModel -> RelDD a b c
 relDdOfIn mgr ag i (KrM m)
@@ -279,9 +275,7 @@ instance DdCtx a b c => TexAble (MultipointedBelScene a b c) where
 -- todo test this, although likely to work.
 cleanupObsLaw :: DdCtx a b c => BelScene a b c -> BelScene a b c
 cleanupObsLaw (BlS mgr vocab law (ag, obs), s) = (BlS mgr vocab law (ag, clean (M.size ag) obs), s) where
-  clean shift reldd = restrictLaw mgr vocab <$> reldd <*> (con mgr <$> cpDd mgr shift vocab law <*> mvDd mgr shift vocab law)
-
-
+  clean shift reldd = restrictLaw mgr (map fromEnum vocab) <$> reldd <*> (con mgr <$> cpDd mgr shift vocab law <*> mvDd mgr shift vocab law)
 
 determinedVocabOf :: (DdCtx a b c) => BelStruct a b c -> [Prp]
 determinedVocabOf strct = filter (\p -> validViaDd strct (PrpF p) || validViaDd strct (Neg $ PrpF p)) (vocabOf strct)
@@ -356,11 +350,12 @@ shiftPrepare (BlS mgr props _ _) (Trf _ addprops addlaw changelaw (ag, eventObs)
     shiftaddprops = map snd shiftrel
     -- apply the shifting to addlaw, changelaw and eventObs:
     addlawShifted    = replPsInF shiftrel addlaw
-    changelawShifted = M.map (relabelWith mgr shiftrel) changelaw
+    changelawShifted = M.map (relabelWith mgr (map (bimap fromEnum fromEnum) shiftrel)) changelaw
     -- to shift addObs we need shiftrel in the double vocabulary:
-    shiftrelMVCP = sort $ zip (mv (M.size ag) addprops) (mv (M.size ag) shiftaddprops)
+    shiftrelMVCP = map (bimap fromEnum fromEnum) $
+                   sort $ zip (mv (M.size ag) addprops) (mv (M.size ag) shiftaddprops)
                        ++ zip (cp (M.size ag) addprops) (cp (M.size ag) shiftaddprops)
-    eventObsShifted  =  foldl (\x y -> con mgr <$> x <*> y) (Tagged $ top mgr) [Tagged $ relabelWith mgr shiftrelMVCP (restrict mgr (untag eventObs) (ag ! i, True)) | i <- M.keys ag]
+    eventObsShifted  = foldl (\x y -> con mgr <$> x <*> y) (Tagged $ top mgr) [Tagged $ relabelWith mgr shiftrelMVCP (restrict mgr (untag eventObs) (ag ! i, True)) | i <- M.keys ag]
 
 instance (DdCtx a b c) => Update (BelScene a b c) (Event a b c) where
   -- TODO: check that BelScene and Event use the same mgr!
@@ -373,12 +368,13 @@ instance (DdCtx a b c) => Update (BelScene a b c) (Event a b c) where
     changeprops = M.keys changelaw
     copyrel = zip changeprops [(freshp $ props ++ addprops)..]
     copychangeprops = map snd copyrel
-    copyrelMVCP = sort $ zip (mv (M.size ag) changeprops) (mv (M.size ag) copychangeprops)
+    copyrelMVCP = map (bimap fromEnum fromEnum) $
+                  sort $ zip (mv (M.size ag) changeprops) (mv (M.size ag) copychangeprops)
                       ++ zip (cp (M.size ag) changeprops) (cp (M.size ag) copychangeprops)
     -- PART 3: actual transformation
     newprops = sort $ props ++ addprops ++ copychangeprops
-    newlaw = conSet mgr $ relabelWith mgr copyrel (con mgr law (ddOf bls addlaw))
-                    : [equ mgr (var mgr (fromEnum q)) (relabelWith mgr copyrel (changelaw ! q)) | q <- changeprops]
+    newlaw = conSet mgr $ relabelWith mgr (map (bimap fromEnum fromEnum) copyrel) (con mgr law (ddOf bls addlaw))
+                    : [equ mgr (var mgr (fromEnum q)) (relabelWith mgr (map (bimap fromEnum fromEnum) copyrel) (changelaw ! q)) | q <- changeprops]
     newobs = foldl (\x y -> con mgr <$> x <*> y) (Tagged $ top mgr) newodds
     newodds = [con mgr <$> (relabelWith mgr copyrelMVCP <$> Tagged (restrict mgr (untag odds) (ag ! i, True))) <*> Tagged (restrict mgr (untag addObs) (ag ! i, True)) | i <- M.keys ag]
       --previously: M.mapWithKey (\i oldobs -> con mgr <$> (relabelWith mgr copyrelMVCP <$> oldobs) <*> (addObs ! i)) odds
@@ -413,7 +409,7 @@ instance (DdCtx a b c) => Update (BelScene a b c) (MultipointedEvent a b c) wher
 
 trfPost :: (DdCtx a b c) => Event a b c -> Prp -> Dd a b c
 trfPost (Trf mgr addprops _ changelaw _, x) p
-  | p `elem` M.keys changelaw = restrictLaw mgr addprops (changelaw ! p) (boolDDoutof mgr x addprops)
+  | p `elem` M.keys changelaw = restrictLaw mgr (map fromEnum addprops) (changelaw ! p) (boolDDoutof mgr x addprops)
   | otherwise                 = boolDdOf mgr $ PrpF p
 
 reduce :: (DdCtx a b c) => Event a b c -> Form -> Maybe Form
@@ -450,7 +446,7 @@ ddReduce scn@(oldBls,_) event@(Trf mgr addprops _ changelaw _, eventFacts) f =
     shiftaddprops = [(freshp $ vocabOf scn)..]
     shiftrel      = sort $ zip addprops shiftaddprops
     -- apply the shifting to addlaw and changelaw:
-    changelawShifted = M.map (relabelWith mgr shiftrel) changelaw
+    changelawShifted = M.map (relabelWith mgr (map (bimap fromEnum fromEnum) shiftrel)) changelaw
     (newBlS,_) = update scn event
     -- the actual event, shifted
     actualAss  = [ (shifted, P orig `elem` eventFacts) | (P orig, P shifted) <- shiftrel ]
@@ -461,7 +457,7 @@ ddReduce scn@(oldBls,_) event@(Trf mgr addprops _ changelaw _, eventFacts) f =
     restrSet = restrictSet mgr
   in
     imp mgr (ddOf  oldBls (preOf event)) $ -- 0. check if precondition holds
-      relabelWith mgr copyrelInverse $     -- 4. changepropscopies -> original changeprops
+      relabelWith mgr (map (bimap fromEnum fromEnum) copyrelInverse) $ -- 4. changepropscopies -> original changeprops
         (`restrSet` actualAss) $    -- 3. restrict to actual event x outof V+
           substitSimul mgr postconrel $    -- 2. replace changeprops with postconditions
             ddOf  newBlS f             -- 1. boolean equivalent wrt new structure
