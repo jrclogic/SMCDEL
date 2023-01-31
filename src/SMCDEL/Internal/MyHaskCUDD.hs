@@ -477,11 +477,11 @@ bitsToAss = loop 0 where
 
 -- | Get all satisfying assignments. These will be partial, i.e. only
 -- contain (a subset of) the variables that actually occur in the BDD.
-allSats :: (DdCtx B b c) => Cudd.Cudd.DdManager -> Dd B b c -> [Assignment]
+allSats :: Cudd.Cudd.DdManager -> Dd B O1 I1 -> [Assignment]
 allSats mgr (ToDd b) = concatMap bitsToAss $ Cudd.Cudd.cuddAllSat mgr b
 
 -- | Get the lexicographically smallest satisfying assignment, if there is any.
-anySat :: Cudd.Cudd.DdManager -> Dd B b c -> Maybe Assignment
+anySat :: Cudd.Cudd.DdManager -> Dd B O1 I1 -> Maybe Assignment
 anySat mgr (ToDd b) = head . bitsToAss <$> Cudd.Cudd.cuddOneSat mgr b
 
 -- | Given a set of all variables, complete an assignment.
@@ -496,5 +496,5 @@ completeAss allvars ass =
 
 -- | Get all complete satisfying assignments, given a set of all variables.
 -- In particular this will include variables not in the BDD.
-allSatsWith :: (DdCtx B b c) => Cudd.Cudd.DdManager -> [Int] -> Dd B b c -> [Assignment]
+allSatsWith :: Cudd.Cudd.DdManager -> [Int] -> Dd B O1 I1 -> [Assignment]
 allSatsWith mgr allvars b = concatMap (completeAss allvars) (allSats mgr b)

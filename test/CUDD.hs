@@ -1,5 +1,8 @@
+{-# LANGUAGE AllowAmbiguousTypes, FlexibleContexts, TypeApplications, ScopedTypeVariables #-}
+
 module Main (main) where
 
+import Data.Maybe (isJust)
 import Test.Hspec
 import Test.QuickCheck
 
@@ -7,7 +10,7 @@ import SMCDEL.Internal.Help (alleq)
 import SMCDEL.Internal.MyHaskCUDD
 import SMCDEL.Language
 import qualified Data.Map.Strict as M
-import qualified SMCDEL.Internal.MyHaskCUDD as MyHaskCUDD (Manager, makeManagerZ)
+import qualified SMCDEL.Internal.MyHaskCUDD as MyHaskCUDD (Manager, makeManager, makeManagerZ)
 import qualified SMCDEL.Symbolic.K as K
 import qualified SMCDEL.Symbolic.K_CUDD as K_CUDD
 import qualified SMCDEL.Symbolic.Ki_CUDD as Ki_CUDD
@@ -18,8 +21,17 @@ main :: IO ()
 main = do
   hspec $ do
     describe "CUDD / MyHaskCUDD" $ do
-      before (MyHaskCUDD.makeManagerZ (length defaultVocabulary + 1)) $
-        it "restrictLaw for all kinds" $ \mgr -> property (\x y -> and $ testRestrictlaw mgr defaultVocabulary x y)
+      before MyHaskCUDD.makeManager $
+        describe "bddOnlyTests" bddOnlyTests
+      before (MyHaskCUDD.makeManagerZ (length defaultVocabulary)) $ do
+        describe "B O1 I1" $ cuddTests @B @O1 @I1
+        describe "B O0 I1" $ cuddTests @B @O0 @I1
+        describe "B O1 I0" $ cuddTests @B @O1 @I0
+        describe "B O0 I0" $ cuddTests @B @O0 @I0
+        describe "Z O1 I1" $ cuddTests @Z @O1 @I1
+        describe "Z O0 I1" $ cuddTests @Z @O0 @I1
+        describe "Z O1 I0" $ cuddTests @Z @O1 @I0
+        describe "Z O0 I0" $ cuddTests @Z @O0 @I0
     describe "S5: hardcoded myKns" $ do
       before (MyHaskCUDD.makeManagerZ (length defaultVocabulary + 1)) $
         it "all DD kinds" $ \mgr -> property (alleq . ddKindTest mgr)
@@ -32,19 +44,79 @@ main = do
 
 -- * CUDD / MyHaskCUDD
 
--- TODO: add more, based on HasCacBDD tests!
+v :: [Int]
+v = map fromEnum defaultVocabulary
 
-testRestrictlaw :: MyHaskCUDD.Manager -> [Prp] -> BF -> BF -> [Bool]
-testRestrictlaw mgr v (BF a) (BF b) =
-  [ imp mgr (S5_CUDD.boolDdOf mgr b) (equ mgr (restrictLaw mgr v (S5_CUDD.boolDdOf mgr a) (S5_CUDD.boolDdOf mgr b)) (S5_CUDD.boolDdOf mgr a)) == (top mgr :: Dd B O1 I1)
-  , imp mgr (S5_CUDD.boolDdOf mgr b) (equ mgr (restrictLaw mgr v (S5_CUDD.boolDdOf mgr a) (S5_CUDD.boolDdOf mgr b)) (S5_CUDD.boolDdOf mgr a)) == (top mgr :: Dd B O0 I1)
-  , imp mgr (S5_CUDD.boolDdOf mgr b) (equ mgr (restrictLaw mgr v (S5_CUDD.boolDdOf mgr a) (S5_CUDD.boolDdOf mgr b)) (S5_CUDD.boolDdOf mgr a)) == (top mgr :: Dd B O1 I0)
-  , imp mgr (S5_CUDD.boolDdOf mgr b) (equ mgr (restrictLaw mgr v (S5_CUDD.boolDdOf mgr a) (S5_CUDD.boolDdOf mgr b)) (S5_CUDD.boolDdOf mgr a)) == (top mgr :: Dd B O0 I0)
-  , imp mgr (S5_CUDD.boolDdOf mgr b) (equ mgr (restrictLaw mgr v (S5_CUDD.boolDdOf mgr a) (S5_CUDD.boolDdOf mgr b)) (S5_CUDD.boolDdOf mgr a)) == (top mgr :: Dd Z O1 I1)
-  , imp mgr (S5_CUDD.boolDdOf mgr b) (equ mgr (restrictLaw mgr v (S5_CUDD.boolDdOf mgr a) (S5_CUDD.boolDdOf mgr b)) (S5_CUDD.boolDdOf mgr a)) == (top mgr :: Dd Z O0 I1)
-  , imp mgr (S5_CUDD.boolDdOf mgr b) (equ mgr (restrictLaw mgr v (S5_CUDD.boolDdOf mgr a) (S5_CUDD.boolDdOf mgr b)) (S5_CUDD.boolDdOf mgr a)) == (top mgr :: Dd Z O1 I0)
-  , imp mgr (S5_CUDD.boolDdOf mgr b) (equ mgr (restrictLaw mgr v (S5_CUDD.boolDdOf mgr a) (S5_CUDD.boolDdOf mgr b)) (S5_CUDD.boolDdOf mgr a)) == (top mgr :: Dd Z O0 I0)
-  ]
+cuddTests :: forall a b c . DdCtx a b c => SpecWith MyHaskCUDD.Manager
+cuddTests = do
+  describe "Basics" $ do
+    it "bot == bot" $ \mgr -> (bot mgr :: Dd a b c) `shouldBe` (bot mgr :: Dd a b c)
+    it "top == top" $ \mgr -> (top mgr :: Dd a b c) `shouldBe` (top mgr :: Dd a b c)
+    it "top /= bot" $ \mgr -> (top mgr :: Dd a b c) `shouldNotBe` (bot mgr :: Dd a b c)
+    it "bot /= top" $ \mgr -> (bot mgr :: Dd a b c) `shouldNotBe` (top mgr :: Dd a b c)
+    it "neg bot == top" $ \mgr -> neg mgr (bot mgr) `shouldBe` (top mgr :: Dd a b c)
+    it "neg bot /= bot" $ \mgr -> neg mgr (bot mgr) `shouldNotBe` (bot mgr :: Dd a b c)
+    it "var 1 == var 1" $ \mgr -> (var mgr 1 :: Dd a b c) `shouldBe` var mgr 1
+    it "var 3 /= var 2" $ \mgr -> (var mgr 3 :: Dd a b c) `shouldNotBe` var mgr 2
+    it "var 1 /= var 2" $ \mgr -> (var mgr 1 :: Dd a b c) `shouldNotBe` var mgr 2
+    it "var 3 == con (var 3) top" $ \mgr ->
+      var mgr 3 `shouldBe` con mgr (var mgr 3) (top mgr :: Dd a b c)
+    it "var 4 /= con (var 3) top" $ \mgr ->
+      var mgr 4 `shouldNotBe` con mgr (var mgr 3) (top mgr :: Dd a b c)
+    it "equ (var 1) (var 1) == top" $ \mgr ->
+      equ mgr (var mgr 1) (var mgr 1) `shouldBe` (top mgr :: Dd a b c)
+    it "exists 1 (neg $ var 1) == top" $ \mgr ->
+      exists mgr 1 (neg mgr $ var mgr 1) `shouldBe` (top mgr :: Dd a b c)
+    it "exists 1 (neg $ var 2) /= top" $ \mgr ->
+      exists mgr 1 (neg mgr $ var mgr 2) `shouldNotBe` (top mgr :: Dd a b c)
+    it "gfp (\b -> con b (var 3)) == var 3" $ \mgr ->
+      gfp mgr (\b -> con mgr b (var mgr 3)) `shouldBe` (var mgr 3 :: Dd a b c)
+    it "imp (conSet [var 1,var 0]) (var 1) == top" $ \mgr ->
+      imp mgr (conSet mgr [var mgr 1,var mgr 0]) (var mgr 1) `shouldBe` (top mgr :: Dd a b c)
+    it "imp (conSet [var 0,var 1]) (var 0) == top" $ \mgr ->
+      imp mgr (conSet mgr [var mgr 0,var mgr 1]) (var mgr 0) `shouldBe` (top mgr :: Dd a b c)
+    it "imp (con (var 0) (var 1)) (var 0) == top" $ \mgr ->
+      imp mgr (con mgr (var mgr 0) (var mgr 1)) (var mgr 0) `shouldBe` (top mgr :: Dd a b c)
+  describe "DD manipulation" $ do
+    it "substitSimul" $ \mgr ->
+      substitSimul mgr [(3, var mgr 4),(4, var mgr 5)] (imp mgr (var mgr 3) (var mgr 4 :: Dd a b c))
+      `shouldBe`
+      imp mgr (var mgr 4) (var mgr 5)
+  describe "utility functions" $ do
+    it "show (var 3) /= show (var 2)" $ \mgr ->
+      show (var mgr 3 :: Dd a b c) `shouldNotBe` show (var mgr 2 :: Dd a b c)
+    it "show (var 2) == show (var 2)" $ \mgr ->
+      show (var mgr 2 :: Dd a b c) `shouldBe` show (var mgr 2 :: Dd a b c)
+    it "size top is 0, 1 or 7" $ \mgr ->
+      size mgr (top mgr :: Dd a b c) `elem` [0,1,7]
+    it "size bot is 0, 1 or 7" $ \mgr ->
+      size mgr (bot mgr :: Dd a b c) `elem` [0,1,7]
+    it "size (var 2) is 2, 6 or 8" $ \mgr ->
+      size mgr (var mgr 2 :: Dd a b c) `elem` [2,6,8]
+    it "getDependentVars" $ \mgr ->
+      getDependentVars mgr v (var mgr 2 :: Dd a b c) `shouldBe` [2]
+    it "getSupport" $ \mgr ->
+      getSupport mgr (var mgr 2 :: Dd a b c) `shouldSatisfy` flip elem [ [], [2] ] -- TODO: is this correct?
+  describe "random tests" $ do
+    it "forall exists" $ \mgr ->
+      property (\(BF f) -> let (b :: Dd a b c) = S5_CUDD.boolDdOf mgr f
+                           in forAll (elements [0..5]) (\n -> forall mgr n b == neg mgr (exists mgr n (neg mgr b))))
+    it "restrictLaw" $ \mgr ->
+      property (\(BF f) (BF g) -> let (a :: Dd a b c, b :: Dd a b c) = (S5_CUDD.boolDdOf mgr f, S5_CUDD.boolDdOf mgr g)
+                                  in imp mgr b (equ mgr (restrictLaw mgr v a b) a) == (top mgr :: Dd a b c))
+
+bddOnlyTests :: SpecWith MyHaskCUDD.Manager
+bddOnlyTests = do
+  it "allSats top `==` [[]]" $ \mgr -> allSats mgr (top mgr :: Dd B O1 I1) `shouldBe` [[]]
+  it "anySat iff not bot" $ \mgr ->
+    property (\(BF f) -> let (b :: Dd B O1 I1) = S5_CUDD.boolDdOf mgr f
+                           in (b /= bot mgr) === isJust (anySat mgr b))
+  it "length allSats > 0 iff not bot" $ \mgr ->
+    property (\(BF f) -> let (b :: Dd B O1 I1) = S5_CUDD.boolDdOf mgr f
+                           in (b /= bot mgr) ==> (length $! allSats mgr b) > 0)
+  it "allSatsWith" $ \mgr ->
+    property (\(BF f) -> let (b :: Dd B O1 I1) = S5_CUDD.boolDdOf mgr f
+                           in all (\s -> restrictSet mgr b s == top mgr) (allSatsWith mgr (map fromEnum defaultVocabulary) b))
 
 -- * S5_CUDD
 
