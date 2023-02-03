@@ -6,6 +6,7 @@ import System.IO
 
 import SMCDEL.Language
 import SMCDEL.Symbolic.S5_CUDD as S5_CUDD
+import SMCDEL.Symbolic.S5 as S5
 import SMCDEL.Examples.DiningCrypto
 import qualified SMCDEL.Examples.DiningCrypto.General as DC_Gen
 import qualified SMCDEL.Internal.MyHaskCUDD as MyHaskCUDD
@@ -14,7 +15,7 @@ import SMCDEL.Internal.MyHaskCUDD
 main :: IO ()
 main = do
   hSetBuffering stdout NoBuffering
-  gatherSizeData [3,5,7,9,11,13] [1,3,5,7,9,11,13] -- TODO: getArgs
+  gatherSizeData [3,5,7,9,11,13] [1,3,5,7,9,11,13]
 
 genDcSizeCudd :: forall a b c . DdCtx a b c => Int -> Int -> IO [Int]
 genDcSizeCudd n m = do
@@ -22,11 +23,26 @@ genDcSizeCudd n m = do
   return $ map (\(S5_CUDD.KnS mgr _ lawb _) -> MyHaskCUDD.size mgr lawb) $
     updateSequence startKns [ genDcReveal n i | i <- [1..(n-1)] ]
 
+genDcSizeCac :: Int -> Int -> [Int]
+genDcSizeCac n m = map info $ updateSequence start fs  where
+  start = DC_Gen.genDcKnsInit n m
+  info (S5.KnS _ lawb _) = S5.size lawb
+  fs = [ genDcReveal n i | i <- [1..(n-1)] ]
+
 gatherSizeData :: [Int] -> [Int] -> IO ()
 gatherSizeData ns ms = do
   putStrLn $ "Running DC benchmark for ns=" ++ show ns ++ " and ms=" ++ show ms ++ " and writing results to dining.dat ..."
   writeFile "dining.dat" $
-    "Note that these results are formulated/grouped by their elimination rule labels, and not their Input/Output complement labels as we use in our program. The labels used in our program translate to their elimination rule equivalence as follows: B O1 I1 -> EQ (nodes with equal children are eliminated), Z O1 I1 -> T0 (nodes with THEN edges pointing towards 0 leaf node are removed), Z O1 I0 -> E0, Z O0 I1 -> T1, Z O1 I0 -> E1.\n\n" ++ firstLine ++ "\n"
+    unlines [ "# Note: result columns are labelled with elimination"
+            , "# rules, not the input/output complement labels."
+            , "# The labels translate as follows:"
+            , "#   B O1 I1 -> EQ (nodes with equal children are eliminated)"
+            , "#   Z O1 I1 -> T0 (nodes with THEN edges to 0 leaf are removed)"
+            , "#   Z O1 I0 -> E0"
+            , "#   Z O0 I1 -> T1"
+            , "#   Z O0 I0 -> E1"
+            , "# Note: round -1 indicates the average over all rounds."
+            ] ++ firstLine ++ "\n"
   mapM_ linesFor cases
   putStrLn "Done."
   where
@@ -36,8 +52,8 @@ gatherSizeData ns ms = do
                      ]
     firstLine = intercalate "\t" $ ["n","m","round"] ++ map fst variants
     variants =
-      -- Note: No CacBdd "BDD" here.
-      [ ("BDDc",  genDcSizeCudd @B @O1 @I1)
+      [ ("BDD", \ n m -> return $ genDcSizeCac n m)
+      , ("BDDc",  genDcSizeCudd @B @O1 @I1)
       , ("ZO1I1", genDcSizeCudd @Z @O1 @I1)
       , ("ZO1I0", genDcSizeCudd @Z @O1 @I0)
       , ("ZO0I1", genDcSizeCudd @Z @O0 @I1)
@@ -46,5 +62,8 @@ gatherSizeData ns ms = do
     linesFor (n,m) = do
       putStrLn $ "Running for (n,m) = " ++ show (n,m)
       results <- mapM ((\f -> f n m) . snd) variants
-      appendFile "dining.dat" $ unlines [ intercalate "\t" (show n : show m : show k : map (\xs -> show (xs !! k)) results)
-                                        | k <- [0..(length (head results) - 1)] ]
+      appendFile "dining.dat" $ unlines $
+        [ intercalate "\t" (show n : show m : show k : map (\xs -> show (xs !! k)) results)
+        | k <- [0..(length (head results) - 1)] ]
+        ++
+        [ intercalate "\t" (show n : show m : "-1" : map (\xs -> show (fromIntegral (sum xs) / 4 :: Double)) results) ]
