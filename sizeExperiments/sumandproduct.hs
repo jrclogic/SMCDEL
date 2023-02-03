@@ -14,7 +14,7 @@ import SMCDEL.Internal.MyHaskCUDD
 main :: IO ()
 main = do
   hSetBuffering stdout NoBuffering
-  gatherSizeData [60,63,64,65,120] -- TODO: getArgs
+  gatherSizeData [50,75,100,125,150,175,200,225,250,275,300,325,350,64,128,256]
 
 genSapSizesCac :: Int -> [Int]
 genSapSizesCac n = map (\(S5_CAC.KnS _ lawb _) -> S5_CAC.size lawb) $
@@ -44,7 +44,8 @@ gatherSizeData ns = do
             , "#   Z O1 I1 -> T0 (nodes with THEN edges to 0 leaf are removed)"
             , "#   Z O1 I0 -> E0"
             , "#   Z O0 I1 -> T1"
-            , "#   Z O1 I0 -> E1."
+            , "#   Z O0 I0 -> E1"
+            , "# Note: round -1 indicates the average over all rounds."
             ] ++ firstLine ++ "\n"
   mapM_ linesFor ns
   putStrLn "Done."
@@ -67,5 +68,8 @@ gatherSizeData ns = do
     linesFor n = do
       putStrLn $ "Running for n = " ++ show n
       results <- mapM (($ n) . snd) variants
-      appendFile "sap.dat" $ unlines [ intercalate "\t" (show n : show k : map (\xs -> show (xs !! k)) results)
-                                     | k <- [0..3] ]
+      appendFile "sap.dat" $ unlines $
+        [ intercalate "\t" (show n : show k : map (\xs -> show (xs !! k)) results)
+        | k <- [0..3] ]
+        ++
+        [ intercalate "\t" (show n : "-1" : map (\xs -> show (fromIntegral (sum xs) / 4 :: Double)) results) ]
