@@ -14,7 +14,7 @@ import SMCDEL.Internal.MyHaskCUDD
 main :: IO ()
 main = do
   hSetBuffering stdout NoBuffering
-  gatherSizeData [50,75,100,125,150,175,200,225,250,275,300,325,350,64,128,256]
+  gatherSizeData [50,64,75,100,125,128,150,175,200,225,250,256,275,300,325,350]
 
 genSapSizesCac :: Int -> [Int]
 genSapSizesCac n = map (\(S5_CAC.KnS _ lawb _) -> S5_CAC.size lawb) $
