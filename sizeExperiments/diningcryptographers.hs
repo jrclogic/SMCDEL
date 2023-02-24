@@ -15,7 +15,7 @@ import SMCDEL.Internal.MyHaskCUDD
 main :: IO ()
 main = do
   hSetBuffering stdout NoBuffering
-  gatherSizeData [3,5,7,9,11,13] [1,3,5,7,9,11,13]
+  gatherSizeData [3,5,7,9,11,13] [1]
 
 genDcSizeCudd :: forall a b c . DdCtx a b c => Int -> Int -> IO [Int]
 genDcSizeCudd n m = do
