@@ -38,6 +38,7 @@ test:
     - apt-get install -y firefox-esr openjdk-11-jre-headless
     - rm -rf .stack-work/install/*/*/*/hpc
     - stack --no-terminal test --coverage
+  coverage: '/(\d+)% top-level declarations used/'
   after_script:
     - rm -rf ./hpc
     - mv .stack-work/install/*/*/*/hpc ./hpc
