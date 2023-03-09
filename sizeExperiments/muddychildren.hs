@@ -15,8 +15,8 @@ main :: IO ()
 main = do
   hSetBuffering stdout NoBuffering
   gatherSizeData
-    [5,10,20,25,30,35,40] -- n: number of children
-    [5,10,20,25,30,35,40] -- m: number of muddy children
+    [5,10,15,20,25,30,35,40] -- n: number of children
+    [5,10,15,20,25,30,35,40] -- m: number of muddy children
 
 mudPs :: Int -> [Prp]
 mudPs n = [P 1 .. P n]
