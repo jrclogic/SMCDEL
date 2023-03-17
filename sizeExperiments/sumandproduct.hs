@@ -36,34 +36,25 @@ genSapSizesCuddViaConvert n = do
 gatherSizeData :: [Int] -> IO ()
 gatherSizeData ns = do
   putStrLn $ "Running SAP benchmark for ns=" ++ show ns ++ " and writing results to sap.dat ..."
-  writeFile "sap.dat" $
-    unlines [ "# Note: result columns are labelled with elimination"
-            , "# rules, not the input/output complement labels."
-            , "# The labels translate as follows:"
-            , "#   B O1 I1 -> EQ (nodes with equal children are eliminated)"
-            , "#   Z O1 I1 -> T0 (nodes with THEN edges to 0 leaf are removed)"
-            , "#   Z O1 I0 -> E0"
-            , "#   Z O0 I1 -> T1"
-            , "#   Z O0 I0 -> E1"
-            , "# Note: round -1 indicates the average over all rounds."
-            ] ++ firstLine ++ "\n"
+  writeFile "sap.dat" $ "# Note: round -1 indicates the average.\n" ++ firstLine ++ "\n"
   mapM_ linesFor ns
   putStrLn "Done."
   where
     firstLine = intercalate "\t" $ ["n","round"] ++ map fst variants
     variants =
+      -- label result columns with elimination rules, not i/o complements:
       [ ("BDD", return . genSapSizesCac)
       , ("BDDc",  genSapSizesCudd @B @O1 @I1)
       -- via conversion, fast:
-      , ("ZO1I1", genSapSizesCuddViaConvert @O1 @I1)
-      , ("ZO1I0", genSapSizesCuddViaConvert @O1 @I0)
-      , ("ZO0I1", genSapSizesCuddViaConvert @O0 @I1)
-      , ("ZO0I0", genSapSizesCuddViaConvert @O0 @I0)
+      , ("T0", genSapSizesCuddViaConvert @O1 @I1)
+      , ("T1", genSapSizesCuddViaConvert @O0 @I1)
+      , ("E0", genSapSizesCuddViaConvert @O1 @I0)
+      , ("E1", genSapSizesCuddViaConvert @O0 @I0)
       -- directly on ZDDs, slow:
-      -- , ("ZO1I1", genSapSizesCudd @Z @O1 @I1)
-      -- , ("ZO1I0", genSapSizesCudd @Z @O1 @I0)
-      -- , ("ZO0I1", genSapSizesCudd @Z @O0 @I1)
-      -- , ("ZO0I0", genSapSizesCudd @Z @O0 @I0)
+      -- , ("T0", genSapSizesCudd @Z @O1 @I1)
+      -- , ("T1", genSapSizesCudd @Z @O0 @I1)
+      -- , ("E0", genSapSizesCudd @Z @O1 @I0)
+      -- , ("E1", genSapSizesCudd @Z @O0 @I0)
       ]
     linesFor n = do
       putStrLn $ "Running for n = " ++ show n

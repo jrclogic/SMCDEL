@@ -32,17 +32,7 @@ genDcSizeCac n m = map info $ updateSequence start fs  where
 gatherSizeData :: [Int] -> [Int] -> IO ()
 gatherSizeData ns ms = do
   putStrLn $ "Running DC benchmark for ns=" ++ show ns ++ " and ms=" ++ show ms ++ " and writing results to dining.dat ..."
-  writeFile "dining.dat" $
-    unlines [ "# Note: result columns are labelled with elimination"
-            , "# rules, not the input/output complement labels."
-            , "# The labels translate as follows:"
-            , "#   B O1 I1 -> EQ (nodes with equal children are eliminated)"
-            , "#   Z O1 I1 -> T0 (nodes with THEN edges to 0 leaf are removed)"
-            , "#   Z O1 I0 -> E0"
-            , "#   Z O0 I1 -> T1"
-            , "#   Z O0 I0 -> E1"
-            , "# Note: round -1 indicates the average over all rounds."
-            ] ++ firstLine ++ "\n"
+  writeFile "dining.dat" $ "# Note: round -1 indicates the average.\n" ++ firstLine ++ "\n"
   mapM_ linesFor cases
   putStrLn "Done."
   where
@@ -52,12 +42,13 @@ gatherSizeData ns ms = do
                      ]
     firstLine = intercalate "\t" $ ["n","m","round"] ++ map fst variants
     variants =
+      -- label result columns with elimination rules, not i/o complements:
       [ ("BDD", \ n m -> return $ genDcSizeCac n m)
       , ("BDDc",  genDcSizeCudd @B @O1 @I1)
-      , ("ZO1I1", genDcSizeCudd @Z @O1 @I1)
-      , ("ZO1I0", genDcSizeCudd @Z @O1 @I0)
-      , ("ZO0I1", genDcSizeCudd @Z @O0 @I1)
-      , ("ZO0I0", genDcSizeCudd @Z @O0 @I0)
+      , ("T0", genDcSizeCudd @Z @O1 @I1)
+      , ("T1", genDcSizeCudd @Z @O0 @I1)
+      , ("E0", genDcSizeCudd @Z @O1 @I0)
+      , ("E1", genDcSizeCudd @Z @O0 @I0)
       ]
     linesFor (n,m) = do
       putStrLn $ "Running for (n,m) = " ++ show (n,m)
