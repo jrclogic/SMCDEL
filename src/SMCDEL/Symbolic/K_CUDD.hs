@@ -1,5 +1,4 @@
-{-# LANGUAGE FlexibleInstances, TypeOperators, MultiParamTypeClasses, ScopedTypeVariables, FlexibleInstances, FlexibleContexts #-}
-{-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE FlexibleInstances, InstanceSigs, MultiParamTypeClasses, ScopedTypeVariables, FlexibleContexts #-}
 
 module SMCDEL.Symbolic.K_CUDD where
 
@@ -165,36 +164,7 @@ ddOf bls@(BlS mgr props law obs) (AnnounceW ags f g) =
     dd2b = restrict mgr (ddOf  (announce (BlS mgr props law obs) ags (Neg f)) g) (k,True)
     (P k) = freshp props
 
-{-ddOf bls@(BlS mgr _ _ _) (Dia (Dyn dynLabel d) f) =
-    con mgr (ddOf bls preCon)                    -- 5. Prefix with "precon AND ..." (diamond!)
-    . relabelWith mgr copyrelInverse              -- 4. Copy back changeProps V_-^o to V_-
-    . simulateActualEvents                    -- 3. Simulate actual event(s) [see below]
-    . substitSimul mgr [ (k, changeLaw ! p)       -- 2. Replace changeProps V_- with postcons
-                   | p@(P k) <- changeProps]  --    (no "relabelWith copyrel", undone in 4)
-    . ddOf (bls `update` trf)                -- 1. boolean equivalent wrt new struct
-    $ f
-  where
-    changeProps = M.keys changeLaw
-    copychangeProps = [(freshp $ vocabOf bls ++ addProps)..]
-    copyrelInverse  = zip copychangeProps changeProps
-    (trf@(Trf _ addProps addLaw changeLaw _), shiftrel) = shiftPrepare bls trfUnshifted
-    (preCon,trfUnshifted,simulateActualEvents) =
-      case fromDynamic d of
-        -- 3. For a single pointed event, simulate actual event x outof V+
-        Just ((t,x) :: Event a b c) -> ( preOf (t,x), t, (`restrSet` actualAss) ) where
-          actualAss = [(newK, P k `elem` x) | (P k, P newK) <- shiftrel]
-          restrSet = restrictSet
-
-        Nothing -> case fromDynamic d of
-          -- 3. For a multipointed event, simulate a set of actual events by ...
-          Just ((t,xsDd) :: MultipointedEvent a b c) ->
-              ( preOf (t,xsDd), t
-              , existsSet mgr (map fromEnum addProps)  -- ... replacing addProps with assigments
-                . con mgr actualsDd                   -- ... that satisfy actualsDd
-                . con mgr (ddOf bls addLaw)           -- ... and a precondition.
-              ) where actualsDd = relabelWith mgr shiftrel xsDd
-          Nothing -> error $ "cannot update belief structure with '" ++ dynLabel ++ "':\n  " ++ show d-}
-ddOf _ _ = error "not implemented Form -> operator yet"
+ddOf _ (Dia _ _) = error "Dynamic operators are not implemented in K_CUDD."
 
 validViaDd :: (DdCtx a b c) => BelStruct a b c -> Form -> Bool
 validViaDd bls@(BlS mgr _ lawdd _) f = top mgr == imp mgr lawdd (ddOf bls f)
@@ -248,18 +218,11 @@ announce bls@(BlS mgr props lawdd odds) ags psi = BlS mgr newprops newlawdd newo
   newOfor i oi | i `elem` ags = con mgr <$> oi <*> (equ mgr <$> mvDd mgr newprops (var mgr k) <*> cpDd mgr newprops (var mgr k))
                | otherwise    = con mgr <$> oi <*> (neg mgr <$> cpDd mgr newprops (var mgr k)) -- p_psi'
 
--- faster statesOf for BDDs only
-{-statesOf :: DdCtx a b c => BelStruct a b c -> [KnState]
-statesOf (BlS mgr allprops lawdd _) = map (sort.getTrues) prpsats where
-  ddvars = map fromEnum allprops
-  ddsats = allSatsWith mgr ddvars lawdd
-  prpsats = map (map (first toEnum)) ddsats
-  getTrues = map fst . filter snd-}
-
 whereViaDd :: (DdCtx a b c) => BelStruct a b c -> Form -> [KnState]
 whereViaDd kns f = statesOf (kns `update` f)
 
---Somewhat fast statesOf, faster woud be to use primitive construction of all Satifying Assignments (e.i. explicitly looping through the dd instead of using restrict).
+-- | Get all states of a belief structure - slow version using restrict.
+-- A faster version would need an efficient `allSats` which is not available for ZDDs.
 statesOf :: DdCtx a b c => BelStruct a b c -> [KnState]
 statesOf (BlS mgr allprops lawdd _) = loop allprops lawdd where
   loop [] _ = []
@@ -270,6 +233,16 @@ statesOf (BlS mgr allprops lawdd _) = loop allprops lawdd where
     | otherwise =
       if b then map ([P n] ++) $ loop ns (restrict mgr d (n,b)) else loop ns (restrict mgr d (n,b))
   r [] _ _ = error "impossible?"
+
+-- | Faster statesOf, for BDDs only.
+statesOfFast :: BelStruct B O1 I1 -> [KnState]
+statesOfFast (BlS mgr allprops lawdd _) = map (sort.getTrues) prpsats where
+  ddvars = map fromEnum allprops
+  ddsats = allSatsWith mgr ddvars lawdd
+  prpsats = map (map (first toEnum)) ddsats
+  getTrues = map fst . filter snd
+
+-- * Visualisation
 
 texRelDD :: DdCtx a b c => Cudd.Cudd.DdManager -> RelDD a b c -> String
 texRelDD mgr (Tagged b) = texDdFun mgr b texRelProp where
@@ -349,13 +322,13 @@ type Event a b c = (Transformer a b c,KnState)
 instance HasPrecondition (Event a b c) where
   preOf (Trf _ addprops addlaw _ _, x) = simplify $ substitOutOf x addprops addlaw
 
-instance Pointed (Transformer a b c) [KnState]
+instance Pointed (Transformer a b c) (Dd a b c)
 type MultipointedEvent a b c = (Transformer a b c, Dd a b c)
 
--- todo ddToForm should use vocab of xsDd
 instance (DdCtx a b c) => HasPrecondition (MultipointedEvent a b c) where
   preOf (Trf mgr addprops addlaw _ _, xsDd) =
     simplify $ Exists addprops (Conj [ ddToForm mgr addprops xsDd, addlaw ])
+    -- TODO: ddToForm should use vocab of xsDd
 
 instance DdCtx a b c => TexAble (Transformer a b c) where
   tex (Trf mgr addprops addlaw changelaw eventObs) = concat
@@ -386,7 +359,7 @@ instance DdCtx a b c => TexAble (MultipointedEvent a b c) where
     , "} \\end{array}\n "
     , " \\right)" ]
 
--- | shift addprops to ensure that props and newprops are disjoint:
+-- | Shift addprops to ensure that props and newprops are disjoint.
 shiftPrepare :: (DdCtx a b c) => BelStruct a b c -> Transformer a b c -> (Transformer a b c, [(Prp,Prp)])
 shiftPrepare (BlS mgr props _ _) (Trf _ addprops addlaw changelaw eventObs) =
   (Trf mgr shiftaddprops addlawShifted changelawShifted eventObsShifted, shiftrel) where
@@ -400,9 +373,10 @@ shiftPrepare (BlS mgr props _ _) (Trf _ addprops addlaw changelaw eventObs) =
                        ++ zip (cp addprops) (cp shiftaddprops)
     eventObsShifted  = M.map (fmap $ relabelWith mgr (map (bimap fromEnum fromEnum) shiftrelMVCP)) eventObs
 
-
 instance (DdCtx a b c) => Update (BelScene a b c) (Event a b c) where
-  -- TODO: check that BelScene and Event use the same mgr!
+  checks = [haveSameAgents, sameManager, preCheck] where
+    -- Check that BelScene and Event use the same manager:
+    sameManager (BlS mgr _ _ _, _) (Trf mgr' _ _ _ _ , _) = mgr == mgr'
   unsafeUpdate (bls@(BlS mgr props law odds),s) (trf, eventFactsUnshifted) = (BlS mgr newprops newlaw newobs, news) where
     -- PART 1: SHIFTING addprops to ensure props and newprops are disjoint
     (Trf _ addprops addlaw changelaw addObs, shiftrel) = shiftPrepare bls trf
@@ -432,24 +406,28 @@ instance (DdCtx a b c) => Update (BelStruct a b c) (Transformer a b c) where
   unsafeUpdate bls ctrf = BlS mgr newprops newlaw newobs where
     (BlS mgr newprops newlaw newobs, _) = unsafeUpdate (bls,undefined::KnState) (ctrf,undefined::KnState) -- using laziness!
 
--- todo uncomment and fix this
-{-instance (DdCtx a b c) => Update (BelScene a b c) (MultipointedEvent a b c) where
+instance (DdCtx a b c, DdTOI a O1 I1, DdTO a O1, DdTOI a b I1) => Update (BelScene a b c) (MultipointedEvent a b c) where
+  checks = [haveSameAgents, sameManager, preCheck] where
+    -- Check that BelScene and MultipointedEvent use the same manager:
+    sameManager (BlS mgr _ _ _, _) (Trf mgr' _ _ _ _ , _) = mgr == mgr'
   unsafeUpdate ((bls,s) :: BelScene a b c) (trfUnshifted, eventFactsDdUnshifted) =
     update (bls,s) (trf,selectedEventState) where
       (trf@(Trf mgr addprops addlaw _ _), shiftRel) = shiftPrepare bls trfUnshifted
-      eventFactsDd = relabelWith mgr shiftRel eventFactsDdUnshifted
+      eventFactsDd = relabelWith mgr (map (bimap fromEnum fromEnum) shiftRel) eventFactsDdUnshifted
+      selectedEventsDD = con mgr eventFactsDd (restrictSet mgr (ddOf  bls addlaw) [ (k, P k `elem` s) | P k <- vocabOf bls ])
+      eventVoc = map fromEnum addprops
+      -- FIXME: avoid the conversion to BDD here - needs allSatsWith for ZDDs
+      selectedEvents = allSatsWith mgr eventVoc (toB mgr (toO1 mgr (toI1 mgr eventVoc selectedEventsDD)))
       selectedEventState :: KnState
-      selectedEventState = map (P . fst) $ filter snd selectedEvent
-      selectedEvent = case
-                        allSatsWith mgr
-                          (map fromEnum addprops)
-                          (con mgr eventFactsDd (restrictSet mgr (ddOf  bls addlaw) [ (k, P k `elem` s) | P k <- vocabOf bls ]))
-                      of
-                        []     -> error "no selected event"
-                        [this] -> this
-                        more   -> error $ "too many selected events: " ++ show more-}
+      selectedEventState =
+        case selectedEvents of
+          []     -> error "no selected event"
+          [this] -> map (P . fst) $ filter snd this
+          more   -> error $ "too many selected events: " ++ show more
 
--- todo test trfPost with addprops for dependentVars call, although it likely works
+-- TODO: instance Update (MultipointedBelScene a b c) (MultipointedEvent a b c)
+
+-- TODO: test trfPost with addprops for dependentVars call
 trfPost :: (DdCtx a b c) => Event a b c -> Prp -> Dd a b c
 trfPost (Trf mgr addprops _ changelaw _, x) p
   | p `elem` M.keys changelaw = restrictLaw mgr (map fromEnum addprops) (changelaw ! p) (boolDDoutof mgr x addprops)
@@ -469,7 +447,7 @@ reduce _ (Forall _ _) = Nothing
 reduce _ (Exists _ _) = Nothing
 reduce e@(t@(Trf mgr addprops _ _ eventObs), x) (K a f) =
   Impl (preOf e) <$> (Conj <$> sequence
-    [ K a <$> reduce (t,y) f | y <- powerset addprops -- FIXME is this a bit much?
+    [ K a <$> reduce (t,y) f | y <- powerset addprops -- FIXME: this is inefficient
                              , tagDdEval mgr (mv x ++ cp y) (eventObs ! a)
     ])
 reduce e (Kw a f)     = reduce e (Disj [K a f, K a (Neg f)])

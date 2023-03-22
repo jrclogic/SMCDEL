@@ -5,7 +5,14 @@
 New:
 
 - Use ZDDs as an alternative in `SMCDEL.Symbolic.S5_CUDD` and `SMCDEL.Symbolic.K_CUDD`.
-- Modules `SMCDEL.Symbolic.Ki` and `SMCDEL.Symbolic.Ki_CUDD` for agent-indexed DDs.
+- Modules `SMCDEL.Symbolic.Ki` and `SMCDEL.Symbolic.Ki_CUDD` using one agent-indexed DD.
+- Examples: generalised versions of Sum and Product and Dining Cryptographers
+
+Changed:
+
+- Use `defaultVocabulary` also for random Boolean formulas (and thus BDDs)
+- Use xdg-open instead of hardcoding Okular
+- Use newer HasCacBDD with faster `sizeOf`.
 
 ## v1.2.0 (2022-02-22)
 

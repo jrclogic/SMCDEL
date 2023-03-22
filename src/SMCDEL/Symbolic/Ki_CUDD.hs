@@ -303,7 +303,7 @@ type Event a b c = (Transformer a b c,KnState)
 instance HasPrecondition (Event a b c) where
   preOf (Trf _ addprops addlaw _ _, x) = simplify $ substitOutOf x addprops addlaw
 
-instance Pointed (Transformer a b c) [KnState]
+instance Pointed (Transformer a b c) (Dd a b c)
 type MultipointedEvent a b c = (Transformer a b c, Dd a b c)
 
 -- todo see K_CUDD version
@@ -323,9 +323,8 @@ instance DdCtx a b c => TexAble (Transformer a b c) where
     ] where
         changeprops = M.keys changelaw
         texChange prop changedd = tex prop ++ " := " ++ tex (ddToForm mgr addprops changedd)
-        eoddstrings = map (ddstring . (fst &&& (texRelDD mgr (maximum $ M.elems ags) . snd))) [(i,  omegai i) | i <- M.keys ags ]
+        eoddstrings = [ (ddstring . (fst &&& (texRelDD mgr (maximum $ M.elems ags) . snd))) (i,  omegai i) | i <- M.keys ags ]
         ddstring (i,os) = "\\Omega^+_{\\text{" ++ i ++ "}} = " ++ ddprefix ++ os ++ ddsuffix
-
         omegai i = Tagged $ restrictSet mgr (untag eventObs) ((ags ! i, True) : map (, False) (agNotI i))
         agNotI j =  M.elems $ M.delete j ags
 
@@ -342,7 +341,7 @@ instance DdCtx a b c => TexAble (MultipointedEvent a b c) where
     , "} \\end{array}\n "
     , " \\right)" ]
 
--- | shift addprops to ensure that props and newprops are disjoint:
+-- | Shift addprops to ensure that props and newprops are disjoint.
 shiftPrepare :: (DdCtx a b c) => BelStruct a b c -> Transformer a b c -> (Transformer a b c, [(Prp,Prp)])
 shiftPrepare (BlS mgr props _ _) (Trf _ addprops addlaw changelaw (ag, eventObs)) =
   (Trf mgr shiftaddprops addlawShifted changelawShifted (ag, eventObsShifted), shiftrel) where
@@ -358,7 +357,9 @@ shiftPrepare (BlS mgr props _ _) (Trf _ addprops addlaw changelaw (ag, eventObs)
     eventObsShifted  = foldl (\x y -> con mgr <$> x <*> y) (Tagged $ top mgr) [Tagged $ relabelWith mgr shiftrelMVCP (restrict mgr (untag eventObs) (ag ! i, True)) | i <- M.keys ag]
 
 instance (DdCtx a b c) => Update (BelScene a b c) (Event a b c) where
-  -- TODO: check that BelScene and Event use the same mgr!
+  checks = [haveSameAgents, sameManager, preCheck] where
+    -- Check that BelScene and Event use the same manager:
+    sameManager (BlS mgr _ _ _, _) (Trf mgr' _ _ _ _ , _) = mgr == mgr'
   unsafeUpdate (bls@(BlS mgr props law (_, odds)),s) (trf, eventFactsUnshifted) = (BlS mgr newprops newlaw (ag,newobs), news) where
     -- PART 1: SHIFTING addprops to ensure props and newprops are disjoint
     (Trf _ addprops addlaw changelaw (ag,addObs), shiftrel) = shiftPrepare bls trf
@@ -389,23 +390,26 @@ instance (DdCtx a b c) => Update (BelStruct a b c) (Transformer a b c) where
   unsafeUpdate bls ctrf = BlS mgr newprops newlaw newobs where
     (BlS mgr newprops newlaw newobs, _) = unsafeUpdate (bls,undefined::KnState) (ctrf,undefined::KnState) -- using laziness!
 
-{-
-instance (DdCtx a b c) => Update (BelScene a b c) (MultipointedEvent a b c) where
-  unsafeUpdate (bls,s) (trfUnshifted, eventFactsDdUnshifted) =
+instance (DdCtx a b c, DdTOI a O1 I1, DdTO a O1, DdTOI a b I1) => Update (BelScene a b c) (MultipointedEvent a b c) where
+  checks = [haveSameAgents, sameManager, preCheck] where
+    -- Check that BelScene and MultipointedEvent use the same manager:
+    sameManager (BlS mgr _ _ _, _) (Trf mgr' _ _ _ _ , _) = mgr == mgr'
+  unsafeUpdate ((bls,s) :: BelScene a b c) (trfUnshifted, eventFactsDdUnshifted) =
     update (bls,s) (trf,selectedEventState) where
       (trf@(Trf mgr addprops addlaw _ _), shiftRel) = shiftPrepare bls trfUnshifted
-      eventFactsDd = relabelWith mgr shiftRel eventFactsDdUnshifted
+      eventFactsDd = relabelWith mgr (map (bimap fromEnum fromEnum) shiftRel) eventFactsDdUnshifted
+      selectedEventsDD = con mgr eventFactsDd (restrictSet mgr (ddOf  bls addlaw) [ (k, P k `elem` s) | P k <- vocabOf bls ])
+      eventVoc = map fromEnum addprops
+      -- FIXME: avoid the conversion to BDD here - needs allSatsWith for ZDDs
+      selectedEvents = allSatsWith mgr eventVoc (toB mgr (toO1 mgr (toI1 mgr eventVoc selectedEventsDD)))
       selectedEventState :: KnState
-      selectedEventState = map (P . fst) $ filter snd selectedEvent
-      selectedEvent = case
-                        allSatsWith mgr
-                          (map fromEnum addprops)
-                          (con mgr eventFactsDd (restrictSet mgr (ddOf  bls addlaw) [ (k, P k `elem` s) | P k <- vocabOf bls ]))
-                      of
-                        []     -> error "no selected event"
-                        [this] -> this
-                        more   -> error $ "too many selected events: " ++ show more
--}
+      selectedEventState =
+        case selectedEvents of
+          []     -> error "no selected event"
+          [this] -> map (P . fst) $ filter snd this
+          more   -> error $ "too many selected events: " ++ show more
+
+-- TODO: instance Update (MultipointedBelScene a b c) (MultipointedEvent a b c)
 
 trfPost :: (DdCtx a b c) => Event a b c -> Prp -> Dd a b c
 trfPost (Trf mgr addprops _ changelaw _, x) p
