@@ -32,15 +32,18 @@ main = do
         describe "Z O0 I1" $ cuddTests @Z @O0 @I1
         describe "Z O1 I0" $ cuddTests @Z @O1 @I0
         describe "Z O0 I0" $ cuddTests @Z @O0 @I0
-    describe "S5: hardcoded myKns" $ do
-      before (MyHaskCUDD.makeManagerZ (length defaultVocabulary + 1)) $
-        it "all DD kinds" $ \mgr -> property (alleq . ddKindTest mgr)
+    describe "S5: hardcoded myKns and myKnScac" $ do
+      before (MyHaskCUDD.makeManagerZ (length defaultVocabulary + 1)) $ do
+        it "evalViaDd agrees for all variants" $ \mgr -> property (alleq . evalViaDdTest mgr)
+        it "validViaDD agrees for all variants" $ \mgr -> property (alleq . validViaDdTest mgr)
     describe "K_CUDD: hardcoded myBlS and myBlScac" $ do
-      before (MyHaskCUDD.makeManagerZ 15) $
-        it "evalViaDd agrees for all kinds" $ \mgr -> property (alleq . ddKindTestK mgr)
+      before (MyHaskCUDD.makeManagerZ 15) $ do
+        it "evalViaDd agrees for all variants" $ \mgr -> property (alleq . evalViaDdTestK mgr)
+        it "validViaDD agrees for all variants" $ \mgr -> property (alleq . validViaDdTestK mgr)
     describe "Ki_CUDD: hardcoded myBlSKi" $ do
-      before (MyHaskCUDD.makeManagerZ 20) $
-        it "evalViaDd agrees for all kinds" $ \mgr -> property (alleq . ddKindTestKi mgr)
+      before (MyHaskCUDD.makeManagerZ 20) $ do
+        it "evalViaDd agrees for all variants" $ \mgr -> property (alleq . evalViaDdTestKi mgr)
+        it "validVidaDD agrees for all variants" $ \mgr -> property (alleq . validViaDdTestKi mgr)
 
 -- * CUDD / MyHaskCUDD
 
@@ -129,8 +132,8 @@ myKnScac = S5.KnS defaultVocabulary (S5.boolBddOf Top) myDefaultObservables
 myDefaultObservables :: [(Agent,[Prp])]
 myDefaultObservables = [("1", [P 1 .. P 4]), ("2", [P 1, P 2]), ("3", []), ("4", [P 1]), ("5", [])]
 
-ddKindTest :: MyHaskCUDD.Manager -> SimplifiedForm -> [Bool]
-ddKindTest mgr (SF f) =
+evalViaDdTest :: MyHaskCUDD.Manager -> SimplifiedForm -> [Bool]
+evalViaDdTest mgr (SF f) =
   [ S5.evalViaBdd (myKnScac, defaultVocabulary) f
   , S5_CUDD.evalViaDd ((myKnS mgr, defaultVocabulary) :: S5_CUDD.KnowScene B O1 I1) f
   , S5_CUDD.evalViaDd ((myKnS mgr, defaultVocabulary) :: S5_CUDD.KnowScene B O1 I0) f
@@ -140,6 +143,19 @@ ddKindTest mgr (SF f) =
   , S5_CUDD.evalViaDd ((myKnS mgr, defaultVocabulary) :: S5_CUDD.KnowScene Z O1 I0) f
   , S5_CUDD.evalViaDd ((myKnS mgr, defaultVocabulary) :: S5_CUDD.KnowScene Z O0 I1) f
   , S5_CUDD.evalViaDd ((myKnS mgr, defaultVocabulary) :: S5_CUDD.KnowScene Z O0 I0) f
+  ]
+
+validViaDdTest :: MyHaskCUDD.Manager -> SimplifiedForm -> [Bool]
+validViaDdTest mgr (SF f) =
+  [ S5.validViaBdd myKnScac f
+  , S5_CUDD.validViaDd (myKnS mgr :: S5_CUDD.KnowStruct B O1 I1) f
+  , S5_CUDD.validViaDd (myKnS mgr :: S5_CUDD.KnowStruct B O1 I0) f
+  , S5_CUDD.validViaDd (myKnS mgr :: S5_CUDD.KnowStruct B O0 I1) f
+  , S5_CUDD.validViaDd (myKnS mgr :: S5_CUDD.KnowStruct B O0 I0) f
+  , S5_CUDD.validViaDd (myKnS mgr :: S5_CUDD.KnowStruct Z O1 I1) f
+  , S5_CUDD.validViaDd (myKnS mgr :: S5_CUDD.KnowStruct Z O1 I0) f
+  , S5_CUDD.validViaDd (myKnS mgr :: S5_CUDD.KnowStruct Z O0 I1) f
+  , S5_CUDD.validViaDd (myKnS mgr :: S5_CUDD.KnowStruct Z O0 I0) f
   ]
 
 -- * K_CUDD
@@ -158,8 +174,8 @@ myObsLaws formToDd = M.fromList
   , ("4", formToDd $ PrpF $ P 1)
   , ("5", formToDd Bot) ]
 
-ddKindTestK :: MyHaskCUDD.Manager -> SimplifiedForm -> [Bool]
-ddKindTestK mgr (SF f) =
+evalViaDdTestK :: MyHaskCUDD.Manager -> SimplifiedForm -> [Bool]
+evalViaDdTestK mgr (SF f) =
   [ K.evalViaBdd (myBlScac, defaultVocabulary) f
   , K_CUDD.evalViaDd ((myBlS mgr, defaultVocabulary) :: K_CUDD.BelScene B O1 I1) f
   , K_CUDD.evalViaDd ((myBlS mgr, defaultVocabulary) :: K_CUDD.BelScene B O1 I0) f
@@ -169,6 +185,19 @@ ddKindTestK mgr (SF f) =
   , K_CUDD.evalViaDd ((myBlS mgr, defaultVocabulary) :: K_CUDD.BelScene Z O1 I0) f
   , K_CUDD.evalViaDd ((myBlS mgr, defaultVocabulary) :: K_CUDD.BelScene Z O0 I1) f
   , K_CUDD.evalViaDd ((myBlS mgr, defaultVocabulary) :: K_CUDD.BelScene Z O0 I0) f
+  ]
+
+validViaDdTestK :: MyHaskCUDD.Manager -> SimplifiedForm -> [Bool]
+validViaDdTestK mgr (SF f) =
+  [ K.validViaBdd myBlScac f
+  , K_CUDD.validViaDd (myBlS mgr :: K_CUDD.BelStruct B O1 I1) f
+  , K_CUDD.validViaDd (myBlS mgr :: K_CUDD.BelStruct B O1 I0) f
+  , K_CUDD.validViaDd (myBlS mgr :: K_CUDD.BelStruct B O0 I1) f
+  , K_CUDD.validViaDd (myBlS mgr :: K_CUDD.BelStruct B O0 I0) f
+  , K_CUDD.validViaDd (myBlS mgr :: K_CUDD.BelStruct Z O1 I1) f
+  , K_CUDD.validViaDd (myBlS mgr :: K_CUDD.BelStruct Z O1 I0) f
+  , K_CUDD.validViaDd (myBlS mgr :: K_CUDD.BelStruct Z O0 I1) f
+  , K_CUDD.validViaDd (myBlS mgr :: K_CUDD.BelStruct Z O0 I0) f
   ]
 
 -- * Ki_CUDD
@@ -184,8 +213,8 @@ myBlSKi mgr = Ki_CUDD.BlS mgr defaultVocabulary (S5_CUDD.boolDdOf mgr Top) myObs
     , Impl (PrpF $ P 4) Top
     ])
 
-ddKindTestKi :: MyHaskCUDD.Manager -> SimplifiedForm -> [Bool]
-ddKindTestKi mgr (SF f) =
+evalViaDdTestKi :: MyHaskCUDD.Manager -> SimplifiedForm -> [Bool]
+evalViaDdTestKi mgr (SF f) =
   [ Ki_CUDD.evalViaDd ((myBlSKi mgr, defaultVocabulary) :: Ki_CUDD.BelScene B O1 I1) f
   , Ki_CUDD.evalViaDd ((myBlSKi mgr, defaultVocabulary) :: Ki_CUDD.BelScene B O1 I0) f
   , Ki_CUDD.evalViaDd ((myBlSKi mgr, defaultVocabulary) :: Ki_CUDD.BelScene B O0 I1) f
@@ -194,4 +223,16 @@ ddKindTestKi mgr (SF f) =
   , Ki_CUDD.evalViaDd ((myBlSKi mgr, defaultVocabulary) :: Ki_CUDD.BelScene Z O1 I0) f
   , Ki_CUDD.evalViaDd ((myBlSKi mgr, defaultVocabulary) :: Ki_CUDD.BelScene Z O0 I1) f
   , Ki_CUDD.evalViaDd ((myBlSKi mgr, defaultVocabulary) :: Ki_CUDD.BelScene Z O0 I0) f
+  ]
+
+validViaDdTestKi :: MyHaskCUDD.Manager -> SimplifiedForm -> [Bool]
+validViaDdTestKi mgr (SF f) =
+  [ Ki_CUDD.validViaDd (myBlSKi mgr :: Ki_CUDD.BelStruct B O1 I1) f
+  , Ki_CUDD.validViaDd (myBlSKi mgr :: Ki_CUDD.BelStruct B O1 I0) f
+  , Ki_CUDD.validViaDd (myBlSKi mgr :: Ki_CUDD.BelStruct B O0 I1) f
+  , Ki_CUDD.validViaDd (myBlSKi mgr :: Ki_CUDD.BelStruct B O0 I0) f
+  , Ki_CUDD.validViaDd (myBlSKi mgr :: Ki_CUDD.BelStruct Z O1 I1) f
+  , Ki_CUDD.validViaDd (myBlSKi mgr :: Ki_CUDD.BelStruct Z O1 I0) f
+  , Ki_CUDD.validViaDd (myBlSKi mgr :: Ki_CUDD.BelStruct Z O0 I1) f
+  , Ki_CUDD.validViaDd (myBlSKi mgr :: Ki_CUDD.BelStruct Z O0 I0) f
   ]
