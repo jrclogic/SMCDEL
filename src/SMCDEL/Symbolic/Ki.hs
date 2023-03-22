@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances, TypeOperators, MultiParamTypeClasses, ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, ScopedTypeVariables #-}
 
 module SMCDEL.Symbolic.Ki where
 
@@ -11,7 +11,6 @@ import Data.List (sort,intersect,(\\))
 import qualified Data.Map.Strict as M
 import Data.Map.Strict ((!))
 
-import SMCDEL.Explicit.K
 import SMCDEL.Internal.Help (apply,lfp,powerset)
 import SMCDEL.Language
 import SMCDEL.Other.BDD2Form
@@ -65,32 +64,6 @@ mvBdd m b = Tagged $ relabelFun (\n -> (2 * n) + m) b
 unmvBdd :: Int -> RelBDD -> Bdd
 unmvBdd m (Tagged b) =
   relabelFun (\n -> if even (n-m) then (n-m) `div` 2 else error ("Not even: " ++ show n)) b
-
-{-propRel2bdd :: [Prp] -> M.Map State [State] -> RelBDD
-propRel2bdd props relation = pure $ disSet (M.elems $ M.mapWithKey linkbdd relation) where
-  linkbdd here theres =
-    con (booloutof (mv here) (mv props))
-        (disSet [ booloutof (cp there) (cp props) | there <- theres ] )
-
-samplerel ::  M.Map State [State]
-samplerel = M.fromList [
-  ( []        , [ [],[P 1],[P 2],[P 1, P 2] ] ),
-  ( [P 1]     , [    [P 1],      [P 1, P 2] ] ),
-  ( [P 2]     , [    [P 2],      [P 1, P 2] ] ),
-  ( [P 1, P 2], [                [P 1, P 2] ] )  ]-}
-
-relBddOfIn :: Int -> Agent -> KripkeModel -> RelBDD
-relBddOfIn n i (KrM m)
-  | not (distinctVal (KrM m)) = error "m does not have distinct valuations."
-  | otherwise = pure $ disSet (M.elems $ M.map linkbdd m) where
-    linkbdd (mapPropBool,mapAgentReach)  =
-      con
-        (booloutof (mv n here) (mv n props))
-        (disSet [ booloutof (cp n there) (cp n props) | there<-theres ] )
-      where
-        props = M.keys mapPropBool
-        here = M.keys (M.filter id mapPropBool)
-        theres = map (truthsInAt (KrM m)) (mapAgentReach ! i)
 
 data BelStruct = BlS [Prp]              -- vocabulary
                      Bdd                -- state law
@@ -255,65 +228,10 @@ bddprefix, bddsuffix :: String
 bddprefix = "\\begin{array}{l} \\scalebox{0.3}{"
 bddsuffix = "} \\end{array} \n"
 
-{-instance TexAble BelStruct where
-  tex (BlS props lawbdd obdds) = concat
-    [ " \\left( \n"
-    , tex props, ", "
-    , bddprefix, texBDD lawbdd, bddsuffix
-    , ", "
-    , intercalate ", " obddstrings
-    , " \\right) \n"
-    ] where
-        obddstrings = map (bddstring . (fst &&& (texRelBDD . snd))) (M.toList obdds)
-        bddstring (i,os) = "\\Omega_{\\text{" ++ i ++ "}} = " ++ bddprefix ++ os ++ bddsuffix
+-- TODO: Optimization of Ki structures
 
-instance TexAble BelScene where
-  tex (bls, state) = concat
-    [ " \\left( \n", tex bls, ", ", tex state, " \\right) \n" ]
+-- TODO: Generating Arbitrary Ki structures
 
-instance TexAble MultipointedBelScene where
-  tex (bls, statesBdd) = concat
-    [ " \\left( \n"
-    , tex bls ++ ", "
-    , " \\begin{array}{l} \\scalebox{0.4}{"
-    , texBDD statesBdd
-    , "} \\end{array}\n "
-    , " \\right)" ]-}
-
-{-cleanupObsLaw :: BelScene -> BelScene
-cleanupObsLaw (BlS vocab law (ags,obs), s) = (BlS vocab law (M.map clean obs), s) where
-  clean relbdd = restrictLaw <$> relbdd <*> (con <$> cpBdd (M.size ags) law <*> mvBdd (M.size ags) law)
--}
-determinedVocabOf :: BelStruct -> [Prp]
-determinedVocabOf strct = filter (\p -> validViaBdd strct (PrpF p) || validViaBdd strct (Neg $ PrpF p)) (vocabOf strct)
-
-{-nonobsVocabOf  :: BelStruct -> [Prp]
-nonobsVocabOf (BlS vocab _law obs) = filter (`notElem` usedVars) vocab where
-  usedVars =
-    map unmvcpP
-    $ sort
-    $ concatMap (map P . Data.HasCacBDD.allVarsOf . untag . snd)
-    $ M.toList obs
-
-withoutProps :: [Prp] -> BelStruct -> BelStruct
-withoutProps propsToDel (BlS oldProps oldLawBdd oldObs) =
-  BlS
-    (oldProps \\ propsToDel)
-    (existsSet (map fromEnum propsToDel) oldLawBdd)
-    (M.map (fmap $ existsSet (map fromEnum propsToDel)) oldObs)
-
-instance Arbitrary BelStruct where
-  arbitrary = do
-    numExtraVars <- choose (0,3)
-    let myVocabulary = defaultVocabulary ++ take numExtraVars [freshp defaultVocabulary ..]
-    (BF statelaw) <- sized (randomboolformWith myVocabulary) `suchThat` (\(BF bf) -> boolBddOf bf /= bot)
-    obs <- mapM (\i -> do
-      BF obsLaw <- sized $ randomboolformWith (sort $ mv myVocabulary ++ cp myVocabulary) -- FIXME should rather be a random BDD?
-      return (i,pure $ boolBddOf obsLaw)
-      ) defaultAgents
-    return $ BlS myVocabulary (boolBddOf statelaw) (M.fromList obs)
-  shrink bls = [ withoutProps [p] bls | length (vocabOf bls) > 1, p <- vocabOf bls \\ defaultVocabulary ]
--}
 data Transformer = Trf
   [Prp] -- addprops
   Form  -- event law
@@ -340,33 +258,7 @@ instance HasPrecondition MultipointedEvent where
   preOf (Trf addprops addlaw _ _, xsBdd) =
     simplify $ Exists addprops (Conj [ formOf xsBdd, addlaw ])
 
-{-instance TexAble Transformer where
-  tex (Trf addprops addlaw changelaw eventObs) = concat
-    [ " \\left( \n"
-    , tex addprops, ", "
-    , tex addlaw, ", "
-    , tex changeprops, ", "
-    , intercalate ", " $ map snd . M.toList $ M.mapWithKey texChange changelaw, ", "
-    , intercalate ", " eobddstrings
-    , " \\right) \n"
-    ] where
-        changeprops = M.keys changelaw
-        texChange prop changebdd = tex prop ++ " := " ++ tex (formOf changebdd)
-        eobddstrings = map (bddstring . (fst &&& (texRelBDD . snd))) (M.toList eventObs)
-        bddstring (i,os) = "\\Omega^+_{\\text{" ++ i ++ "}} = " ++ bddprefix ++ os ++ bddsuffix
-
-instance TexAble Event where
-  tex (trf, eventFacts) = concat
-    [ " \\left( \n", tex trf, ", ", tex eventFacts, " \\right) \n" ]
-
-instance TexAble MultipointedEvent where
-  tex (trf, eventStates) = concat
-    [ " \\left( \n"
-    , tex trf ++ ", \\ "
-    , " \\begin{array}{l} \\scalebox{0.4}{"
-    , texBDD eventStates
-    , "} \\end{array}\n "
-    , " \\right)" ]-}
+-- TODO: TexAble Transformer
 
 -- | shift addprops to ensure that props and newprops are disjoint:
 shiftPrepare :: BelStruct -> Transformer -> (Transformer, [(Prp,Prp)])
@@ -446,7 +338,7 @@ reduce _ (Forall _ _) = Nothing
 reduce _ (Exists _ _) = Nothing
 reduce e@(t@(Trf addprops _ _ (ags, eventObs)), x) (K a f) =
   Impl (preOf e) <$> (Conj <$> sequence
-    [ K a <$> reduce (t,y) f | y <- powerset addprops -- FIXME is this a bit much?
+    [ K a <$> reduce (t,y) f | y <- powerset addprops -- FIXME this is inefficient
                              , tagBddEval (mv (M.size ags) x ++ cp (M.size ags) y) (Tagged $ restrict (untag eventObs) (ags ! a, True) :: Tagged Dubbel Bdd)
     ])
 reduce e (Kw a f)     = reduce e (Disj [K a f, K a (Neg f)])
