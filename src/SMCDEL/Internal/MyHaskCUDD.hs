@@ -35,8 +35,7 @@ module SMCDEL.Internal.MyHaskCUDD (
   ) where
 
 import qualified Cudd.Cudd
-import System.IO.Unsafe ( unsafePerformIO )
-import System.IO.Temp ( withSystemTempDirectory )
+import System.IO.Temp (withSystemTempDirectory)
 import Control.Arrow ((***))
 import Data.List
 import Data.Maybe (fromJust)
@@ -294,9 +293,9 @@ instance DdI a b I0 where
 class (Convert b c) where
   convertToZDD :: Cudd.Cudd.DdManager -> [Int] -> Dd B O1 I1 -> Dd Z b c
 
-instance Convert O1 I1 where convertToZDD mgr _       =                               toZ mgr
+instance Convert O1 I1 where convertToZDD mgr _      =                              toZ mgr
 instance Convert O1 I0 where convertToZDD mgr domain = toI0 mgr domain            . toZ mgr
-instance Convert O0 I1 where convertToZDD mgr _       =                    toO0 mgr . toZ mgr
+instance Convert O0 I1 where convertToZDD mgr _      =                   toO0 mgr . toZ mgr
 instance Convert O0 I0 where convertToZDD mgr domain = toI0 mgr domain . toO0 mgr . toZ mgr
 
 -- | functions where no specification is needed.
@@ -415,9 +414,8 @@ substitSimul mgr ((n, psi) : ns) dd = ifte psi ( recurs (restr dd (n, True))) (r
 
 -- * supporting functions
 
--- FIXME: make this an IO function?
-returnDot :: DdCtx a b c => Cudd.Cudd.DdManager -> Dd a b c -> String
-returnDot mgr d = unsafePerformIO $ withSystemTempDirectory "smcdel" $ \tmpdir -> do
+returnDot :: DdCtx a b c => Cudd.Cudd.DdManager -> Dd a b c -> IO String
+returnDot mgr d = withSystemTempDirectory "smcdel" $ \tmpdir -> do
     writeToDot mgr d (tmpdir ++ "/temp.dot")
     readFile (tmpdir ++ "/temp.dot")
 
