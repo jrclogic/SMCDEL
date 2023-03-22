@@ -183,7 +183,7 @@ instance (DdCtx a b c) => Update (KnowStruct a b c) Form where
 texDdWith :: DdCtx a b c => Cudd.Cudd.DdManager -> Dd a b c -> [Prp] -> String
 texDdWith mgr d vocab = unsafePerformIO $ do
   (i,o,_,_) <- runInteractiveCommand "dot2tex --figpreamble=\"\\huge\" --figonly -traw"
-  let xDotText = B.pack $ returnDot mgr d
+  xDotText <- B.pack <$> returnDot mgr d
   -- currently uses P1 .. Pn for names of variables 1 .. n, can be changed when the parser accepts non number propositions
   let myShow = formatDotCUDD vocab
   let xDotGraph = parseDotGraphLiberally xDotText :: DotGen.DotGraph String
@@ -198,7 +198,7 @@ texDdWith mgr d vocab = unsafePerformIO $ do
 texDdFun :: DdCtx a b c => Cudd.Cudd.DdManager -> Dd a b c -> (Int-> String) -> String
 texDdFun mgr d myShowF = unsafePerformIO $ do
   (i,o,_,_) <- runInteractiveCommand "dot2tex --figpreamble=\"\\huge\" --figonly -traw"
-  let xDotText = B.pack $ returnDot mgr d
+  xDotText <- B.pack <$> returnDot mgr d
   let xDotGraph = (parseDotGraphLiberally xDotText :: DotGen.DotGraph String)
   let myShow = zip (map (\x -> " " ++ show x ++ " ") $ getSupport mgr d) (map myShowF $ getSupport mgr d)
   let renamedXDotGraph = renameMyGraph xDotGraph myShow
