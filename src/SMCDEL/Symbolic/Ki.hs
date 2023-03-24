@@ -272,7 +272,7 @@ shiftPrepare (BlS props _ _) (Trf addprops addlaw changelaw (ags, eventObs)) =
     -- to shift addObs we need shiftrel in the double vocabulary:
     shiftrelMVCP = sort $ zip (mv (M.size ags) addprops) (mv (M.size ags) shiftaddprops)
                        ++ zip (cp (M.size ags) addprops) (cp (M.size ags) shiftaddprops)
-    eventObsShifted  = foldl (\x y -> con <$> x <*> y) (Tagged $ top) [Tagged $ relabelWith shiftrelMVCP (restrict (untag eventObs) (ags ! i, True)) | i <- M.keys ags]
+    eventObsShifted  = foldl (\x y -> con <$> x <*> y) (Tagged top) [Tagged $ relabelWith shiftrelMVCP (restrict (untag eventObs) (ags ! i, True)) | i <- M.keys ags]
 
 instance Update BelScene Event where
   unsafeUpdate (bls@(BlS props law (ags, obdds)),s) (trf, eventFactsUnshifted) = (BlS newprops newlaw (ags, newobs), news) where
@@ -290,7 +290,7 @@ instance Update BelScene Event where
     newprops = sort $ props ++ addprops ++ copychangeprops
     newlaw = conSet $ relabelWith copyrel (con law (bddOf bls addlaw))
                     : [var (fromEnum q) `equ` relabelWith copyrel (changelaw ! q) | q <- changeprops]
-    newobs = foldl (\x y -> con <$> x <*> y) (Tagged $ top) newobdds
+    newobs = foldl (\x y -> con <$> x <*> y) (Tagged top) newobdds
     newobdds = [con <$> (relabelWith copyrelMVCP <$> Tagged (restrict (untag obdds) (ag ! i, True))) <*> Tagged (restrict (untag addObs) (ag ! i, True)) | i <- M.keys ag]
     news = sort $ concat
             [ s \\ changeprops

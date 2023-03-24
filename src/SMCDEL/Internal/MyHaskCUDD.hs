@@ -39,8 +39,7 @@ import System.IO.Temp (withSystemTempDirectory)
 import Control.Arrow ((***))
 import Data.List
 import Data.Maybe (fromJust)
-
-
+import Data.Bifunctor (bimap)
 
 -- | A Binary Decision diagram with any of the five node eliminations.
 newtype Dd x y z = ToDd Cudd.Cudd.DdNode deriving stock (Eq,Show)
@@ -269,7 +268,7 @@ class DdO a b where
 instance DdO a O1 where
   toO0 mgr (ToDd d :: Dd a b c) = neg mgr (ToDd d :: Dd a O0 c)
   toO1 _ d = d
-  ifthenelse mgr d1 d2 d3 = ite mgr d1 d2 d3 -- context dependent version of ite
+  ifthenelse = ite -- context dependent version of ite
 
 instance DdO a O0 where
   toO0 _ d = d
@@ -358,9 +357,9 @@ relabelFun mgr v rF dd = loop dd disjointListOfLists
   -- get a list of tuples containing 2 equal length, disjointed lists of vars to be swapped
   -- by removing the "overlapping" variables and performing a recursive call with them
   splitCompare [] [] = []
-  splitCompare [] _ = error "varlists used for relabeling do not have equal length."
-  splitCompare _ [] = error "varlists used for relabeling do not have equal length."
-  splitCompare l1 l2 = (l1\\fst (getOverlap l1 l2),l2\\snd (getOverlap l1 l2)) : uncurry splitCompare (newOverlap l1 l2)
+  splitCompare [] _  = error "varlists used for relabeling do not have equal length."
+  splitCompare _  [] = error "varlists used for relabeling do not have equal length."
+  splitCompare l1 l2 = bimap (l1 \\) (l2 \\) (getOverlap l1 l2) : uncurry splitCompare (newOverlap l1 l2)
 
   -- apply the function above to the support variable integers and the resulting integers from applying rf (the Remapping Function)
   -- and turn the integers into DD nodes (as ddSwapVars requires this)
@@ -388,9 +387,9 @@ relabelWith mgr r dd = loop dd disjointListOfLists where
   -- get a list of tuples containing 2 equal length, disjointed lists of vars to be swapped
   -- by removing the "overlapping" variables and performing a recursive call with them
   splitCompare [] [] = []
-  splitCompare [] _ = error "varlists used for relabeling do not have equal length."
-  splitCompare _ [] = error "varlists used for relabeling do not have equal length."
-  splitCompare l1 l2 = (l1\\fst (getOverlap l1 l2),l2\\snd (getOverlap l1 l2)) : uncurry splitCompare (newOverlap l1 l2)
+  splitCompare [] _  = error "varlists used for relabeling do not have equal length."
+  splitCompare _  [] = error "varlists used for relabeling do not have equal length."
+  splitCompare l1 l2 = bimap (l1 \\) (l2 \\) (getOverlap l1 l2) : uncurry splitCompare (newOverlap l1 l2)
 
   -- apply the function above to the support variable integers and the resulting integers from applying rf (the Remapping Function)
   -- and turn the integers into BDD nodes (as ddSwapVars requires this)
