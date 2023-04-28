@@ -43,6 +43,7 @@ import SMCDEL.Language
   CON    { TokenCon    _ }
   DIS    { TokenDis    _ }
   XOR    { TokenXor    _ }
+  ONEOF  { TokenOneOf  _ }
   STR    { TokenStr $$ _ }
   INT    { TokenInt $$ _ }
   'iff'  { TokenEqui   _ }
@@ -79,6 +80,7 @@ Form : TOP { Top }
      | Form '->' Form { Impl $1 $3 }
      | DIS '(' FormList ')' { Disj $3 }
      | XOR '(' FormList ')' { Xor $3 }
+     | ONEOF '(' FormList ')' { oneOf $3 }
      | Form 'iff' Form { Equi $1 $3 }
      | INT { PrpF (P $1) }
      | K String Form { K $2 $3 }

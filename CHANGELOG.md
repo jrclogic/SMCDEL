@@ -7,6 +7,7 @@ New:
 - Use ZDDs as an alternative in `SMCDEL.Symbolic.S5_CUDD` and `SMCDEL.Symbolic.K_CUDD`.
 - Modules `SMCDEL.Symbolic.Ki` and `SMCDEL.Symbolic.Ki_CUDD` using one agent-indexed DD.
 - Examples: generalised versions of Sum and Product and Dining Cryptographers
+- Web and CLI: add `ONEOF` keyword to allow formulas like `ONEOF (p, q, r)` - fix #21
 
 Changed:
 

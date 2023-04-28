@@ -182,6 +182,9 @@ pubAnnounceWhetherStack = flip $ foldr PubAnnounceW
 booloutofForm :: [Prp] -> [Prp] -> Form
 booloutofForm ps qs = Conj $ [ PrpF p | p <- ps ] ++ [ Neg $ PrpF r | r <- qs \\ ps ]
 
+oneOf :: [Form] -> Form
+oneOf fs = Conj [ Disj fs, Conj [ Neg $ Conj [f1, f2] | f1 <- fs, f2 <- fs \\ [f1] ] ]
+
 subformulas :: Form -> [Form]
 subformulas Top           = [Top]
 subformulas Bot           = [Bot]

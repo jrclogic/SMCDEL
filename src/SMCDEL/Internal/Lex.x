@@ -49,6 +49,7 @@ tokens :-
   "AND"             { \ p _ -> TokenCon               p }
   "OR"              { \ p _ -> TokenDis               p }
   "XOR"             { \ p _ -> TokenXor               p }
+  "ONEOF"           { \ p _ -> TokenOneOf             p }
   "ForAll"          { \ p _ -> TokenForall            p }
   "Forall"          { \ p _ -> TokenForall            p }
   "Exists"          { \ p _ -> TokenExists            p }

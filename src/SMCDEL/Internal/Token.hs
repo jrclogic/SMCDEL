@@ -29,6 +29,7 @@ data Token a -- == AlexPn
   | TokenCon               {apn :: a}
   | TokenDis               {apn :: a}
   | TokenXor               {apn :: a}
+  | TokenOneOf             {apn :: a}
   | TokenImpl              {apn :: a}
   | TokenEqui              {apn :: a}
   | TokenForall            {apn :: a}
