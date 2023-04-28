@@ -87,6 +87,7 @@ Form : TOP { Top }
      | Kw String Form { Kw $2 $3 }
      | String KNOWSTHAT Form { K $1 $3 }
      | String KNOWSWHETHER Form { Kw $1 $3 }
+     | String KNOWSWHETHER '(' FormList ')' { Conj (map (Kw $1) $4) }
      | StringList CKNOWTHAT Form { Ck $1 $3 }
      | StringList CKNOWWHETHER Form { Ckw $1 $3 }
      | '(' StringList ')' CKNOWTHAT Form { Ck $2 $5 }
