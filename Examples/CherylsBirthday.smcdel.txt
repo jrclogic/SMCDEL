@@ -11,17 +11,9 @@ LAW  AND (
      , (14 & 8), (15 & 8), (17 & 8)
      ),
   -- month must be unique:
-  AND ( ~(5 & 6), ~(5 & 7), ~(5 & 8)
-      , ~(6 & 7), ~(6 & 8)
-      , ~(7 & 8)
-      ),
-  -- days must be unique:
-  AND ( ~(14 & 15), ~(14 & 16), ~(14 & 17), ~(14 & 18), ~(14 & 19)
-      , ~(15 & 16), ~(15 & 17), ~(15 & 18), ~(15 & 19)
-      , ~(16 & 17), ~(16 & 18), ~(16 & 19)
-      , ~(17 & 18), ~(17 & 19)
-      , ~(18 & 19)
-      )
+  ONEOF ( 5, 6, 7, 8 ),
+  -- day must be unique:
+  ONEOF ( 14, 15, 16, 17, 18, 19 )
   )
 
 OBS  albert:  5,6,7,8            -- knows month
@@ -34,33 +26,12 @@ WHERE?
 -- the dialogue
 WHERE?
    -- Albert: I don't know when Cheryl's birthday is, ...
-   < ! ~ OR ( albert knows that (15 & 5), albert knows that (16 & 5)
-            , albert knows that (19 & 5), albert knows that (17 & 6)
-            , albert knows that (18 & 6), albert knows that (14 & 7)
-            , albert knows that (16 & 7), albert knows that (14 & 8)
-            , albert knows that (15 & 8), albert knows that (17 & 8)
-            ) >
+   < ! ~ albert knows whether (5,6,7,8,14,15,16,17,18,19) >
    -- ... but I know that Bernard doesn't know too.
-   < ! ( albert knows that (
-         ~( OR ( bernard knows that (15 & 5), bernard knows that (16 & 5)
-               , bernard knows that (19 & 5), bernard knows that (17 & 6)
-               , bernard knows that (18 & 6), bernard knows that (14 & 7)
-               , bernard knows that (16 & 7), bernard knows that (14 & 8)
-               , bernard knows that (15 & 8), bernard knows that (17 & 8)
-               ) ) ) ) >
+   < ! albert knows that (~ (bernard knows whether (5,6,7,8,14,15,16,17,18,19))) >
    -- Bernard: First I did not know when Cheryl's birthday is, but now I know.
-   < ! OR ( bernard knows that (15 & 5), bernard knows that (16 & 5)
-          , bernard knows that (19 & 5), bernard knows that (17 & 6)
-          , bernard knows that (18 & 6), bernard knows that (14 & 7)
-          , bernard knows that (16 & 7), bernard knows that (14 & 8)
-          , bernard knows that (15 & 8), bernard knows that (17 & 8)
-          ) >
+   < ! bernard knows whether (5,6,7,8,14,15,16,17,18,19) >
    -- Albert: Then I also know when Cheryl's birthday is.
-   < ! OR ( albert knows that (15 & 5), albert knows that (16 & 5)
-          , albert knows that (19 & 5), albert knows that (17 & 6)
-          , albert knows that (18 & 6), albert knows that (14 & 7)
-          , albert knows that (16 & 7), albert knows that (14 & 8)
-	  , albert knows that (15 & 8), albert knows that (17 & 8)
-          ) >
+   < ! albert knows whether (5,6,7,8,14,15,16,17,18,19) >
    -- (show all states where these announcements can be made in this order)
    Top
