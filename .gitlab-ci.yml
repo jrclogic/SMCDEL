@@ -24,7 +24,7 @@ build:
   stage: build
   script:
     - rm -rf .stack-work/install/*/*/*/bin
-    - stack build
+    - stack build --no-terminal --coverage --test --bench --no-run-tests --no-run-benchmarks
   after_script:
     - rm -rf ./bin
     - mv .stack-work/install/*/*/*/bin ./bin
