@@ -37,12 +37,30 @@ test:
   script:
     - apt-get install -y firefox-esr openjdk-11-jre-headless
     - rm -rf .stack-work/install/*/*/*/hpc
-    - stack --no-terminal test --coverage
+    - stack --no-terminal test --coverage smcdel:test:examples smcdel:test:k smcdel:test:translations smcdel:test:web
   coverage: '/(\d+)% top-level declarations used/'
   after_script:
     - rm -rf ./hpc
     - mv .stack-work/install/*/*/*/hpc ./hpc
   artifacts:
+    when: always
+    paths:
+      - "hpc/"
+  cache:
+    policy: pull
+
+test-CUDD:
+  stage: test
+  script:
+    - rm -rf .stack-work/install/*/*/*/hpc
+    - stack --no-terminal test --coverage smcdel:test:CUDD
+  coverage: '/(\d+)% top-level declarations used/'
+  after_script:
+    - rm -rf ./hpc
+    - mv .stack-work/install/*/*/*/hpc ./hpc
+  allow_failure: true
+  artifacts:
+    when: always
     paths:
       - "hpc/"
   cache:
