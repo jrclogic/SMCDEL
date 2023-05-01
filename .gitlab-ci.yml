@@ -3,7 +3,7 @@ image: haskell:8.10.7
 variables:
   STACK_ROOT: "${CI_PROJECT_DIR}/.stack"
 
-cache:
+cache: &global_cache
   paths:
     - .apt
     - .stack
@@ -17,7 +17,7 @@ before_script:
   - mkdir -p /var/cache/apt
   - mount --bind .apt /var/cache/apt
   - apt-get update -yqq
-  - apt-get install -y --no-install-recommends graphviz dot2tex libtinfo5 texlive-latex-base poppler-utils preview-latex-style texlive-pstricks wget
+  - apt-get install -y --no-install-recommends graphviz dot2tex libtinfo5 texlive-latex-base poppler-utils preview-latex-style texlive-pstricks wget firefox-esr openjdk-11-jre-headless
   - stack config set system-ghc --global true
 
 build:
@@ -35,7 +35,6 @@ build:
 test:
   stage: test
   script:
-    - apt-get install -y firefox-esr openjdk-11-jre-headless
     - rm -rf .stack-work/install/*/*/*/hpc
     - stack --no-terminal test --coverage smcdel:test:examples smcdel:test:k smcdel:test:translations smcdel:test:web
   coverage: '/(\d+)% top-level declarations used/'
@@ -47,6 +46,7 @@ test:
     paths:
       - "hpc/"
   cache:
+    <<: *global_cache
     policy: pull
 
 test-CUDD:
@@ -64,18 +64,12 @@ test-CUDD:
     paths:
       - "hpc/"
   cache:
-    policy: pull
-
-bench-build:
-  stage: test
-  script:
-    - stack --no-terminal bench --no-run-benchmarks
-  cache:
+    <<: *global_cache
     policy: pull
 
 hlint:
   stage: test
+  before_script:
   script:
     - curl -sL https://raw.github.com/ndmitchell/hlint/master/misc/travis.sh | sh -s .
   cache:
-    policy: pull
