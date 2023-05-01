@@ -6,13 +6,7 @@ cradle:
     - path: "./exec/smcdel.hs"
       component: "smcdel:exe:smcdel"
 
-    - path: "./exec/Paths_smcdel.hs"
-      component: "smcdel:exe:smcdel"
-
     - path: "./exec/smcdel-web.hs"
-      component: "smcdel:exe:smcdel-web"
-
-    - path: "./exec/Paths_smcdel.hs"
       component: "smcdel:exe:smcdel-web"
 
     - path: "./test/Examples.hs"
@@ -21,10 +15,10 @@ cradle:
     - path: "./test/K.hs"
       component: "smcdel:test:k"
 
-    - path: "./test"
+    - path: "./test/Translations.hs"
       component: "smcdel:test:translations"
 
-    - path: "./test"
+    - path: "./test/Web.hs"
       component: "smcdel:test:web"
 
     - path: "./test/CUDD.hs"
@@ -33,37 +27,17 @@ cradle:
     - path: "./bench/diningcrypto.hs"
       component: "smcdel:bench:bench-diningcrypto"
 
-    - path: "./bench/Paths_smcdel.hs"
-      component: "smcdel:bench:bench-diningcrypto"
-
     - path: "./bench/muddychildren.hs"
-      component: "smcdel:bench:bench-muddychildren"
-
-    - path: "./bench/Paths_smcdel.hs"
       component: "smcdel:bench:bench-muddychildren"
 
     - path: "./bench/sumandproduct.hs"
       component: "smcdel:bench:bench-sumandproduct"
 
-    - path: "./bench/Paths_smcdel.hs"
-      component: "smcdel:bench:bench-sumandproduct"
-
     - path: "./sizeExperiments/diningcryptographers.hs"
-      component: "smcdel:bench:sizes-diningcryptographers"
-
-    - path: "./sizeExperiments/Paths_smcdel.hs"
       component: "smcdel:bench:sizes-diningcryptographers"
 
     - path: "./sizeExperiments/muddychildren.hs"
       component: "smcdel:bench:sizes-muddychildren"
 
-    - path: "./sizeExperiments/Paths_smcdel.hs"
-      component: "smcdel:bench:sizes-muddychildren"
-
     - path: "./sizeExperiments/sumandproduct.hs"
       component: "smcdel:bench:sizes-sumandproduct"
-
-    - path: "./sizeExperiments/Paths_smcdel.hs"
-      component: "smcdel:bench:sizes-sumandproduct"
-
-
