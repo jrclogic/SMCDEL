@@ -5,19 +5,11 @@ variables:
 
 cache: &global_cache
   paths:
-    - .apt
     - .stack
     - .stack-work
     - target
 
 before_script:
-  - rm -f /etc/apt/apt.conf.d/docker-clean
-  - mkdir -p .apt
-  - rm -rf /var/cache/apt
-  - mkdir -p /var/cache/apt
-  - mount --bind .apt /var/cache/apt
-  - apt-get update -yqq
-  - apt-get install -y --no-install-recommends graphviz dot2tex libtinfo5 texlive-latex-base poppler-utils preview-latex-style texlive-pstricks wget firefox-esr openjdk-11-jre-headless
   - stack config set system-ghc --global true
 
 build:
@@ -35,8 +27,10 @@ build:
 test:
   stage: test
   script:
+    - apt-get update -yqq
+    - apt-get install -y --no-install-recommends graphviz dot2tex libtinfo5 texlive-latex-base poppler-utils preview-latex-style texlive-pstricks poppler-utils
     - rm -rf .stack-work/install/*/*/*/hpc
-    - stack --no-terminal test --coverage smcdel:test:examples smcdel:test:k smcdel:test:translations smcdel:test:web
+    - stack --no-terminal test --coverage smcdel:test:examples smcdel:test:k smcdel:test:translations
   coverage: '/(\d+)% top-level declarations used/'
   after_script:
     - rm -rf ./hpc
@@ -45,6 +39,16 @@ test:
     when: always
     paths:
       - "hpc/"
+  cache:
+    <<: *global_cache
+    policy: pull
+
+test-web:
+  stage: test
+  script:
+    - apt-get update -yqq
+    - apt-get install -y --no-install-recommends graphviz dot2tex libtinfo5 texlive-latex-base poppler-utils preview-latex-style texlive-pstricks wget firefox-esr openjdk-11-jre-headless
+    - stack --no-terminal test smcdel:exe:smcdel-web smcdel:test:web
   cache:
     <<: *global_cache
     policy: pull
