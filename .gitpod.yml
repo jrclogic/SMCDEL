@@ -1,0 +1,10 @@
+# This is based on https://github.com/gitpod-io/template-haskell
+
+image:
+  file: .gitpod.Dockerfile
+tasks:
+  - init:
+      stack build
+vscode:
+  extensions:
+    - haskell.haskell
