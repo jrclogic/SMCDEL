@@ -4,6 +4,7 @@ module SMCDEL.Translations.K where
 
 import Data.HasCacBDD hiding (Top,Bot)
 import Data.List ((\\),elemIndex,nub,sort)
+import Data.Maybe (fromJust)
 import Data.Map.Strict ((!))
 import qualified Data.Map.Strict as M
 
@@ -24,7 +25,7 @@ blsToKripke (f@(BlS _ _ obdds), curs) = (m, cur) where
           , M.fromList [(a, map (apply links) $ reachFromFor s a) | a <- agentsOf f] ) )
     | (s,w) <- links ]
   reachFromFor s a = filter (\t -> tagBddEval (mv s ++ cp t) (obdds ! a)) (statesOf f)
-  (Just cur) = lookup curs links
+  cur = fromJust (lookup curs links)
 
 kripkeToBls :: PointedModel -> BelScene
 kripkeToBls pm@(m,_) | distinctVal m = kripkeToBlsUnsafe pm
@@ -41,7 +42,7 @@ kripkeToBlsUnsafe (m, cur) = (BlS vocab lawbdd obdds, truthsInAt m cur) where
 ensureDistinctVal :: PointedModel -> PointedModel
 ensureDistinctVal (krm@(KrM m), cur) = if distinctVal krm then (krm,cur) else (KrM newM,cur) where
   sameVals = groupSortWith (truthsInAt krm) (worldsOf krm)
-  indexOf w = let Just k = elemIndex w (head $ filter (elem w) sameVals) in k
+  indexOf w = let k = fromJust $ elemIndex w (head $ filter (elem w) sameVals) in k
   numAddProps = ceiling $ logBase (2::Double) (fromIntegral $ maximum (map length sameVals) + 1)
   addProps = take numAddProps [freshp (vocabOf krm) ..]
   addValForIndex k = M.fromList [ (p, p `elem` (reverse (powerset addProps) !! k) ) | p <- addProps ]

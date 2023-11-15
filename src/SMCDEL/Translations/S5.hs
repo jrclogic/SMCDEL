@@ -5,7 +5,7 @@ module SMCDEL.Translations.S5 where
 import Data.Containers.ListUtils (nubOrd)
 import Data.HasCacBDD hiding (Top,Bot)
 import Data.List (groupBy,sort,(\\),elemIndex,intersect)
-import Data.Maybe (listToMaybe)
+import Data.Maybe (listToMaybe,fromJust)
 
 import SMCDEL.Language
 import SMCDEL.Symbolic.S5
@@ -76,7 +76,7 @@ kripkeToKnsWithG m@(KrMS5 worlds rel val) = (KnS ps law obs, g) where
   amount i  = ceiling (logBase 2 (fromIntegral $ length (rel ! i)) :: Float) -- = |O_i|
   newpstep  = maximum [ amount i | i <- ags ]
   newps i   = map (\k -> P (newpstart + (newpstep * inum) +k)) [0..(amount i - 1)] -- O_i
-    where (Just inum) = elemIndex i (map fst rel)
+    where inum = fromJust $ elemIndex i (map fst rel)
   copyrel i = zip (rel ! i) (powerset (newps i)) -- label equiv.classes with P(O_i)
   gag i w   = snd $ head $ filter (\(ws,_) -> w `elem` ws) (copyrel i)
   g w       = filter (apply (val ! w)) v ++ concat [ gag i w | i <- ags ]
@@ -177,7 +177,7 @@ actionToTransformerWithMap (ActMS5 acts actrel) = (KnTrf addprops addlaw changel
   actrelprops  = concat [ newps i | i <- ags ] -- new props to distinguish actions for i
   actrelpstart = maxactprop + 1
   newps i      = map (\k -> P (actrelpstart + (newpstep * inum) +k)) [0..(amount i - 1)]
-    where (Just inum) = elemIndex i (map fst actrel)
+    where inum = fromJust $ elemIndex i (map fst actrel)
   amount i     = ceiling (logBase 2 (fromIntegral $ length (apply actrel i)) :: Float)
   newpstep     = maximum [ amount i | i <- ags ]
   copyactrel i = zip (apply actrel i) (powerset (newps i)) -- label equclasses-of-actions with subsets-of-newps

@@ -8,7 +8,7 @@ import Data.Dynamic
 import Data.List (sort,(\\),delete,intercalate,intersect)
 import qualified Data.Map.Strict as M
 import Data.Map.Strict ((!))
-import Data.Maybe (isJust,isNothing)
+import Data.Maybe (isJust,isNothing,fromJust)
 import Test.QuickCheck
 
 import SMCDEL.Language
@@ -194,7 +194,7 @@ diff m1 m2 = lfp step start where
   updateAt _      _       (Just f) = Just f
   updateAt curMap (w1,w2) Nothing  = case
     -- forth
-    [ Neg . K i . Neg . Conj $ [ f | w2' <- w2's, let Just f = curMap ! (w1',w2') ]
+    [ Neg . K i . Neg . Conj $ [ f | w2' <- w2's, let f = fromJust (curMap ! (w1',w2')) ]
     | i <- agentsOf m1
     , let w2's = relOfIn i m2 ! w2
     , w1' <- relOfIn i m1 ! w1
@@ -202,7 +202,7 @@ diff m1 m2 = lfp step start where
     ]
     ++
     -- back
-    [ K i . Disj $ [ f | w1' <- w1's, let Just f = curMap ! (w1',w2') ]
+    [ K i . Disj $ [ f | w1' <- w1's, let f = fromJust (curMap ! (w1',w2')) ]
     | i <- agentsOf m1
     , let w1's = relOfIn i m1 ! w1
     , w2' <- relOfIn i m2 ! w2
@@ -265,13 +265,11 @@ instance Update KripkeModel ActionModel where
 
 instance Update PointedModel PointedActionModel where
   checks = [haveSameAgents,preCheck]
-  unsafeUpdate (m, w) (actm, a) =
-    let (newModel,[newWorld]) = unsafeUpdate (m, [w]) (actm, [a]) in (newModel,newWorld)
+  unsafeUpdate (m, w) (actm, a) = head <$> unsafeUpdate (m, [w]) (actm, [a])
 
 instance Update PointedModel MultipointedActionModel where
   checks = [haveSameAgents,preCheck]
-  unsafeUpdate (m, w) mpactm =
-    let (newModel,[newWorld]) = unsafeUpdate (m, [w]) mpactm in (newModel,newWorld)
+  unsafeUpdate (m, w) mpactm = head <$> unsafeUpdate (m, [w]) mpactm
 
 instance Update MultipointedModel PointedActionModel where
   checks = [haveSameAgents] -- do not check precondition!

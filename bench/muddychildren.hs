@@ -71,7 +71,10 @@ mudKrpInit n m = (SMCDEL.Explicit.S5.KrMS5 ws rel val, cur) where
     setForAt i s = delete (P i) $ setAt s
     setAt s = map fst $ filter snd (apply val s)
   val         = zip ws table
-  ((cur,_):_) = filter (\(_,ass)-> sort (map fst $ filter snd ass) == [P 1..P m]) val
+  cur =
+    case filter (\(_,ass)-> sort (map fst $ filter snd ass) == [P 1..P m]) val of
+      ((thisCur,_):_) -> thisCur
+      _ -> error "No current state found."
   table = foldl buildTable [[]] [P k | k<- [1..n]]
   buildTable partrows p = [ (p,v):pr | v <-[True,False], pr<-partrows ]
 

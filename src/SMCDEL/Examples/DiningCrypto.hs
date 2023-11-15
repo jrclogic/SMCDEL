@@ -1,6 +1,7 @@
 module SMCDEL.Examples.DiningCrypto where
 
 import Data.List (delete)
+import Data.Maybe (fromJust)
 
 import SMCDEL.Language
 import SMCDEL.Symbolic.S5
@@ -76,7 +77,7 @@ genDcEveryoneKnowsWhetherNSApaid n = Conj [ Kw (show i) (PrpF $ P 0) | i <- [1..
 genDcReveal :: Int -> Int -> Form
 genDcReveal n i = Xor (map PrpF ps) where
   (KnS _ _ obs) = genDcKnsInit n
-  (Just ps)     = lookup (show i) obs
+  ps            = fromJust $ lookup (show i) obs
 
 genDcNobodyknowsWhoPaid :: Int -> Form
 genDcNobodyknowsWhoPaid n =

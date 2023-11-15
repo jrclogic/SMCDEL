@@ -160,7 +160,7 @@ announce pm@(m@(KrMS5 sts rel val), cur) ags form =
   where
     split ws = map sort.(\(x,y) -> [x,y]) $ partition (\s -> eval (m,s) form) ws
     newrel = map nrel rel
-    nrel (i,ri) | i `elem` ags = (i,filter ([]/=) (concatMap split ri))
+    nrel (i,ri) | i `elem` ags = (i, concatMap (filter ([]/=) . split) ri)
                 | otherwise    = (i,ri)
 
 announceAction :: [Agent] -> [Agent] -> Form -> PointedActionModelS5
@@ -210,9 +210,9 @@ checkBisim [] _                   _                     = False
 checkBisim z  m1@(KrMS5 _ rel1 val1) m2@(KrMS5 _ rel2 val2) =
   all (\(w1,w2) ->
         (val1 ! w1 == val2 ! w2)  -- same valuation
-    && and [ any (\v2 -> (v1,v2) `elem` z) (concat $ filter (elem w2) (rel2 ! ag)) -- forth
+    && and [ any (any (\v2 -> (v1,v2) `elem` z)) (filter (elem w2) (rel2 ! ag)) -- forth
            | ag <- agentsOf m1, v1 <- concat $ filter (elem w1) (rel1 ! ag) ]
-    && and [ any (\v1 -> (v1,v2) `elem` z) (concat $ filter (elem w1) (rel1 ! ag)) -- back
+    && and [ any (any (\v1 -> (v1,v2) `elem` z)) (filter (elem w1) (rel1 ! ag)) -- back
            | ag <- agentsOf m2, v2 <- concat $ filter (elem w2) (rel2 ! ag) ]
       ) z
 
@@ -356,13 +356,11 @@ instance Update KripkeModelS5 ActionModelS5 where
 
 instance Update PointedModelS5 PointedActionModelS5 where
   checks = [haveSameAgents,preCheck]
-  unsafeUpdate (m, w) (actm, a) =
-    let (newModel,[newWorld]) = unsafeUpdate (m, [w]) (actm, [a]) in (newModel,newWorld)
+  unsafeUpdate (m, w) (actm, a) = head <$> unsafeUpdate (m, [w]) (actm, [a])
 
 instance Update PointedModelS5 MultipointedActionModelS5 where
   checks = [haveSameAgents,preCheck]
-  unsafeUpdate (m, w) mpactm =
-    let (newModel,[newWorld]) = unsafeUpdate (m, [w]) mpactm in (newModel,newWorld)
+  unsafeUpdate (m, w) mpactm = head <$> unsafeUpdate (m, [w]) mpactm
 
 instance Update MultipointedModelS5 PointedActionModelS5 where
   checks = [haveSameAgents] -- do not check precondition!

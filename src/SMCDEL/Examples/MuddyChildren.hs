@@ -1,6 +1,7 @@
 module SMCDEL.Examples.MuddyChildren where
 
 import Data.List
+import Data.Maybe (fromJust)
 import Data.Map.Strict (fromList)
 
 import SMCDEL.Internal.Help (seteq)
@@ -58,7 +59,7 @@ mudGenKrpInit n m = (SMCDEL.Explicit.K.KrM $ fromList wlist, cur) where
   relFor w = [ (show i, seesFrom i w) | i <- [1..n] ]
   seesFrom i w = filter (\v -> samefor i (vals !! w) (vals !! v)) ws
   samefor i ps qs = seteq (delete (P i) (map fst $ filter snd ps)) (delete (P i) (map fst $ filter snd qs))
-  (Just cur) = elemIndex curVal vals
+  cur = fromJust (elemIndex curVal vals)
   curVal = sort $ [(p,True) | p <- [P 1 .. P m]] ++ [(p,True) | p <- [P (m+1) .. P n]]
 
 myMudGenKrpInit :: SMCDEL.Explicit.K.PointedModel

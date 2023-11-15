@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fno-warn-incomplete-uni-patterns #-}
+
 module SMCDEL.Examples.Cheryl where
 
 import Data.HasCacBDD (Bdd,con,disSet)

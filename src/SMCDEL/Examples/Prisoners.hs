@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fno-warn-incomplete-uni-patterns #-}
+
 module SMCDEL.Examples.Prisoners where
 
 import Data.HasCacBDD hiding (Top,Bot)

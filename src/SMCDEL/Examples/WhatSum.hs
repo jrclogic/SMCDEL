@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fno-warn-incomplete-uni-patterns #-}
+
 module SMCDEL.Examples.WhatSum where
 
 import SMCDEL.Examples.SumAndProduct (nmbr)

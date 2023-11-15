@@ -15,8 +15,8 @@ sanityCheck (CheckInput vocabInts lawform obsSpec jobs) =
     ++
     [ "LAW uses atoms not in VARS!" | not $ all (`elem` vocab) (propsInForm lawform) ]
     ++
-    [ "Query formula contains atoms not in VARS!" | not $ all (`elem` vocab) (concatMap propsInForm jobForms) ]
+    [ "Query formula contains atoms not in VARS!" | not $ all (all (`elem` vocab) . propsInForm) jobForms ]
     ++
-    [ "Query formula contains agents not in OBS!" | not $ all (`elem` agents) (concatMap agentsInForm jobForms) ]
+    [ "Query formula contains agents not in OBS!" | not $ all (all (`elem` agents) . agentsInForm) jobForms ]
     ++
     [ "TRUE? query contains atoms not in VARS!" | not $ all (`elem` vocabInts) jobAtoms ]

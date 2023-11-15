@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fno-warn-incomplete-uni-patterns #-}
+
 module SMCDEL.Examples.SimpleK where
 
 import Data.HasCacBDD hiding (Bot,Top)
