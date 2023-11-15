@@ -349,10 +349,14 @@ instance Arbitrary BelStruct where
 
 data Transformer = Trf
   [Prp] -- addprops
-  Form  -- event law
+  Form  -- addlaw
   (M.Map Prp Bdd) -- changelaw
   (M.Map Agent RelBDD) -- eventObs
   deriving (Eq,Show)
+
+noChange :: ([Prp] -> Form -> M.Map Prp Bdd -> M.Map Agent RelBDD -> Transformer)
+          -> [Prp] -> Form                  -> M.Map Agent RelBDD -> Transformer
+noChange kntrf addprops addlaw = kntrf addprops addlaw M.empty
 
 instance HasAgents Transformer where
   agentsOf (Trf _ _ _ obdds) = M.keys obdds

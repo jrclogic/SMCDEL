@@ -20,23 +20,6 @@ import SMCDEL.Internal.MyHaskCUDD
 import SMCDEL.Internal.TexDisplay
 import SMCDEL.Language
 
--- | Knowledge structures using a BDD or ZDD variant.
-data KnowStruct a b c =
-  KnS Cudd.Cudd.DdManager [Prp] (Dd a b c) [(Agent,[Prp])]
-  deriving stock (Eq,Show)
-type KnState = [Prp]
-type KnowScene a b c = (KnowStruct a b c, KnState)
-
-instance HasAgents (KnowStruct a b c) where
-  agentsOf (KnS _ _ _ obs)= map fst obs
-
-instance HasVocab (KnowStruct a b c) where
-  vocabOf (KnS _ props _ _) = props
-
-instance Pointed (KnowStruct a b c) KnState
-
--- DD Construction from Logic formulas
-
 boolDdOf :: (DdCtx a b c) => Cudd.Cudd.DdManager -> Form -> Dd a b c
 boolDdOf mgr Top           = top mgr
 boolDdOf mgr Bot           = bot mgr
@@ -52,6 +35,22 @@ boolDdOf mgr (Forall ps f) = boolDdOf mgr (foldl singleForall f ps) where
 boolDdOf mgr (Exists ps f) = boolDdOf mgr (foldl singleExists f ps) where
   singleExists g p = Disj [ substit p Top g, substit p Bot g ]
 boolDdOf _   f             = error $ "boolDdOf failed: Not a boolean formula:" ++ show f
+
+-- | Knowledge structures using a BDD or ZDD variant.
+data KnowStruct a b c =
+  KnS Cudd.Cudd.DdManager [Prp] (Dd a b c) [(Agent,[Prp])]
+  deriving stock (Eq,Show)
+type KnState = [Prp]
+type KnowScene a b c = (KnowStruct a b c, KnState)
+
+instance HasAgents (KnowStruct a b c) where
+  agentsOf (KnS _ _ _ obs)= map fst obs
+
+instance HasVocab (KnowStruct a b c) where
+  vocabOf (KnS _ props _ _) = props
+
+instance Pointed (KnowStruct a b c) KnState
+
 
 ddOf :: (DdCtx a b c) => KnowStruct a b c -> Form -> Dd a b c
 ddOf     (KnS mgr _ _ _) Top           = top mgr
@@ -114,9 +113,6 @@ evalAssDD mgr (dd :: Dd a b c) f = bool where
 ddEval :: (DdCtx a b c) => Cudd.Cudd.DdManager -> [Prp] -> Dd a b c -> Bool
 ddEval mgr truths querybdd = evalAssDD mgr querybdd (\n -> P n `elem` truths)
 
-whereViaDd :: DdCtx a b c => KnowStruct a b c -> Form -> [KnState]
-whereViaDd kns f = statesOf (kns `update` f)
-
 --Somewhat fast statesOf, faster woud be to use primitive construction of all Satifying Assignments (e.i. explicitly looping through the dd instead of using restrict).
 statesOf :: DdCtx a b c => KnowStruct a b c -> [KnState]
 statesOf (KnS mgr allprops lawdd _) = loop allprops lawdd where
@@ -155,6 +151,11 @@ unravel mgr dd (P n:ns) = Disj [ result True, result False] where
     | restrict mgr dd (n, False) == top mgr = Neg $ PrpF (P n)
     | restrict mgr dd (n, False) == bot mgr = Bot
     | otherwise = Conj [Neg $ PrpF (P n), unravel mgr (restrict mgr dd (n, False)) ns]
+
+-- * Truth and Validity
+
+whereViaDd :: DdCtx a b c => KnowStruct a b c -> Form -> [KnState]
+whereViaDd kns f = statesOf (kns `update` f)
 
 evalViaDd :: (DdCtx a b c) => KnowScene a b c -> Form -> Bool
 evalViaDd ((kns@(KnS mgr allprops _ _),s) :: KnowScene a b c) f = bool where

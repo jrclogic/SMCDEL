@@ -41,6 +41,7 @@ boolEvalViaBdd truths = bddEval truths . boolBddOf
 bddEval :: [Prp] -> Bdd -> Bool
 bddEval truths querybdd = evaluateFun querybdd (\n -> P n `elem` truths)
 
+-- | Size of a BDD, also counting terminal nodes (which CacBDD does not).
 size :: Bdd -> Int
 size b = if sizeOf b == 0 then sizeOf b + 1 else sizeOf b + 2
 

@@ -42,6 +42,9 @@ main = hspec $ do
       \(BF bf) (BF bg) -> (ppForm bf /= ppForm bg) || boolBddOf bf == boolBddOf bg
     prop "boolean formulas with same LaTeX are equivalent" $
       \(BF bf) (BF bg) -> (tex bf /= tex bg) || boolBddOf bf == boolBddOf bg
+    let testForm = Forall [P 3] $ Equi
+          (Disj [ Bot, PrpF $ P 3, Bot ])
+          (Conj [ Top , Xor [Top,Kw alice (PrpF (P 4))] , AnnounceW [alice,bob] (PrpF (P 5)) (Kw bob $ PrpF (P 5)) ])
     it "we can LaTeX the testForm" $ tex testForm === intercalate "\n"
         [ " \\forall \\{ p_{3} \\} ( \\bigvee \\{"
         , " \\bot , p_{3} ,\\bot \\} \\leftrightarrow \\bigwedge \\{"

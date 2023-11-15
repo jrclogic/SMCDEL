@@ -1,3 +1,7 @@
+{- | This module shows how to use the SMCDEL model checker and the translations with some toy examples.
+
+-}
+
 {-# LANGUAGE FlexibleInstances #-}
 
 module SMCDEL.Examples where
@@ -9,6 +13,14 @@ import SMCDEL.Internal.TaggedBDD
 import SMCDEL.Language
 import SMCDEL.Symbolic.S5
 import SMCDEL.Translations.S5
+
+-- * Knowledge and Meta-Knowledge
+
+{- $
+In the following Kripke model, Bob knows that $p$ is true and Alice does not.
+Still, Alice knows that Bob knows whether $p$.
+This is because in all worlds that Alice confuses with the actual world Bob either knows that $p$ or he knows that not $p$.
+-}
 
 modelA :: PointedModelS5
 modelA = (KrMS5 [0,1] [(alice,[[0,1]]),(bob,[[0],[1]])] [ (0,[(P 0,True)]), (1,[(P 0,False)]) ], 0)
