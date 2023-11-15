@@ -42,8 +42,9 @@ You can try SMCDEL online here: https://w4eg.de/malvin/illc/smcdelweb/
 
 - [graphviz](https://graphviz.org/)
 - [dot2tex](https://github.com/kjellmf/dot2tex)
+- some LaTeX packages
 
-On Debian, just do `sudo apt install graphviz dot2tex`.
+On Debian, just do `sudo apt install graphviz dot2tex libtinfo5 texlive-latex-base poppler-utils preview-latex-style texlive-pstricks`.
 
 
 ## Basic usage

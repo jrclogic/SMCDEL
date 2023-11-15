@@ -29,7 +29,7 @@ expectedMcOutput = "At which states is\n⟨!⋁{p1,p2,p3}⟩⋁{Kalice?p1,Kbob?p
 
 wdOptions :: WdOptions
 wdOptions = (defaultWdOptions "/tmp/tools") {
-  capabilities = firefoxCapabilities
+  capabilities = firefoxCapabilities Nothing
   , runMode = RunHeadless defaultHeadlessConfig
   }
 
