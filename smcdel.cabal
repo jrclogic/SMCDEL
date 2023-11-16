@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.35.1.
+-- This file has been generated from package.yaml by hpack version 0.35.2.
 --
 -- see: https://github.com/sol/hpack
 
@@ -95,12 +95,9 @@ library
     , base >=4.8 && <5
     , containers
     , cudd ==0.1.0.0
-    , deepseq
     , directory
-    , filepath
     , graphviz
     , process
-    , regex
     , tagged
     , temporary
     , text
@@ -154,7 +151,7 @@ test-suite CUDD
   main-is: test/CUDD.hs
   other-modules:
       Paths_smcdel
-  ghc-options: -Wall
+  ghc-options: -Wall -with-rtsopts=-M8G
   build-tools:
       alex
     , happy
@@ -171,7 +168,7 @@ test-suite examples
   main-is: test/Examples.hs
   other-modules:
       Paths_smcdel
-  ghc-options: -Wall
+  ghc-options: -Wall -with-rtsopts=-M8G
   build-tools:
       alex
     , happy
@@ -188,7 +185,7 @@ test-suite k
   main-is: test/K.hs
   other-modules:
       Paths_smcdel
-  ghc-options: -Wall
+  ghc-options: -Wall -with-rtsopts=-M8G
   build-tools:
       alex
     , happy
@@ -205,7 +202,7 @@ test-suite translations
   main-is: test/Translations.hs
   other-modules:
       Paths_smcdel
-  ghc-options: -Wall
+  ghc-options: -Wall -with-rtsopts=-M8G
   build-tools:
       alex
     , happy
@@ -220,7 +217,7 @@ test-suite web
   main-is: test/Web.hs
   other-modules:
       Paths_smcdel
-  ghc-options: -Wall
+  ghc-options: -Wall -with-rtsopts=-M8G
   build-tools:
       alex
     , happy

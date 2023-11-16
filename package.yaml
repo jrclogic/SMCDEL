@@ -43,9 +43,6 @@ library:
     - temporary
     - text
     - time
-    - regex
-    - deepseq
-    - filepath
 
 executables:
   smcdel:
@@ -78,6 +75,7 @@ executables:
 tests:
   examples:
     main: test/Examples.hs
+    ghc-options: -with-rtsopts=-M8G
     dependencies:
       - base >= 4.8 && < 5
       - HasCacBDD
@@ -86,12 +84,14 @@ tests:
       - smcdel
   translations:
     main: test/Translations.hs
+    ghc-options: -with-rtsopts=-M8G
     dependencies:
       - base >= 4.8 && < 5
       - hspec
       - smcdel
   k:
     main: test/K.hs
+    ghc-options: -with-rtsopts=-M8G
     dependencies:
       - base >= 4.8 && < 5
       - containers
@@ -100,6 +100,7 @@ tests:
       - smcdel
   web:
     main: test/Web.hs
+    ghc-options: -with-rtsopts=-M8G
     dependencies:
       - base
       - process
@@ -109,6 +110,7 @@ tests:
       - webdriver
   CUDD:
     main: test/CUDD.hs
+    ghc-options: -with-rtsopts=-M8G
     dependencies:
       - base >= 4.8 && < 5
       - containers
@@ -189,4 +191,3 @@ benchmarks:
       - smcdel
       - split
       - vector
-

@@ -1,11 +1,13 @@
 module SMCDEL.Examples.DiningCrypto.General where
 
+import Data.List
+import Data.Maybe
+
 import SMCDEL.Language
 import qualified SMCDEL.Symbolic.S5 as S5_CAC
 import qualified SMCDEL.Symbolic.S5_CUDD as S5_CUDD
 import qualified SMCDEL.Internal.MyHaskCUDD as MyHaskCUDD
 import SMCDEL.Internal.MyHaskCUDD (makeManagerZ, Manager)
-import Data.List
 import qualified Data.HasCacBDD as S5_CAC
 
 dcScnInit :: Int -> (Bool,Bool,Bool) -> S5_CAC.KnowScene
@@ -80,7 +82,7 @@ genDcEveryoneKnowsWhetherNSApaid n = Conj [ Kw (show i) (PrpF $ P 0) | i <- [1..
 genDcReveal :: Int -> Int -> Int -> Form
 genDcReveal n m i = Xor (map PrpF ps) where
   (S5_CAC.KnS _ _ obs) = genDcKnsInit n m
-  (Just ps)     = lookup (show i) obs
+  ps = fromJust $ lookup (show i) obs
 
 genDcNobodyknowsWhoPaid :: Int -> Form
 genDcNobodyknowsWhoPaid n =
