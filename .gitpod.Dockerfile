@@ -3,7 +3,7 @@
 FROM gitpod/workspace-base
 
 # Install dependencies
-RUN sudo apt-get install -y build-essential curl libffi-dev libffi7 libgmp-dev libgmp10 libncurses-dev libncurses5 libtinfo5
+RUN sudo apt-get update && sudo apt-get install -y build-essential curl libffi-dev libffi7 libgmp-dev libgmp10 libncurses-dev libncurses5 libtinfo5 texlive-latex-extra graphviz dot2tex
 
 # ghcup is a replacement for the haskell platform. It manages the development env easily. 
 # We use the official instalation script

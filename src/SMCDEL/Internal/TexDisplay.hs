@@ -49,8 +49,8 @@ class TexAble a where
     ts <- round <$> getPOSIXTime
     let filename = tmpdir ++ "/disp-" ++ show (ts :: Int)
     pdfTo x filename
-    runIgnoreAndWait $ "/usr/bin/xdg-open " ++ filename ++ ".pdf"
-    threadDelay 3000000 -- give viewer three seconds before deleting tmpdir
+    runIgnoreAndWait $ "open " ++ filename ++ ".pdf"
+    threadDelay 5000000 -- give viewer five seconds before deleting tmpdir
   svgViaTex :: a -> String
   svgViaTex !x = unsafePerformIO $ withSystemTempDirectory "smcdel" $ \tmpdir -> do
     ts <- round <$> getPOSIXTime

@@ -8,3 +8,5 @@ tasks:
 vscode:
   extensions:
     - haskell.haskell
+    - justusadam.language-haskell
+    - anwar.papyrus-pdf
