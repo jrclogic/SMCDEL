@@ -3,4 +3,4 @@ packages: .
 source-repository-package
   type: git
   location: https://github.com/m4lvin/cudd.git
-  tag: c5f0fd8446827b1473ef18ea5dcc5d32a256e57d
+  tag: a8e57142cef75134d33c1fcac3cc319256618507
