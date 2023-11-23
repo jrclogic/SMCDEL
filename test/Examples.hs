@@ -1,6 +1,7 @@
 module Main (main) where
 
 import Data.List
+import Data.Maybe
 import Test.Hspec
 import Test.Hspec.QuickCheck
 import Test.QuickCheck (expectFailure,(===),property)
@@ -71,10 +72,10 @@ main = hspec $ do
      before CUDD.makeManager $ do
       it "gfp (\b -> con b (var 3)) == var 3" $
         \mgr -> CUDD.gfp mgr (\b -> CUDD.con mgr b (CUDD.var mgr 3)) `shouldBe` (CUDD.var mgr 3 :: CUDD.Dd CUDD.B CUDD.O1 CUDD.I1)
-      it "exists 1 (neg $ var 1) == top" $ \mgr -> CUDD.exists mgr 1 (CUDD.neg mgr $ CUDD.var mgr 1) `shouldBe` (CUDD.top mgr :: CUDD.Dd CUDD.B CUDD.O1 CUDD.I1)
-      it "exists 1 (neg $ var 2) /= top" $ \mgr -> CUDD.exists mgr 1 (CUDD.neg mgr $ CUDD.var mgr 2) `shouldNotBe` (CUDD.top mgr :: CUDD.Dd CUDD.B CUDD.O1 CUDD.I1)
-      it "forall 1 (neg $ var 1) == bot" $ \mgr -> CUDD.forall mgr 1 (CUDD.neg mgr $ CUDD.var mgr 1) `shouldBe` (CUDD.bot mgr :: CUDD.Dd CUDD.B CUDD.O1 CUDD.I1)
-      it "forall 1 (neg $ var 2) /= bot" $ \mgr -> CUDD.forall mgr 1 (CUDD.neg mgr $ CUDD.var mgr 2) `shouldNotBe` (CUDD.bot mgr :: CUDD.Dd CUDD.B CUDD.O1 CUDD.I1)
+      it "exists_ 1 (neg $ var 1) == top" $ \mgr -> CUDD.exists_ mgr 1 (CUDD.neg mgr $ CUDD.var mgr 1) `shouldBe` (CUDD.top mgr :: CUDD.Dd CUDD.B CUDD.O1 CUDD.I1)
+      it "exists_ 1 (neg $ var 2) /= top" $ \mgr -> CUDD.exists_ mgr 1 (CUDD.neg mgr $ CUDD.var mgr 2) `shouldNotBe` (CUDD.top mgr :: CUDD.Dd CUDD.B CUDD.O1 CUDD.I1)
+      it "forall_ 1 (neg $ var 1) == bot" $ \mgr -> CUDD.forall_ mgr 1 (CUDD.neg mgr $ CUDD.var mgr 1) `shouldBe` (CUDD.bot mgr :: CUDD.Dd CUDD.B CUDD.O1 CUDD.I1)
+      it "forall_ 1 (neg $ var 2) /= bot" $ \mgr -> CUDD.forall_ mgr 1 (CUDD.neg mgr $ CUDD.var mgr 2) `shouldNotBe` (CUDD.bot mgr :: CUDD.Dd CUDD.B CUDD.O1 CUDD.I1)
   describe "SMCDEL.Symbolic.S5_CUDD using BDDs agrees with HasCacBdd" $ do
     before CUDD.makeManager $ do
       it "HasCacBDD and CUDD give same allSats" $
@@ -111,11 +112,11 @@ main = hspec $ do
     it "bisiminimizing redundantModel removes world 0" $
       Exp.bisiminimize redundantModel === (fst redundantModel `Exp.withoutWorld` 0, 1)
     it "findStateMap works for modelB and knsB" $
-      let (Just g) = findStateMap modelB knsB in equivalentWith modelB knsB g
+      let g = fromJust $ findStateMap modelB knsB in equivalentWith modelB knsB g
     it "findStateMap works for redundantModel and myKNS" $
-      let (Just g) = findStateMap redundantModel myKNS in equivalentWith redundantModel myKNS g
+      let g = fromJust $ findStateMap redundantModel myKNS in equivalentWith redundantModel myKNS g
     it "findStateMap works for minimizedModel and myKNS" $
-      let (Just g) = findStateMap minimizedModel myKNS in equivalentWith minimizedModel myKNS g
+      let g = fromJust $ findStateMap minimizedModel myKNS in equivalentWith minimizedModel myKNS g
     it "checkPropu myPropu (fst myKNS) (fst minimizedKNS) (vocabOf myKNS)" $
       checkPropu myPropu (fst myKNS) (fst minimizedKNS) (vocabOf myKNS)
     describe "SMCDEL.Examples.MuddyChildren" $ do

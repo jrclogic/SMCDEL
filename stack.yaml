@@ -6,4 +6,4 @@ packages:
 extra-deps:
 - git: https://github.com/m4lvin/cudd.git
   commit: c5f0fd8446827b1473ef18ea5dcc5d32a256e57d
-- HasCacBDD-0.1.0.4
+- HasCacBDD-0.2.0.0

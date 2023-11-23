@@ -36,7 +36,7 @@ library:
     - cudd == 0.1.0.0
     - directory
     - graphviz
-    - HasCacBDD >= 0.1.0.3 && < 0.2
+    - HasCacBDD >= 0.2.0.0 && < 0.3
     - process
     - QuickCheck
     - tagged
@@ -65,7 +65,7 @@ executables:
       - deepseq
       - file-embed
       - scotty
-      - HasCacBDD >= 0.1.0.1 && < 0.2
+      - HasCacBDD >= 0.2.0.0 && < 0.3
       - js-jquery >= 3
       - smcdel
       - template-haskell

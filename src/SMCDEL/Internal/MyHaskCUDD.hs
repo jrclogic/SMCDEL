@@ -18,7 +18,7 @@ module SMCDEL.Internal.MyHaskCUDD (
   neg, swapChildNodes, --outer/output and inner/input negation
   con, dis, restrict, gfp,
   imp, equ, xor, ifthenelse,
-  exists, forall, forallSet, existsSet,
+  exists_, forall_, forallSet, existsSet,
   conSet, disSet, xorSet, restrictSet,
   restrictLaw, ddSwapVars, relabelFun, relabelWith, substitSimul,
   -- * BDDs only
@@ -212,32 +212,32 @@ class DdTO a b where
   xor mgr z1 z2 = dis mgr a b where
     a = con mgr (neg mgr z1) z2
     b = con mgr z1 (neg mgr z2)
-  exists :: DdCtx a b c => Cudd.Cudd.DdManager -> Int -> Dd a b c -> Dd a b c
-  forall :: DdCtx a b c => Cudd.Cudd.DdManager -> Int -> Dd a b c -> Dd a b c
+  exists_ :: DdCtx a b c => Cudd.Cudd.DdManager -> Int -> Dd a b c -> Dd a b c
+  forall_ :: DdCtx a b c => Cudd.Cudd.DdManager -> Int -> Dd a b c -> Dd a b c
   existsSet :: DdCtx a b c => Cudd.Cudd.DdManager -> [Int] -> Dd a b c -> Dd a b c
   forallSet :: DdCtx a b c => Cudd.Cudd.DdManager -> [Int] -> Dd a b c -> Dd a b c
 
 instance DdTO Z O1 where
   con mgr (ToDd z1) (ToDd z2) = ToDd (Cudd.Cudd.cuddZddIntersect mgr z1 z2)
   dis mgr (ToDd z1) (ToDd z2) = ToDd (Cudd.Cudd.cuddZddUnion mgr z1 z2)
-  exists mgr n z = dis mgr (restrict mgr z (n, False)) (restrict mgr z (n, True))
-  forall mgr n z = con mgr (restrict mgr z (n, False)) (restrict mgr z (n, True))
+  exists_ mgr n z = dis mgr (restrict mgr z (n, False)) (restrict mgr z (n, True))
+  forall_ mgr n z = con mgr (restrict mgr z (n, False)) (restrict mgr z (n, True))
   existsSet _ [] z = z
-  existsSet mgr [n] z = exists mgr n z
+  existsSet mgr [n] z = exists_ mgr n z
   existsSet mgr (n:ns) z = dis mgr (restrict mgr (existsSet mgr ns z) (n, False)) (restrict mgr (existsSet mgr ns z) (n, True))
   forallSet _ [] z = z
-  forallSet mgr [n] z = forall mgr n z
+  forallSet mgr [n] z = forall_ mgr n z
   forallSet mgr (n:ns) z = con mgr (restrict mgr (forallSet mgr ns z) (n, False)) (restrict mgr (forallSet mgr ns z) (n, True))
 
 instance DdTO Z O0 where
   con mgr (ToDd z1) (ToDd z2) = ToDd (Cudd.Cudd.cuddZddUnion mgr z1 z2)
   dis mgr (ToDd z1) (ToDd z2) = ToDd (Cudd.Cudd.cuddZddIntersect mgr z1 z2)
-  exists mgr n z = dis mgr (restrict mgr z (n, False)) (restrict mgr z (n, True))
-  forall mgr n z = con mgr (restrict mgr z (n, False)) (restrict mgr z (n, True))
-  existsSet mgr [n] z = exists mgr n z
+  exists_ mgr n z = dis mgr (restrict mgr z (n, False)) (restrict mgr z (n, True))
+  forall_ mgr n z = con mgr (restrict mgr z (n, False)) (restrict mgr z (n, True))
+  existsSet mgr [n] z = exists_ mgr n z
   existsSet mgr (n:ns) z = dis mgr (restrict mgr (existsSet mgr ns z) (n, False)) (restrict mgr (existsSet mgr ns z) (n, True))
   existsSet _ [] z = z
-  forallSet mgr [n] z = forall mgr n z
+  forallSet mgr [n] z = forall_ mgr n z
   forallSet mgr (n:ns) z = con mgr (restrict mgr (forallSet mgr ns z) (n, False)) (restrict mgr (forallSet mgr ns z) (n, True))
   forallSet _ [] z = z
 
@@ -245,8 +245,8 @@ instance DdTO B O1 where
   con mgr (ToDd b1) (ToDd b2) = ToDd $ Cudd.Cudd.cuddBddAnd mgr b1 b2
   dis mgr (ToDd b1) (ToDd b2) = ToDd $ Cudd.Cudd.cuddBddOr mgr b1 b2
   xor mgr (ToDd b1) (ToDd b2) = ToDd $ Cudd.Cudd.cuddBddXor mgr b1 b2
-  exists mgr n (ToDd b) = ToDd $ Cudd.Cudd.cuddBddExistAbstract mgr b ( Cudd.Cudd.cuddIndicesToCube mgr [n])
-  forall mgr n (ToDd b) = ToDd $ Cudd.Cudd.cuddBddUnivAbstract mgr b ( Cudd.Cudd.cuddIndicesToCube mgr [n])
+  exists_ mgr n (ToDd b) = ToDd $ Cudd.Cudd.cuddBddExistAbstract mgr b ( Cudd.Cudd.cuddIndicesToCube mgr [n])
+  forall_ mgr n (ToDd b) = ToDd $ Cudd.Cudd.cuddBddUnivAbstract mgr b ( Cudd.Cudd.cuddIndicesToCube mgr [n])
   existsSet mgr n (ToDd b) = ToDd $ Cudd.Cudd.cuddBddExistAbstract mgr b ( Cudd.Cudd.cuddIndicesToCube mgr n)
   forallSet mgr n (ToDd b) = ToDd $ Cudd.Cudd.cuddBddUnivAbstract mgr b ( Cudd.Cudd.cuddIndicesToCube mgr n)
 
@@ -254,8 +254,8 @@ instance DdTO B O0 where
   con mgr (ToDd b1) (ToDd b2) = ToDd $ Cudd.Cudd.cuddBddOr mgr b1 b2
   dis mgr (ToDd b1) (ToDd b2) = ToDd $ Cudd.Cudd.cuddBddAnd mgr b1 b2
   xor mgr (ToDd b1) (ToDd b2) = neg mgr $ ToDd $ Cudd.Cudd.cuddBddXor mgr b1 b2
-  exists mgr n (ToDd b) = ToDd $ Cudd.Cudd.cuddBddUnivAbstract mgr b ( Cudd.Cudd.cuddIndicesToCube mgr [n])
-  forall mgr n (ToDd b) = ToDd $ Cudd.Cudd.cuddBddExistAbstract mgr b ( Cudd.Cudd.cuddIndicesToCube mgr [n])
+  exists_ mgr n (ToDd b) = ToDd $ Cudd.Cudd.cuddBddUnivAbstract mgr b ( Cudd.Cudd.cuddIndicesToCube mgr [n])
+  forall_ mgr n (ToDd b) = ToDd $ Cudd.Cudd.cuddBddExistAbstract mgr b ( Cudd.Cudd.cuddIndicesToCube mgr [n])
   existsSet mgr n (ToDd b) = ToDd $ Cudd.Cudd.cuddBddUnivAbstract mgr b ( Cudd.Cudd.cuddIndicesToCube mgr n)
   forallSet mgr n (ToDd b) = ToDd $ Cudd.Cudd.cuddBddExistAbstract mgr b ( Cudd.Cudd.cuddIndicesToCube mgr n)
 

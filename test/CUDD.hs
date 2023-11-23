@@ -68,10 +68,10 @@ cuddTests = do
       var mgr 4 `shouldNotBe` con mgr (var mgr 3) (top mgr :: Dd a b c)
     it "equ (var 1) (var 1) == top" $ \mgr ->
       equ mgr (var mgr 1) (var mgr 1) `shouldBe` (top mgr :: Dd a b c)
-    it "exists 1 (neg $ var 1) == top" $ \mgr ->
-      exists mgr 1 (neg mgr $ var mgr 1) `shouldBe` (top mgr :: Dd a b c)
-    it "exists 1 (neg $ var 2) /= top" $ \mgr ->
-      exists mgr 1 (neg mgr $ var mgr 2) `shouldNotBe` (top mgr :: Dd a b c)
+    it "exists_ 1 (neg $ var 1) == top" $ \mgr ->
+      exists_ mgr 1 (neg mgr $ var mgr 1) `shouldBe` (top mgr :: Dd a b c)
+    it "exists_ 1 (neg $ var 2) /= top" $ \mgr ->
+      exists_ mgr 1 (neg mgr $ var mgr 2) `shouldNotBe` (top mgr :: Dd a b c)
     it "gfp (\b -> con b (var 3)) == var 3" $ \mgr ->
       gfp mgr (\b -> con mgr b (var mgr 3)) `shouldBe` (var mgr 3 :: Dd a b c)
     it "imp (conSet [var 1,var 0]) (var 1) == top" $ \mgr ->
@@ -101,9 +101,9 @@ cuddTests = do
     it "getSupport" $ \mgr ->
       getSupport mgr (var mgr 2 :: Dd a b c) `shouldSatisfy` flip elem [ [], [2] ] -- TODO: is this correct?
   describe "random tests" $ do
-    it "forall exists" $ \mgr ->
+    it "forall_ exists_" $ \mgr ->
       property (\(BF f) -> let (b :: Dd a b c) = S5_CUDD.boolDdOf mgr f
-                           in forAll (elements [0..5]) (\n -> forall mgr n b == neg mgr (exists mgr n (neg mgr b))))
+                           in forAll (elements [0..5]) (\n -> forall_ mgr n b == neg mgr (exists_ mgr n (neg mgr b))))
     it "restrictLaw" $ \mgr ->
       property (\(BF f) (BF g) -> let (a :: Dd a b c, b :: Dd a b c) = (S5_CUDD.boolDdOf mgr f, S5_CUDD.boolDdOf mgr g)
                                   in imp mgr b (equ mgr (restrictLaw mgr v a b) a) == (top mgr :: Dd a b c))

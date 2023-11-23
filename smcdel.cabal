@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.35.2.
+-- This file has been generated from package.yaml by hpack version 0.36.0.
 --
 -- see: https://github.com/sol/hpack
 
@@ -89,7 +89,7 @@ library
       alex
     , happy
   build-depends:
-      HasCacBDD >=0.1.0.3 && <0.2
+      HasCacBDD >=0.2.0.0 && <0.3
     , QuickCheck
     , array
     , base >=4.8 && <5
@@ -134,7 +134,7 @@ executable smcdel-web
       alex
     , happy
   build-depends:
-      HasCacBDD >=0.1.0.1 && <0.2
+      HasCacBDD >=0.2.0.0 && <0.3
     , base >=4.8 && <5
     , deepseq
     , file-embed
