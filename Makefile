@@ -11,10 +11,11 @@ clean:
 	find src/ -iname *.hi -type f -print | xargs /bin/rm -f
 	find src/ -iname *.o -type f -print | xargs /bin/rm -f
 
-MCBENCHMARKS = DEMOS5 CacBDD CUDD Trans Triangle NonS5 NonS5Trans
+MCBENCHMARKS = Triangle CacBDD DD CUDD CUDDz K DEMOS5 Trans TransK
 
-benchmc-results.csv:
-	stack bench :bench-muddychildren --benchmark-arguments "$(MCBENCHMARKS) --csv benchmc-results.csv"
+bench/muddychildren.pdf: Makefile bench/muddychildren.hs bench/muddychildren.tex
+	stack bench :bench-muddychildren --benchmark-arguments "$(MCBENCHMARKS) --csv bench/muddychildren-results.csv"
+	cd bench && latexmk -pdf -quiet -interaction=nonstopmode
 
 todo:
 	@bash -c 'grep -nr "TODO" {src,exec,test,bench}'

@@ -22,6 +22,7 @@ import SMCDEL.Internal.MyHaskCUDD
 import qualified SMCDEL.Explicit.DEMO_S5 as DEMO_S5
 import qualified SMCDEL.Explicit.S5
 import qualified SMCDEL.Symbolic.S5
+import qualified SMCDEL.Symbolic.S5_DD
 import qualified SMCDEL.Symbolic.S5_CUDD
 import qualified SMCDEL.Translations.S5
 import qualified SMCDEL.Translations.K
@@ -46,6 +47,10 @@ mudPs n = [P 1 .. P n]
 findNumberCacBDD :: Int -> Int -> Int
 findNumberCacBDD = findNumberWith (cacMudScnInit,SMCDEL.Symbolic.S5.evalViaBdd) where
   cacMudScnInit n m = ( SMCDEL.Symbolic.S5.KnS (mudPs n) (SMCDEL.Symbolic.S5.boolBddOf Top) [ (show i,delete (P i) (mudPs n)) | i <- [1..n] ], mudPs m )
+
+findNumberDD :: Int -> Int -> Int
+findNumberDD = findNumberWith (ddMudScnInit,SMCDEL.Symbolic.S5_DD.evalViaBdd) where
+  ddMudScnInit n m = ( SMCDEL.Symbolic.S5_DD.KnS (mudPs n) (SMCDEL.Symbolic.S5_DD.boolBddOf Top) [ (show i,delete (P i) (mudPs n)) | i <- [1..n] ], mudPs m )
 
 findNumberCUDD :: Manager -> Int -> Int -> Int
 findNumberCUDD mgr n m =
@@ -123,26 +128,27 @@ benchMain = do
   defaultMainWith myConfig (map mybench
     [ ("Triangle"  , findNumberTriangle  , [7..40] )
     , ("CacBDD"    , findNumberCacBDD    , [3..40] )
+    , ("DD"        , findNumberDD        , [3..30] )
     , ("CUDD"      , findNumberCUDD mgr  , [3..40] )
     , ("CUDDz"     , findNumberCUDDz mgr , [3..40] )
     , ("K"         , findNumberK         , [3..12] )
     , ("DEMOS5"    , findNumberDemoS5    , [3..12] )
     , ("Trans"     , findNumberTrans     , [3..12] )
-    , ("TransK"    , findNumberTransK    , [3..11] ) ])
+    , ("TransK"    , findNumberTransK    , [3..10] ) ])
   where
     mybench (name,f,range) = bgroup name $ map (run f) range
     run f k = bench (show k) $ whnf (\n -> f n n) k
     myConfig = defaultConfig { Criterion.Types.csvFile = Just theCSVname }
 
 theCSVname :: String
-theCSVname = "muddychildren-results.csv"
+theCSVname = "bench/muddychildren-results.csv"
 
 prepareMain :: IO ()
 prepareMain = do
   oldResults <- doesFileExist theCSVname
   when oldResults $ do
     putStrLn "moving away old results!"
-    renameFile theCSVname ("OLD-results-" ++ theCSVname)
+    renameFile theCSVname (theCSVname ++ ".OLD")
     oldDATfile <- doesFileExist (theCSVname ++ ".dat")
     when oldDATfile $ removeFile (theCSVname ++ ".dat")
 

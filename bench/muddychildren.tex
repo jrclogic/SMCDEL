@@ -1,0 +1,35 @@
+\documentclass{article}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.17}
+
+\usepackage[margin=2cm]{geometry}
+
+\title{Muddy Children Benchmark}
+\author{SMCDEL}
+
+\begin{document}
+
+\begin{figure}
+  \centering
+  \begin{tikzpicture}
+    \pgfplotstableread{muddychildren-results.csv.dat}
+    \datatable
+    \begin{axis}[legend pos=north east, width=0.95\linewidth, grid=major,
+      ylabel=seconds, ymode=log, ymax=3000,
+      xlabel=no. of children (all muddy),
+      unbounded coords=jump]
+      \addlegendentry{Triangle}        \addplot table[y=Triangle] from \datatable;
+      \addlegendentry{CacBDD}          \addplot table[y=CacBDD] from \datatable;
+      \addlegendentry{DD}              \addplot table[y=DD] from \datatable;
+      \addlegendentry{CUDD}            \addplot table[y=CUDD] from \datatable;
+      \addlegendentry{CUDDz}           \addplot table[y=CUDDz] from \datatable;
+      % \addlegendentry{K (CacBDD)}      \addplot table[y=K] from \datatable;
+      \addlegendentry{DEMO-S5}         \addplot table[y=DEMOS5] from \datatable;
+      \addlegendentry{Trans (CacBDD)}  \addplot table[y=Trans] from \datatable;
+      \addlegendentry{TransK (CacBDD)} \addplot table[y=TransK] from \datatable;
+    \end{axis}
+  \end{tikzpicture}
+  \caption{Results.}
+\end{figure}
+
+\end{document}
