@@ -21,6 +21,7 @@ extra-source-files:
     stack.yaml
     package.yaml
     static/ace.js
+    static/mode-smcdel.js
     static/index.html
     static/viz-lite.js
     Examples/CherylsBirthday.smcdel.txt

@@ -38,13 +38,15 @@ main = do
   port <- fromMaybe 3000 . (readMaybe =<<) <$> lookupEnv "PORT"
   putStrLn $ "Please open this link: http://127.0.0.1:" ++ show port ++ "/index.html"
   let mySettings = Options 1 (setHost "127.0.0.1" $ setPort port defaultSettings)
+  let js = setHeader "Content-Type" "application/javascript; charset=utf-8"
   scottyOpts mySettings $ do
     get "" $ redirect "index.html"
     get "/" $ redirect "index.html"
-    get "/index.html"  . html . TL.fromStrict $ addVersionNumber $ embeddedFile "index.html"
-    get "/jquery.js"   . html . TL.fromStrict $ embeddedFile "jquery.js"
-    get "/ace.js"      . html . TL.fromStrict $ embeddedFile "ace.js"
-    get "/viz-lite.js" . html . TL.fromStrict $ embeddedFile "viz-lite.js"
+    get "/index.html" . html . TL.fromStrict $ addVersionNumber $ embeddedFile "index.html"
+    get "/jquery.js"      $ js >> html (TL.fromStrict $ embeddedFile "jquery.js")
+    get "/ace.js"         $ js >> html (TL.fromStrict $ embeddedFile "ace.js")
+    get "/mode-smcdel.js" $ js >> html (TL.fromStrict $ embeddedFile "mode-smcdel.js")
+    get "/viz-lite.js"    $ js >> html (TL.fromStrict $ embeddedFile "viz-lite.js")
     get "/getExample" $ do
       this <- param "filename"
       html . TL.fromStrict $ embeddedFile this
@@ -136,6 +138,7 @@ embeddedFile s = case s of
   "index.html"           -> E.decodeUtf8 $(embedFile "static/index.html")
   "viz-lite.js"          -> E.decodeUtf8 $(embedFile "static/viz-lite.js")
   "ace.js"               -> E.decodeUtf8 $(embedFile "static/ace.js")
+  "mode-smcdel.js"       -> E.decodeUtf8 $(embedFile "static/mode-smcdel.js")
   "jquery.js"            -> E.decodeUtf8 $(embedFile =<< runIO JQuery.file)
   "MuddyChildren"        -> E.decodeUtf8 $(embedFile "Examples/MuddyChildren.smcdel.txt")
   "DiningCryptographers" -> E.decodeUtf8 $(embedFile "Examples/DiningCryptographers.smcdel.txt")

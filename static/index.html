@@ -94,10 +94,12 @@ and <a href="https://github.com/jrclogic/SMCDEL/raw/master/SMCDEL.pdf">this tech
 <script src="viz-lite.js"></script>
 <script src="jquery.js"></script>
 <script src="ace.js"></script>
+<script src="mode-smcdel.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.1.2/es5/tex-mml-chtml.min.js" integrity="sha512-7rZgZU/u5XjLaO7dBpkcvZ2+ilGXbdIak0FXUgMoO+adNy7RUceort055Wn7LkZY3VLwEsSDpi8Ui+32N1vrfw==" crossorigin="anonymous"></script>
 <script>
   "use strict";
   var editor = ace.edit("smcinput");
+  editor.getSession().setMode("ace/mode/smcdel");
   $(document).ready(function(){
     $('.expbut').click(function() {
       $('#smcinput').val('... loading ...');
