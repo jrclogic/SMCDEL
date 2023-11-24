@@ -7,3 +7,4 @@ extra-deps:
 - git: https://github.com/m4lvin/cudd.git
   commit: c5f0fd8446827b1473ef18ea5dcc5d32a256e57d
 - HasCacBDD-0.2.0.0
+- decision-diagrams-0.2.0.0

@@ -43,6 +43,7 @@ library:
     - temporary
     - text
     - time
+    - decision-diagrams
 
 executables:
   smcdel:

@@ -77,6 +77,7 @@ library
       SMCDEL.Symbolic.Ki_CUDD
       SMCDEL.Symbolic.S5
       SMCDEL.Symbolic.S5_CUDD
+      SMCDEL.Symbolic.S5_DD
       SMCDEL.Translations.Convert
       SMCDEL.Translations.K
       SMCDEL.Translations.S5
@@ -95,6 +96,7 @@ library
     , base >=4.8 && <5
     , containers
     , cudd ==0.1.0.0
+    , decision-diagrams
     , directory
     , graphviz
     , process
