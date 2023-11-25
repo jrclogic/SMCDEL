@@ -4,7 +4,7 @@ import Data.List
 import Data.Maybe
 import Test.Hspec
 import Test.Hspec.QuickCheck
-import Test.QuickCheck (expectFailure,(===),property)
+import Test.QuickCheck (expectFailure,(===))
 
 import SMCDEL.Examples
 import SMCDEL.Examples.DiningCrypto
@@ -22,9 +22,6 @@ import SMCDEL.Other.Planning
 import SMCDEL.Symbolic.S5
 import SMCDEL.Translations.S5
 import qualified SMCDEL.Explicit.S5 as Exp
-import qualified SMCDEL.Internal.MyHaskCUDD as CUDD
-import qualified SMCDEL.Symbolic.S5_CUDD as S5_CUDD
-import qualified Data.HasCacBDD
 
 main :: IO ()
 main = hspec $ do
@@ -68,20 +65,6 @@ main = hspec $ do
                 in isTrue scene f === isTrue (generatedSubstructure scene) f
     modifyMaxSuccess (const 1000) $ prop "optimize can reduce the vocabulary" $
       expectFailure (\kns -> length (vocabOf (kns :: KnowStruct)) == length (vocabOf (optimize defaultVocabulary kns)))
-  describe "SMCDEL.Internal.MyHaskCUDD using BDDs" $ do
-     before CUDD.makeManager $ do
-      it "gfp (\b -> con b (var 3)) == var 3" $
-        \mgr -> CUDD.gfp mgr (\b -> CUDD.con mgr b (CUDD.var mgr 3)) `shouldBe` (CUDD.var mgr 3 :: CUDD.Dd CUDD.B CUDD.O1 CUDD.I1)
-      it "exists_ 1 (neg $ var 1) == top" $ \mgr -> CUDD.exists_ mgr 1 (CUDD.neg mgr $ CUDD.var mgr 1) `shouldBe` (CUDD.top mgr :: CUDD.Dd CUDD.B CUDD.O1 CUDD.I1)
-      it "exists_ 1 (neg $ var 2) /= top" $ \mgr -> CUDD.exists_ mgr 1 (CUDD.neg mgr $ CUDD.var mgr 2) `shouldNotBe` (CUDD.top mgr :: CUDD.Dd CUDD.B CUDD.O1 CUDD.I1)
-      it "forall_ 1 (neg $ var 1) == bot" $ \mgr -> CUDD.forall_ mgr 1 (CUDD.neg mgr $ CUDD.var mgr 1) `shouldBe` (CUDD.bot mgr :: CUDD.Dd CUDD.B CUDD.O1 CUDD.I1)
-      it "forall_ 1 (neg $ var 2) /= bot" $ \mgr -> CUDD.forall_ mgr 1 (CUDD.neg mgr $ CUDD.var mgr 2) `shouldNotBe` (CUDD.bot mgr :: CUDD.Dd CUDD.B CUDD.O1 CUDD.I1)
-  describe "SMCDEL.Symbolic.S5_CUDD using BDDs agrees with HasCacBdd" $ do
-    before CUDD.makeManager $ do
-      it "HasCacBDD and CUDD give same allSats" $
-        \mgr -> property $ \(BF bf) -> sort (Data.HasCacBDD.allSats (boolBddOf bf)) === sort (CUDD.allSats mgr (S5_CUDD.boolDdOf mgr bf :: CUDD.Dd CUDD.B CUDD.O1 CUDD.I1))
-      it "HasCacBDD and CUDD give same anySat" $
-        \mgr -> property $ \(BF bf) -> Data.HasCacBDD.anySat (boolBddOf bf) === CUDD.anySat mgr (S5_CUDD.boolDdOf mgr bf ::  CUDD.Dd CUDD.B CUDD.O1 CUDD.I1)
   describe "SMCDEL.Other.BDD2Form" $ do
     prop "boolBddOf . formOf == id" $
       \b -> b === boolBddOf (formOf b)

@@ -2,6 +2,8 @@
 
 module Main (main) where
 
+import qualified Data.HasCacBDD
+import Data.List (sort)
 import Data.Maybe (isJust)
 import Test.Hspec
 import Test.QuickCheck
@@ -10,7 +12,7 @@ import SMCDEL.Internal.Help (alleq)
 import SMCDEL.Internal.MyHaskCUDD
 import SMCDEL.Language
 import qualified Data.Map.Strict as M
-import qualified SMCDEL.Internal.MyHaskCUDD as MyHaskCUDD (Manager, makeManager, makeManagerZ)
+import qualified SMCDEL.Internal.MyHaskCUDD as MyHaskCUDD
 import qualified SMCDEL.Symbolic.K as K
 import qualified SMCDEL.Symbolic.K_CUDD as K_CUDD
 import qualified SMCDEL.Symbolic.Ki_CUDD as Ki_CUDD
@@ -20,6 +22,20 @@ import qualified SMCDEL.Symbolic.S5_CUDD as S5_CUDD
 main :: IO ()
 main = do
   hspec $ do
+    describe "SMCDEL.Internal.MyHaskCUDD using BDDs" $ do
+      before MyHaskCUDD.makeManager $ do
+        it "gfp (\b -> con b (var 3)) == var 3" $
+          \mgr -> MyHaskCUDD.gfp mgr (\b -> MyHaskCUDD.con mgr b (MyHaskCUDD.var mgr 3)) `shouldBe` (MyHaskCUDD.var mgr 3 :: MyHaskCUDD.Dd MyHaskCUDD.B MyHaskCUDD.O1 MyHaskCUDD.I1)
+        it "exists_ 1 (neg $ var 1) == top" $ \mgr -> MyHaskCUDD.exists_ mgr 1 (MyHaskCUDD.neg mgr $ MyHaskCUDD.var mgr 1) `shouldBe` (MyHaskCUDD.top mgr :: MyHaskCUDD.Dd MyHaskCUDD.B MyHaskCUDD.O1 MyHaskCUDD.I1)
+        it "exists_ 1 (neg $ var 2) /= top" $ \mgr -> MyHaskCUDD.exists_ mgr 1 (MyHaskCUDD.neg mgr $ MyHaskCUDD.var mgr 2) `shouldNotBe` (MyHaskCUDD.top mgr :: MyHaskCUDD.Dd MyHaskCUDD.B MyHaskCUDD.O1 MyHaskCUDD.I1)
+        it "forall_ 1 (neg $ var 1) == bot" $ \mgr -> MyHaskCUDD.forall_ mgr 1 (MyHaskCUDD.neg mgr $ MyHaskCUDD.var mgr 1) `shouldBe` (MyHaskCUDD.bot mgr :: MyHaskCUDD.Dd MyHaskCUDD.B MyHaskCUDD.O1 MyHaskCUDD.I1)
+        it "forall_ 1 (neg $ var 2) /= bot" $ \mgr -> MyHaskCUDD.forall_ mgr 1 (MyHaskCUDD.neg mgr $ MyHaskCUDD.var mgr 2) `shouldNotBe` (MyHaskCUDD.bot mgr :: MyHaskCUDD.Dd MyHaskCUDD.B MyHaskCUDD.O1 MyHaskCUDD.I1)
+    describe "SMCDEL.Symbolic.S5_CUDD using BDDs agrees with HasCacBdd" $ do
+      before MyHaskCUDD.makeManager $ do
+        it "HasCacBDD and CUDD give same allSats" $
+          \mgr -> property $ \(BF bf) -> sort (Data.HasCacBDD.allSats (S5.boolBddOf bf)) === sort (MyHaskCUDD.allSats mgr (S5_CUDD.boolDdOf mgr bf :: MyHaskCUDD.Dd MyHaskCUDD.B MyHaskCUDD.O1 MyHaskCUDD.I1))
+        it "HasCacBDD and CUDD give same anySat" $
+          \mgr -> property $ \(BF bf) -> Data.HasCacBDD.anySat (S5.boolBddOf bf) === MyHaskCUDD.anySat mgr (S5_CUDD.boolDdOf mgr bf ::  MyHaskCUDD.Dd MyHaskCUDD.B MyHaskCUDD.O1 MyHaskCUDD.I1)
     describe "CUDD / MyHaskCUDD" $ do
       before MyHaskCUDD.makeManager $
         describe "bddOnlyTests" bddOnlyTests

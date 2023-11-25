@@ -159,7 +159,8 @@ test-suite CUDD
       alex
     , happy
   build-depends:
-      QuickCheck
+      HasCacBDD
+    , QuickCheck
     , base >=4.8 && <5
     , containers
     , hspec

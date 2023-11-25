@@ -116,6 +116,7 @@ tests:
     dependencies:
       - base >= 4.8 && < 5
       - containers
+      - HasCacBDD
       - hspec
       - QuickCheck
       - smcdel
