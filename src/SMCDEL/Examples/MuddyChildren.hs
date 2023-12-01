@@ -1,3 +1,13 @@
+{- |
+We model the story of the muddy children which is known in many versions.
+See for example~\cite{Littlewood1953:amm},~\cite[p.~24-30]{fagin1995reasoning} or~\cite[p.~93-96]{DitHoekKooi2007:del}.
+
+Our implementation treats the general case for \(n\) children out of which \(m\) are muddy, but we focus on the case of three children who are all muddy.
+As usual, all children can observe whether the others are muddy but do not see their own face.
+This is represented by the observational variables:
+Agent $1$ observes $p_2$ and $p_3$, agent $2$ observes $p_1$ and $p_3$ and agent $3$ observes $p_1$ and $p_2$.
+-}
+
 module SMCDEL.Examples.MuddyChildren where
 
 import Data.List
@@ -10,6 +20,7 @@ import SMCDEL.Symbolic.S5
 import qualified SMCDEL.Symbolic.K
 import qualified SMCDEL.Explicit.K
 
+-- | The initial knowledge structure, given the total number of children, and the number of muddy children.
 mudScnInit :: Int -> Int -> KnowScene
 mudScnInit n m = (KnS vocab law obs, actual) where
   vocab  = [P 1 .. P n]
@@ -17,17 +28,23 @@ mudScnInit n m = (KnS vocab law obs, actual) where
   obs    = [ (show i, delete (P i) vocab) | i <- [1..n] ]
   actual = [P 1 .. P m]
 
+-- | The initial structure for 3 muddy children.
 myMudScnInit :: KnowScene
 myMudScnInit = mudScnInit 3 3
 
+-- | A formula to say that the given child knows whether it is muddy.
 knows :: Int -> Form
 knows i = Kw (show i) (PrpF $ P i)
 
+-- | A formula to say that none out of \(n\) children knows its own state.
 nobodyknows :: Int -> Form
 nobodyknows n = Conj [ Neg $ knows i | i <- [1..n] ]
 
+-- | Announcement of the father announce that someone is muddy.
 father :: Int -> Form
 father n = Disj (map PrpF [P 1 .. P n])
+
+-- | Result after announcing `father 3` in `myMudScnInit`.
 mudScn0 :: KnowScene
 mudScn0 = update myMudScnInit (father 3)
 

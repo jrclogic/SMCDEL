@@ -1,5 +1,26 @@
 {-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, ScopedTypeVariables #-}
 
+{- |
+
+The implementation in "SMCDEL.Symbolic.S5" only works for models where the
+epistemic accessibility relation is an equivalence relation.
+This is because only those can be described by sets of observational variables.
+In fact, not even every S5 relation on distinctly valuated worlds can be modeled with observational variables --- this is why our translation procedure `SMCDEL.Translation.S5` has to add additional atomic propositions.
+
+To overcome this limitation, here we generalize the definition of knowledge structures.
+Using well-known methods from temporal model checking, arbitrary relations can also be represented as BDDs.
+See for example~\cite{GoroRyan02:BelRevBDD}.
+Remember that in a knowledge structure we can identify states with boolean assignments and those are just sets of propositions.
+Hence a relation on states with unique valuations can be seen as a relation between sets of propositions.
+We can therefore represent it with the BDD of a characteristic function on a double vocabulary, as described in~\cite[Section 5.2]{ClarkeGrumbergPeled1999:MC}.
+Intuitively, we construct (the BDD of) a formula which is true exactly for the pairs of boolean assignments that are connected by the relation.
+
+Our symbolic model checker can then also be used for non-S5 models.
+
+For further explanations, see~\cite[Section 8]{BEGS17:SMCDELbeyond}.
+
+-}
+
 module SMCDEL.Symbolic.K where
 
 import Data.Tagged
@@ -19,6 +40,8 @@ import SMCDEL.Language
 import SMCDEL.Other.BDD2Form
 import SMCDEL.Symbolic.S5 (State,texBDD,boolBddOf,texBddWith,bddEval,relabelWith)
 import SMCDEL.Translations.S5 (booloutof)
+
+-- * Translating relations to type-safe BDDs
 
 mvP, cpP :: Prp -> Prp
 mvP (P n) = P  (2*n)      -- represent p  in the double vocabulary
@@ -82,6 +105,19 @@ samplerel = M.fromList [
   ( [P 2]     , [    [P 2],      [P 1, P 2] ] ),
   ( [P 1, P 2], [                [P 1, P 2] ] )  ]
 
+
+-- * Describing Kripke Models with BDDs
+
+{- $
+We now want to use BDDs to represent the relations of multiple agents
+in a general Kripke Model. Suppose we have a model for the vocabulary
+$V$ in which the valuation function assigns to every state a distinct
+set of true propositions. To simplify the notation we also write $s$
+for the set of propositions true at $s$.
+-}
+
+-- | Translate an agent's relation of worlds to a relation of sets of propositions.
+-- The given model must have distinct valuations.
 relBddOfIn :: Agent -> KripkeModel -> RelBDD
 relBddOfIn i (KrM m)
   | not (distinctVal (KrM m)) = error "m does not have distinct valuations."
@@ -94,6 +130,8 @@ relBddOfIn i (KrM m)
         props = M.keys mapPropBool
         here = M.keys (M.filter id mapPropBool)
         theres = map (truthsInAt (KrM m)) (mapAgentReach ! i)
+
+-- * Belief Structures
 
 data BelStruct = BlS [Prp]              -- vocabulary
                      Bdd                -- state law
@@ -112,6 +150,7 @@ instance HasVocab BelStruct where
 instance HasAgents BelStruct where
   agentsOf (BlS _ _ obdds) = M.keys obdds
 
+-- | Given a formula, compute a BDD that is equivalent to that formula, on a given belief structure.
 bddOf :: BelStruct -> Form -> Bdd
 bddOf _   Top           = top
 bddOf _   Bot           = bot
@@ -241,12 +280,15 @@ announce bls@(BlS props lawbdd obdds) ags psi = BlS newprops newlawbdd newobdds 
   newOfor i oi | i `elem` ags = con <$> oi <*> (equ <$> mvBdd (var k) <*> cpBdd (var k))
                | otherwise    = con <$> oi <*> (neg <$> cpBdd (var k)) -- p_psi'
 
+-- | Get all states of a knowledge structure.
 statesOf :: BelStruct -> [State]
 statesOf (BlS allprops lawbdd _) = map (sort.getTrues) prpsats where
   bddvars = map fromEnum allprops
   bddsats = allSatsWith bddvars lawbdd
   prpsats = map (map (first toEnum)) bddsats
   getTrues = map fst . filter snd
+
+-- * Visualizing Belief Structures
 
 texRelBDD :: RelBDD -> String
 texRelBDD (Tagged b) = texBddWith texRelProp b where

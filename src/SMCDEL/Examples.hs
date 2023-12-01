@@ -16,15 +16,15 @@ import SMCDEL.Translations.S5
 
 -- * Knowledge and Meta-Knowledge
 
-{- $
-In the following Kripke model, Bob knows that $p$ is true and Alice does not.
-Still, Alice knows that Bob knows whether $p$.
-This is because in all worlds that Alice confuses with the actual world Bob either knows that $p$ or he knows that not $p$.
--}
-
+-- | A Kripke model with two states, where Bob knows that \(p\) is true and Alice does not.
+-- Still, Alice knows that Bob knows whether \(p\).
+-- This is because in all worlds that Alice confuses with the actual world Bob either knows that \(p\) or he knows that not \(p\).
 modelA :: PointedModelS5
 modelA = (KrMS5 [0,1] [(alice,[[0,1]]),(bob,[[0],[1]])] [ (0,[(P 0,True)]), (1,[(P 0,False)]) ], 0)
 
+-- | A model with three states.
+-- Bob knows that \(p\) is true and Alice does not.
+-- Additionally here Alice does not even know whether Bob knows whether \(p\).
 modelB :: PointedModelS5
 modelB =
   (KrMS5
@@ -37,9 +37,11 @@ knsA, knsB :: KnowScene
 knsA = kripkeToKns modelA
 knsB = kripkeToKns modelB
 
+-- | A Kripke model with three states 0,1,2 where 0 and 1 are bisimilar --- it is redundant.
 redundantModel :: PointedModelS5
 redundantModel = (KrMS5 [0,1,2] [(alice,[[0,1,2]]),(bob,[[0,1],[2]])] [ (0,[(P 0,True)]), (1,[(P 0,True)]), (2,[(P 0,False)]) ], 0)
 
+-- | The knowledge structure equivalent to `redundantModel`.
 myKNS :: KnowScene
 myKNS = kripkeToKns redundantModel
 
