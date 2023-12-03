@@ -2,13 +2,48 @@
 <html lang="en">
 <head>
 <title>SMCDEL <!-- VERSION NUMBER --></title>
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-<meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0" />
-<style type="text/css">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta name="viewport" content="width=device-width">
+<style>
+html, body {
+  margin: 0;
+  height: 100%;
+  min-height: 100%;
+}
 body {
-  height:100%;
+  display: flex;
+  flex-direction: column;
   font-family: sans-serif; color:#333;
-  min-width:500px;
+}
+header, footer {
+  flex:none;
+  padding:0.5em;
+  line-height:2;
+}
+main {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+}
+#left, #right {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
+  padding:5px;
+  margin:0;
+  border:1px solid #666;
+}
+#smcinput, #output {
+  width:100%;
+  margin:0px;
+  padding:0px;
+  height:100%;
+  border:none;
+  box-sizing:border-box;
+}
+#output {
+  overflow-y:scroll;
 }
 a {
   color:brown;
@@ -17,25 +52,6 @@ a {
 a:hover {
   color: #666;
   text-decoration:underline;
-}
-#left, #right {
-  float:left;
-  padding:2px;
-  margin:2px;
-  width:48%;
-  border:1px solid #666;
-}
-#smcinput, #output {
-  width:100%;
-  margin:0px;
-  padding:0px;
-  min-height:450px;
-  height:100%;
-  border:none;
-  box-sizing:border-box;
-}
-#output {
-  overflow-y:scroll;
 }
 input[type=button], input[type=submit] {
   color:#000;
@@ -60,37 +76,31 @@ input[type=button], input[type=submit] {
   padding:20px;
   color:darkred;
 }
-.footer {
-  clear:both;
-  padding-top:1em;
-  color:#888;
-}
-.footer a {
-  color:#888;
-}
 </style>
 </head>
 <body>
-<p>This is the web interface of <a href="https://github.com/jrclogic/SMCDEL">SMCDEL</a> <!-- VERSION NUMBER -->, a symbolic model checker for <a href="https://plato.stanford.edu/entries/dynamic-epistemic" target="_blank">Dynamic Epistemic Logic</a>.
-See <a href="https://pure.uva.nl/ws/files/25483686/2016_05_23_del_bdd_lori_journal.pd.pdf">this paper</a>
-and <a href="https://github.com/jrclogic/SMCDEL/raw/master/SMCDEL.pdf">this technical report</a> for more information.</p>
-<div id="menubar">
-  Load Examples:
-  <input type="button" class="expbut" value="MuddyChildren" />
-  <input type="button" class="expbut" value="DrinkingLogicians" />
-  <input type="button" class="expbut" value="DiningCryptographers" />
-  <input type="button" class="expbut" value="CherylsBirthday" />
-  or enter your own code on the left side, then
-  <input id="runbutton" type="submit" value="Run SMCDEL!" onclick="myRequest('check');" title="shortcut: Ctrl + s" />
-  or
-  <input id="kripkebutton" type="submit" value="Show Kripke!" onclick="myRequest('knsToKripke');" title="shortcut: Ctrl + p" />
-</div>
-<div id="left">
-  <div id="smcinput"></div>
-</div>
-<div id="right">
-  <div id="output"></div>
-</div>
+<header>
+  This is the web interface of <a href="https://github.com/jrclogic/SMCDEL">SMCDEL</a> <!-- VERSION NUMBER -->, a symbolic model checker for <a href="https://plato.stanford.edu/entries/dynamic-epistemic" target="_blank">Dynamic Epistemic Logic</a>.
+  <div id="menubar">
+    Load Examples:
+    <input type="button" class="expbut" value="MuddyChildren">
+    <input type="button" class="expbut" value="DrinkingLogicians">
+    <input type="button" class="expbut" value="DiningCryptographers">
+    <input type="button" class="expbut" value="CherylsBirthday">
+    or enter your own code on the left side, then
+    <input id="runbutton" type="submit" value="Run SMCDEL!" onclick="myRequest('check');" title="Run SMCDEL to answer queries - shortcut: Ctrl + s">
+    or
+    <input id="kripkebutton" type="submit" value="Show model!" onclick="myRequest('knsToKripke');" title="Show the equivalent Kripke model - shortcut: Ctrl + p">
+  </div>
+</header>
+<main>
+  <div id="left">
+    <div id="smcinput"></div>
+  </div>
+  <div id="right">
+    <div id="output"></div>
+  </div>
+</main>
 <script src="viz-lite.js"></script>
 <script src="jquery.js"></script>
 <script src="ace.js"></script>
@@ -109,7 +119,7 @@ and <a href="https://github.com/jrclogic/SMCDEL/raw/master/SMCDEL.pdf">this tech
         });
     });
   });
-  function myRequest (url) {
+  function myRequest(url) {
     $.ajax({
       type: "POST",
       url: url,
@@ -139,16 +149,5 @@ and <a href="https://github.com/jrclogic/SMCDEL/raw/master/SMCDEL.pdf">this tech
     }
   });
 </script>
-<p class="footer">
-  Made by <a href="https://malv.in/">Malvin Gattinger</a>.
-  Using
-    <a href="https://www.haskell.org/alex/">alex</a>,
-    <a href="https://www.haskell.org/happy/">happy</a>,
-    <a href="https://www.haskell.org/">haskell</a>,
-    <a href="https://mathjax.org/">MathJax</a>,
-    <a href="https://github.com/scotty-web/scotty">scotty</a>,
-    <a href="https://www.haskellstack.org/">stack</a>,
-    and more awesome free software.
-</p>
 </body>
 </html>

@@ -181,6 +181,20 @@ eval scn (Dia (Dyn dynLabel d) f) = case fromDynamic d of
                 && eval (scn `update` event) f
   Nothing    -> error $ "cannot update knowledge structure with '" ++ dynLabel ++ "':\n  " ++ show d
 
+
+-- ** Common Knowledge
+
+{- $
+To interpret common knowledge we use the following definitions.
+Given a /knowledge structure/ \((V,\theta,O_1,\dots,O_n)\) and a set of agents \(\Delta\),
+let \(\mathcal{E}_\Delta\) be the relation on states of \(\mathcal{F}\) defined by
+  \((s,t) \in {\cal E}_\Delta\) iff
+    there exists an \(i\in {\Delta}\) with \(s \cap O_i = t \cap O_i\).
+and let \({\cal E}_{\cal V}^\ast\) to denote the transitive closure of \({\cal E}_{\cal V}\).
+
+In our data type for knowledge structures we represent the state law \(\theta\) not as a formula but as a Binary Decision Diagram.
+-}
+
 -- | The relation for shared knowledge.
 shareknow :: KnowStruct -> [[Prp]] -> [(State,State)]
 shareknow kns sets = filter rel [ (s,t) | s <- statesOf kns, t <- statesOf kns ] where
@@ -189,6 +203,15 @@ shareknow kns sets = filter rel [ (s,t) | s <- statesOf kns, t <- statesOf kns ]
 -- | The relation for common knowledge.
 comknow :: KnowStruct -> [Agent] -> [(State,State)]
 comknow kns@(KnS _ _ obs) ags = rtc $ shareknow kns (map (apply obs) ags)
+
+-- ** Announcements
+
+{- $
+We also have to define how knowledge structures are changed by public and group announcements.
+The following functions correspond to the last two points of the semantics Definition above.
+-}
+
+-- TODO remove these, replace with transformers. (at least remove group announcement)
 
 announce :: KnowStruct -> [Agent] -> Form -> KnowStruct
 announce kns@(KnS props lawbdd obs) ags psi = KnS newprops newlawbdd newobs where

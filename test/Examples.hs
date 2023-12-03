@@ -1,3 +1,9 @@
+{- |
+This module uses Hspec and QuickCheck to easily check some properties of our implementations.
+For example, we check that simplification of formulas does not change their meaning.
+We also check the results listed in "SMCDEL.Examples" and its submodules.
+-}
+
 module Main (main) where
 
 import Data.List
