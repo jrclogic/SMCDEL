@@ -1,0 +1,19 @@
+{
+  "name": "SMCDEL dev container",
+
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+
+  "remoteEnv": {
+    "PATH": "${containerEnv:PATH}:/home/vscode/.ghcup/bin/",
+  },
+
+  "onCreateCommand": "stack build",
+
+  "customizations": {
+    "vscode" : {
+      "extensions" : [ "haskell.haskell", "justusadam.language-haskell", "anwar.papyrus-pdf" ]
+    }
+  }
+}
