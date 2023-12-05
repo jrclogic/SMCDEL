@@ -1,19 +1,21 @@
 # SMCDEL Changelog
 
-## upcoming
+## v1.3.0 (upcoming)
 
 New:
 
 - Use ZDDs as an alternative in `SMCDEL.Symbolic.S5_CUDD` and `SMCDEL.Symbolic.K_CUDD`
 - Modules `SMCDEL.Symbolic.Ki` and `SMCDEL.Symbolic.Ki_CUDD` using one agent-indexed DD
+- Provide SMCDEL.Symbolic.S5_DD using the pure Haskell `decision-diagrams` library
 - Examples: add generalised versions of Sum and Product and Dining Cryptographers
 - Web and CLI: add `ONEOF` keyword to allow formulas like `ONEOF (p, q, r)` - fix #21
 - Web and CLI: allow lists after Kw for formulas like `bob knows whether (p, q)`
+- Add gitpod and devcontainer configurations
 
 Changed:
 
 - Use `defaultVocabulary` also for random Boolean formulas (and thus BDDs)
-- Use xdg-open instead of hardcoding Okular
+- Use `open` instead of hardcoding Okular
 - Use newer HasCacBDD with faster `sizeOf`
 
 ## v1.2.0 (2022-02-22)
