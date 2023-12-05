@@ -6,7 +6,7 @@
   },
 
   "remoteEnv": {
-    "PATH": "${containerEnv:PATH}:/home/vscode/.ghcup/bin/",
+    "PATH": "${containerEnv:PATH}:/home/vscode/.ghcup/bin",
   },
 
   "onCreateCommand": "stack build",
