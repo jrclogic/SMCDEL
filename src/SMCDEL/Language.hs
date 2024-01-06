@@ -76,14 +76,14 @@ The language \( \mathcal{L}(V) \) for a set of propositions \(V\) and a finite s
     \mid  \bigwedge \Phi  \mid  \bigvee \Phi  \mid  \bigoplus \Phi
     \mid  \phi \rightarrow \phi  \mid  \phi \leftrightarrow \phi
     \mid  \forall P \phi  \mid  \exists P \phi
-    \mid  K_i \phi  \mid  C_\Delta \phi
+    \mid  K_i \phi  \mid  C_\Delta \phi \mid D_\Delta \phi
     \mid  [!\phi] \phi  \mid  [\Delta ! \phi] \phi \]
 where \(p \in V\), \(P \subseteq V\), \(|P|<\omega\), \(\Phi\subseteq\mathcal{L}(V)\), \(|\Phi|<\omega\), \(i \in I\) and \(\Delta \subset I\).
 We also write \(\phi \land \psi\) for \(\bigwedge \{ \phi,\psi \}\) and \(\phi \lor \psi\) for \(\bigvee \{ \phi,\psi \}\).
-The \emph{boolean} formulas are those without \(K_i\), \(C_\Delta\), \([!\phi]\) and \([\Delta!\phi]\).
+The \emph{boolean} formulas are those without \(K_i\), \(C_\Delta\), \(D_\Delta\), \([!\phi]\) and \([\Delta!\phi]\).
 
 Hence, a formula can be (in this order):
-The constant top or bottom, an atomic proposition, a negation, a conjunction, a disjunction, an exclusive or, an implication, a bi-implication, a universal or existential quantification over a set of propositions, or a statement about knowledge, common-knowledge, a public announcement or an announcement to a group.
+The constant top or bottom, an atomic proposition, a negation, a conjunction, a disjunction, an exclusive or, an implication, a bi-implication, a universal or existential quantification over a set of propositions, or a statement about knowledge, common-knowledge, distributed knowledge, a public announcement or an announcement to a group.
 
 Some of these connectives are inter-definable, for example \(\phi\leftrightarrow\psi\) and \(\bigwedge \{ \psi\rightarrow\phi,\phi\rightarrow\psi \}\) are equivalent according to all semantics which we will use here.
 Hence we could shorten Definition~\ref{def-dellang} and treat some connectives as abbreviations.
@@ -93,6 +93,8 @@ To continue with the first example: If we have Binary Decision Diagrams (BDDs) f
 We extend our language with abbreviations for "knowing whether" and "announcing whether".
 
 \[ K^?_i \phi := \bigvee \{ K_i \phi , K_i (\lnot \phi) \} \]
+
+\[ D^?_i \phi := \bigvee \{ D_i \phi , D_i (\lnot \phi) \} \]
 
 \[ [?! \phi] \psi := \bigwedge \{ \phi \rightarrow [!\phi]\psi , \lnot \phi \rightarrow [!\lnot\phi]\psi \} \]
 
@@ -117,8 +119,10 @@ data Form
   | Exists [Prp] Form           -- ^ Boolean Existential Quantification
   | K Agent Form                -- ^ Knowing that
   | Ck [Agent] Form             -- ^ Common knowing that
+  | Dk [Agent] Form             -- ^ Distributed knowing that
   | Kw Agent Form               -- ^ Knowing whether
   | Ckw [Agent] Form            -- ^ Common knowing whether
+  | Dkw [Agent] Form            -- ^ Distributed knowing whether
   | PubAnnounce Form Form       -- ^ Public announcement that
   | PubAnnounceW Form Form      -- ^ Public announcement whether
   | Announce [Agent] Form Form  -- ^ (Semi-)Private announcement that
@@ -249,8 +253,10 @@ ppFormWith trans (Forall ps f) = "Forall {" ++ showSet ps ++ "}: " ++ ppFormWith
 ppFormWith trans (Exists ps f) = "Exists {" ++ showSet ps ++ "}: " ++ ppFormWith trans f
 ppFormWith trans (K i f)       = "K " ++ i ++ " " ++ ppFormWith trans f
 ppFormWith trans (Ck is f)     = "Ck " ++ showSet is ++ " " ++ ppFormWith trans f
+ppFormWith trans (Dk is f)     = "Dk " ++ showSet is ++ " " ++ ppFormWith trans f
 ppFormWith trans (Kw i f)      = "Kw " ++ i ++ " " ++ ppFormWith trans f
 ppFormWith trans (Ckw is f)    = "Ckw " ++ showSet is ++ " " ++ ppFormWith trans f
+ppFormWith trans (Dkw is f)    = "Dkw " ++ showSet is ++ " " ++ ppFormWith trans f
 ppFormWith trans (PubAnnounce f g)  = "[! " ++ ppFormWith trans f ++ "] " ++ ppFormWith trans g
 ppFormWith trans (PubAnnounceW f g) = "[?! " ++ ppFormWith trans f ++ "] " ++ ppFormWith trans g
 ppFormWith trans (Announce is f g)  = "[" ++ intercalate ", " is ++ " ! " ++ ppFormWith trans f ++ "]" ++ ppFormWith trans g
@@ -283,7 +289,9 @@ texForm (Exists ps f) = " \\exists " ++ tex ps ++ " " ++ texForm f
 texForm (K i f)       = "K_{\\text{" ++ i ++ "}} " ++ texForm f
 texForm (Kw i f)      = "K^?_{\\text{" ++ i ++ "}} " ++ texForm f
 texForm (Ck ags f)    = "Ck_{\\{\n" ++ intercalate "," ags ++ "\n\\}} " ++ texForm f
+texForm (Dk ags f)    = "Dk_{\\{\n" ++ intercalate "," ags ++ "\n\\}} " ++ texForm f
 texForm (Ckw ags f)   = "Ck^?_{\\{\n" ++ intercalate "," ags ++ "\n\\}} " ++ texForm f
+texForm (Dkw ags f)   = "Dk^?_{\\{\n" ++ intercalate "," ags ++ "\n\\}} " ++ texForm f
 texForm (PubAnnounce f g)   = "[!" ++ texForm f ++ "] " ++ texForm g
 texForm (PubAnnounceW f g)  = "[?!" ++ texForm f ++ "] " ++ texForm g
 texForm (Announce ags f g)  = "[" ++ intercalate "," ags ++ "!" ++ texForm f ++ "] " ++ texForm g
@@ -319,8 +327,10 @@ subformulas (Forall ps f) = Forall ps f : subformulas f
 subformulas (Exists ps f) = Exists ps f : subformulas f
 subformulas (K i f)       = K i f : subformulas f
 subformulas (Ck is f)     = Ck is f : subformulas f
+subformulas (Dk is f)     = Dk is f : subformulas f
 subformulas (Kw i f)      = Kw i f : subformulas f
 subformulas (Ckw is f)    = Ckw is f : subformulas f
+subformulas (Dkw is f)    = Dkw is f : subformulas f
 subformulas (PubAnnounce  f g) = PubAnnounce  f g : nub (subformulas f ++ subformulas g)
 subformulas (PubAnnounceW f g) = PubAnnounceW f g : nub (subformulas f ++ subformulas g)
 subformulas (Announce  is f g) = Announce  is f g : nub (subformulas f ++ subformulas g)
@@ -338,6 +348,8 @@ shrinkform f =
     otherShrinks (Xor      fs) = [Xor      gs | gs <- powerset fs \\ [fs]]
     otherShrinks (Ck     is g) = [Ck     js g | js <- powerset is \\ [is]]
     otherShrinks (Ckw    is g) = [Ckw    js g | js <- powerset is \\ [is]]
+    otherShrinks (Dk     is g) = [Dk     js g | js <- powerset is \\ [is]]
+    otherShrinks (Dkw    is g) = [Dkw    js g | js <- powerset is \\ [is]]
     otherShrinks (Forall ps g) = [Forall qs g | qs <- powerset ps \\ [ps]]
     otherShrinks (Exists ps g) = [Exists qs g | qs <- powerset ps \\ [ps]]
     otherShrinks _ = []
@@ -367,6 +379,8 @@ substit q psi (K  i f)     = K  i (substit q psi f)
 substit q psi (Kw i f)     = Kw i (substit q psi f)
 substit q psi (Ck ags f)   = Ck ags (substit q psi f)
 substit q psi (Ckw ags f)  = Ckw ags (substit q psi f)
+substit q psi (Dk ags f)   = Dk ags (substit q psi f)
+substit q psi (Dkw ags f)  = Dkw ags (substit q psi f)
 substit q psi (PubAnnounce f g)   = PubAnnounce (substit q psi f) (substit q psi g)
 substit q psi (PubAnnounceW f g)  = PubAnnounceW (substit q psi f) (substit q psi g)
 substit q psi (Announce ags f g)  = Announce ags (substit q psi f) (substit q psi g)
@@ -406,6 +420,8 @@ replPsInF repl (K i f)     = K i (replPsInF repl f)
 replPsInF repl (Kw i f)    = Kw i (replPsInF repl f)
 replPsInF repl (Ck ags f)  = Ck ags (replPsInF repl f)
 replPsInF repl (Ckw ags f) = Ckw ags (replPsInF repl f)
+replPsInF repl (Dk ags f)  = Dk ags (replPsInF repl f)
+replPsInF repl (Dkw ags f) = Dkw ags (replPsInF repl f)
 replPsInF repl (PubAnnounce f g)   = PubAnnounce   (replPsInF repl f) (replPsInF repl g)
 replPsInF repl (PubAnnounceW f g)  = PubAnnounceW  (replPsInF repl f) (replPsInF repl g)
 replPsInF repl (Announce ags f g)  = Announce  ags (replPsInF repl f) (replPsInF repl g)
@@ -431,6 +447,8 @@ propsInForm (K _ f)            = propsInForm f
 propsInForm (Kw _ f)           = propsInForm f
 propsInForm (Ck _ f)           = propsInForm f
 propsInForm (Ckw _ f)          = propsInForm f
+propsInForm (Dk _ f)           = propsInForm f
+propsInForm (Dkw _ f)          = propsInForm f
 propsInForm (Announce _ f g)   = nub $ propsInForm f ++ propsInForm g
 propsInForm (AnnounceW _ f g)  = nub $ propsInForm f ++ propsInForm g
 propsInForm (PubAnnounce f g)  = nub $ propsInForm f ++ propsInForm g
@@ -457,6 +475,8 @@ agentsInForm (K i f)            = nub $ i : agentsInForm f
 agentsInForm (Kw i f)           = nub $ i : agentsInForm f
 agentsInForm (Ck is f)          = nub $ is ++ agentsInForm f
 agentsInForm (Ckw is f)         = nub $ is ++ agentsInForm f
+agentsInForm (Dk is f)          = nub $ is ++ agentsInForm f
+agentsInForm (Dkw is f)         = nub $ is ++ agentsInForm f
 agentsInForm (Announce is f g)  = nub $ is ++ agentsInForm f ++ agentsInForm g
 agentsInForm (AnnounceW is f g) = nub $ is ++ agentsInForm f ++ agentsInForm g
 agentsInForm (PubAnnounce f g)  = nub $ agentsInForm f ++ agentsInForm g
@@ -523,6 +543,12 @@ simStep (Ck ags f)    = Ck ags (simStep f)
 simStep (Ckw _   Top) = Top
 simStep (Ckw _   Bot) = Top
 simStep (Ckw ags f)   = Ckw ags (simStep f)
+simStep (Dk _   Top)  = Top
+simStep (Dk _   Bot)  = Bot
+simStep (Dk ags f)    = Dk ags (simStep f)
+simStep (Dkw _   Top) = Top
+simStep (Dkw _   Bot) = Top
+simStep (Dkw ags f)   = Dkw ags (simStep f)
 simStep (PubAnnounce Top f) = simStep f
 simStep (PubAnnounce Bot _) = Top
 simStep (PubAnnounce  f g)  = PubAnnounce  (simStep f) (simStep g)
@@ -595,8 +621,10 @@ instance Arbitrary Form where
                    , Equi <$> form n' <*> form n'
                    , K   <$> arbitraryAg <*> form n'
                    , Ck  <$> arbitraryAgs <*> form n'
+                   , Dk  <$> arbitraryAgs <*> form n'
                    , Kw  <$> arbitraryAg <*> form n'
                    , Ckw <$> arbitraryAgs <*> form n'
+                   , Dkw <$> arbitraryAgs <*> form n'
                    , PubAnnounce  <$> form n' <*> form n'
                    , PubAnnounceW <$> form n' <*> form n'
                    , Announce  <$> arbitraryAgs <*> form n' <*> form n'
