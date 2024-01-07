@@ -11,7 +11,7 @@ import Data.Maybe (fromMaybe)
 
 import SMCDEL.Language
 import SMCDEL.Internal.TexDisplay
-import SMCDEL.Internal.Help (alleqWith,fusion,apply,(!),lfp)
+import SMCDEL.Internal.Help (alleqWith,fusion,intersection,apply,(!),lfp)
 import Test.QuickCheck
 
 type World = Int
@@ -107,6 +107,12 @@ eval (m@(KrMS5 _ rel _),w) (Ck ags form) = all (\w' -> eval (m,w') form) vs wher
 eval (m@(KrMS5 _ rel _),w) (Ckw ags form) = alleqWith (\w' -> eval (m,w') form) vs where
   vs    = concat $ filter (elem w) ckrel
   ckrel = fusion $ concat [ apply rel i | i <- ags ]
+eval (m@(KrMS5 _ rel _),w) (Dk ags form) = all (\w' -> eval (m,w') form) vs where
+  vs    = concat $ filter (elem w) dkrel
+  dkrel = intersection [ apply rel i | i <- ags ]
+eval (m@(KrMS5 _ rel _),w) (Dkw ags form) = alleqWith (\w' -> eval (m,w') form) vs where
+  vs    = concat $ filter (elem w) dkrel
+  dkrel = intersection [ apply rel i | i <- ags ]
 eval pm (PubAnnounce form1 form2) =
   not (eval pm form1) || eval (update pm form1) form2
 eval pm (PubAnnounceW form1 form2) =
