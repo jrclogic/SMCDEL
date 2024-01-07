@@ -114,6 +114,8 @@ eval (KrM m,w) (K   i f) = all (\w' -> eval (KrM m,w') f) (snd (m ! w) ! i)
 eval (KrM m,w) (Kw  i f) = alleqWith (\w' -> eval (KrM m,w') f) (snd (m ! w) ! i)
 eval (m,w) (Ck ags form) = all (\w' -> eval (m,w') form) (groupRel m ags w)
 eval (m,w) (Ckw ags form) = alleqWith (\w' -> eval (m,w') form) (groupRel m ags w)
+eval (m,w) (Dk ags form) = all (\w' -> eval (m,w') form) (distRel m ags w)
+eval (m,w) (Dkw ags form) = alleqWith (\w' -> eval (m,w') form) (distRel m ags w)
 eval (m,w) (PubAnnounce f g) = not (eval (m,w) f) || eval (update (m,w) f) g
 eval (m,w) (PubAnnounceW f g) = eval (update m aform, w) g where
   aform | eval (m,w) f = f
@@ -141,6 +143,10 @@ groupRel :: KripkeModel -> [Agent] -> World -> [World]
 groupRel (KrM m) ags w = sort $ lfp extend (oneStepReachFrom w) where
   oneStepReachFrom x = concat [ snd (m ! x) ! a | a <- ags ]
   extend xs = nubInt $ xs ++ concatMap oneStepReachFrom xs
+
+distRel :: KripkeModel -> [Agent] -> World -> [World]
+distRel (KrM m) ags w = sort $ oneStepReachFrom w where
+  oneStepReachFrom x = foldr1 intersect [ snd (m ! x) ! a | a <- ags ]
 
 instance Update KripkeModel Form where
   checks = [ ] -- unpointed models can always be updated with any formula

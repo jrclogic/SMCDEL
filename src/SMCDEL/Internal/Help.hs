@@ -2,9 +2,9 @@ module SMCDEL.Internal.Help (
   alleq,alleqWith,anydiff,anydiffWith,alldiff,
   groupSortWith,
   apply,(!),set,applyPartial,(!=),
-  powerset,restrict,rtc,tc,Erel,bl,fusion,seteq,subseteq,lfp
+  powerset,restrict,rtc,tc,Erel,bl,fusion,intersection,seteq,subseteq,lfp
   ) where
-import Data.List ((\\),foldl',groupBy,sort,sortBy,union)
+import Data.List ((\\),foldl',groupBy,sort,sortBy,union,intersect, nub)
 import Data.Containers.ListUtils (nubOrd)
 
 type Rel a b = [(a,b)]
@@ -105,6 +105,19 @@ fusion (b:bs) = let
     xs = mergeL (b:cs)
     ds = filter (overlap xs) bs
   in if cs == ds then xs : fusion (bs \\ cs) else fusion (xs : bs)
+
+-- Binary intersection of two equivalence relations. Given equivalence classes
+-- lists e and f, all non-empty intersections of an equivalence class x from e
+-- with an equivalence class y from f are computed. Then, empty and duplicate
+-- intersetions are removed.
+binaryIntersection :: Ord a => Erel a -> Erel a -> Erel a
+binaryIntersection e f = nub [ sort res | x <- e, y <- f,
+  let res = x `intersect` y, not $ null res]
+
+-- N-ary (finite) intersection of two equivalence relations
+intersection :: Ord a => [Erel a] -> Erel a
+intersection [] = error "Empty intersection"
+intersection l = foldr1 binaryIntersection l
 
 seteq :: Ord a => [a] -> [a] -> Bool
 seteq as bs = sort as == sort bs
