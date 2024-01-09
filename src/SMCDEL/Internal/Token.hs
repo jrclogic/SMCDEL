@@ -40,4 +40,6 @@ data Token a -- == AlexPn
   | TokenInfixKnowThat     {apn :: a}
   | TokenInfixCKnowWhether {apn :: a}
   | TokenInfixCKnowThat    {apn :: a}
+  | TokenInfixDKnowWhether {apn :: a}
+  | TokenInfixDKnowThat    {apn :: a}
   deriving (Eq,Show)
