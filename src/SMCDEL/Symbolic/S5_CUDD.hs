@@ -7,7 +7,7 @@ import Data.Char (isSpace)
 import Data.GraphViz
 import Data.GraphViz.Printing (renderDot)
 import qualified Data.GraphViz.Types.Generalised as DotGen
-import Data.List ((\\), dropWhileEnd, intercalate)
+import Data.List ( (\\), dropWhileEnd, intercalate, nub )
 import qualified Data.Text.Lazy as B
 import Data.Typeable()
 import System.IO
@@ -15,7 +15,7 @@ import System.IO.Temp
 import System.IO.Unsafe (unsafePerformIO)
 import System.Process ( runInteractiveCommand )
 
-import SMCDEL.Internal.Help (apply,powerset)
+import SMCDEL.Internal.Help ((!),apply,powerset)
 import SMCDEL.Internal.MyHaskCUDD
 import SMCDEL.Internal.TexDisplay
 import SMCDEL.Language
@@ -74,6 +74,14 @@ ddOf kns@(KnS mgr allprops lawbdd obs) (Ck ags form) = gfp mgr lambda where
   lambda z = conSet mgr $ ddOf kns form : [ forallSet mgr (otherps i) (imp mgr lawbdd z) | i <- ags ]
   otherps i = map (\(P n) -> n) $ allprops \\ apply obs i
 ddOf kns@(KnS mgr _ _ _) (Ckw ags form) = dis mgr (ddOf kns (Ck ags form)) (ddOf kns (Ck ags (Neg form)))
+ddOf kns@(KnS mgr allprops lawbdd obs) (Dk ags form) =
+  forallSet mgr otherps (imp mgr lawbdd (ddOf kns form)) where
+    otherps = map (\(P n) -> n) $ allprops \\ uoi
+    uoi = nub (concat [obs ! i | i <- ags])
+ddOf kns@(KnS mgr allprops lawbdd obs) (Dkw ags form) =
+  disSet mgr [ forallSet mgr otherps (imp mgr lawbdd (ddOf kns f)) | f <- [form, Neg form] ] where
+    otherps = map (\(P n) -> n) $ allprops \\ uoi
+    uoi = nub (concat [obs ! i | i <- ags])
 ddOf kns@(KnS mgr props _ _) (Announce ags form1 form2) =
   imp mgr (ddOf kns form1) (restrict mgr bdd2 (k,True)) where
     bdd2  = ddOf (announce kns ags form1) form2
