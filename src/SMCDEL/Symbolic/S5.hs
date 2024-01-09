@@ -160,6 +160,12 @@ eval (kns@(KnS _ _ obs),s) (K i form) = all (\s' -> eval (kns,s') form) theres w
 eval (kns@(KnS _ _ obs),s) (Kw i form) = alleqWith (\s' -> eval (kns,s') form) theres where
   theres = filter (\s' -> seteq (s' `intersect` oi) (s `intersect` oi)) (statesOf kns)
   oi = obs ! i
+eval (kns@(KnS _ _ obs),s) (Dk ags form) = all (\s' -> eval (kns,s') form) theres where
+  theres = filter (\s' -> seteq (s' `intersect` oi) (s `intersect` oi)) (statesOf kns)
+  oi = nub $ concat [obs ! i | i <- ags]
+eval (kns@(KnS _ _ obs),s) (Dkw ags form) = alleqWith (\s' -> eval (kns,s') form) theres where
+  theres = filter (\s' -> seteq (s' `intersect` oi) (s `intersect` oi)) (statesOf kns)
+  oi = nub $ concat [obs ! i | i <- ags]
 eval (kns,s) (Ck ags form)  = all (\s' -> eval (kns,s') form) theres where
   theres = [ s' | (s0,s') <- comknow kns ags, s0 == s ]
 eval (kns,s) (Ckw ags form)  = alleqWith (\s' -> eval (kns,s') form) theres where
