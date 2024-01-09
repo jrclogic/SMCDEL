@@ -260,6 +260,14 @@ bddOf kns@(KnS props _ _) (Announce ags form1 form2) =
   imp (bddOf kns form1) (restrict bdd2 (k,True)) where
     bdd2  = bddOf (announce kns ags form1) form2
     (P k) = freshp props
+bddOf kns@(KnS allprops lawbdd obs) (Dk ags form) =
+  forallSet otherps (imp lawbdd (bddOf kns form)) where
+    otherps = map (\(P n) -> n) $ allprops \\ uoi
+    uoi = nub (concat [obs ! i | i <- ags])
+bddOf kns@(KnS allprops lawbdd obs) (Dkw ags form) =
+  disSet [ forallSet otherps (imp lawbdd (bddOf kns f)) | f <- [form, Neg form] ] where
+    otherps = map (\(P n) -> n) $ allprops \\ uoi
+    uoi = nub (concat [obs ! i | i <- ags])
 bddOf kns@(KnS props _ _) (AnnounceW ags form1 form2) =
   ifthenelse (bddOf kns form1) bdd2a bdd2b where
     bdd2a = restrict (bddOf (announce kns ags form1) form2) (k,True)
@@ -616,6 +624,8 @@ reduce event@(trf@(KnTrf addprops _ _ obs), x) (K a f) =
 reduce e (Kw a f)     = reduce e (Disj [K a f, K a (Neg f)])
 reduce _ Ck  {}       = Nothing
 reduce _ Ckw {}       = Nothing
+reduce _ Dk  {}       = Nothing
+reduce _ Dkw {}       = Nothing
 reduce _ PubAnnounce  {} = Nothing
 reduce _ PubAnnounceW {} = Nothing
 reduce _ Announce     {} = Nothing
