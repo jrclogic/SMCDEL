@@ -53,6 +53,8 @@ import SMCDEL.Language
   KNOWSWHETHER { TokenInfixKnowWhether  _ }
   CKNOWTHAT    { TokenInfixCKnowThat    _ }
   CKNOWWHETHER { TokenInfixCKnowWhether _ }
+  DKNOWTHAT    { TokenInfixDKnowThat    _ }
+  DKNOWWHETHER { TokenInfixDKnowWhether _ }
   'Forall'     { TokenForall            _ }
   'Exists'     { TokenExists            _ }
 
