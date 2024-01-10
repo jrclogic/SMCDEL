@@ -3,6 +3,8 @@ module SMCDEL.Examples.DistKnw where
 
 import SMCDEL.Explicit.S5
 import SMCDEL.Language
+import SMCDEL.Symbolic.S5
+import SMCDEL.Translations.S5
 
 -- bob knows P 0 and alice knows that bob knows
 distModelA :: PointedModelS5
@@ -20,7 +22,18 @@ distMuddy =
      (2, [(P 1,False), (P 2, True)]), (3, [(P 1,True), (P 2,True)])]
     , 3)
 
+distKnForm :: Form
+distKnForm = Dk [alice, bob] (Conj [PrpF (P 1), PrpF (P 2)])
+
 resMuddy :: [Bool]
 resMuddy =
     map (SMCDEL.Explicit.S5.eval distMuddy)
-    [K alice (PrpF (P 1)), K bob (PrpF (P 2)), Dk [alice, bob] (Conj [PrpF (P 1), PrpF (P 2)])]
+    [K alice (PrpF (P 1)), K bob (PrpF (P 2)), distKnForm]
+
+muddyKNS :: KnowScene
+muddyKNS = kripkeToKns distMuddy
+
+resMuddyKNS :: [Bool]
+resMuddyKNS =
+    map (SMCDEL.Symbolic.S5.eval muddyKNS)
+    [K alice (PrpF (P 1)), K bob (PrpF (P 2)), distKnForm]
