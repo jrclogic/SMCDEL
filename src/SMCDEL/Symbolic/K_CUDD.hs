@@ -146,6 +146,19 @@ ddOf bls@(BlS mgr voc (lawdd :: Dd a b c) odds) (Ck ags form) = lfp lambda (top 
 
 ddOf bls@(BlS mgr _ _ _) (Ckw ags form) = dis mgr (ddOf bls (Ck ags form)) (ddOf bls (Ck ags (Neg form)))
 
+ddOf bls@(BlS mgr allprops lawdd odds) (Dk ags form) = unmvDd mgr allprops result
+  where
+  result = forallSet mgr ps' <$> (imp mgr <$> cpDd mgr allprops lawdd <*> (imp mgr <$> omegai <*> cpDd mgr allprops (ddOf bls form)))
+  ps'    = map fromEnum $ cp allprops
+  omegai = Tagged $ foldr (con mgr) (top mgr) [untag $ odds ! i | i <- ags]
+
+ddOf bls@(BlS mgr allprops lawdd odds) (Dkw ags form) = unmvDd mgr allprops result
+  where
+  result = dis mgr <$> part form <*> part (Neg form)
+  part f = forallSet mgr ps' <$> (imp mgr <$> cpDd mgr allprops lawdd <*> (imp mgr <$> omegai <*> cpDd mgr allprops (ddOf bls f)))
+  ps'    = map fromEnum $ cp allprops
+  omegai = Tagged $ foldr (con mgr) (top mgr) [untag $ odds ! i | i <- ags]
+
 ddOf bls@(BlS mgr _ _ _) (PubAnnounce f g) =
   imp mgr (ddOf bls f) (ddOf  (pubAnnounce bls f) g)
 ddOf bls@(BlS mgr _ _ _) (PubAnnounceW f g) =
@@ -453,6 +466,8 @@ reduce e@(t@(Trf mgr addprops _ _ eventObs), x) (K a f) =
 reduce e (Kw a f)     = reduce e (Disj [K a f, K a (Neg f)])
 reduce _ Ck  {}       = Nothing
 reduce _ Ckw {}       = Nothing
+reduce _ Dk  {}       = Nothing
+reduce _ Dkw {}       = Nothing
 reduce _ PubAnnounce  {} = Nothing
 reduce _ PubAnnounceW {} = Nothing
 reduce _ Announce     {} = Nothing

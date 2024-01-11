@@ -6,6 +6,8 @@ module SMCDEL.Internal.Help (
   ) where
 import Data.List ((\\),foldl',groupBy,sort,sortBy,union,intersect, nub)
 import Data.Containers.ListUtils (nubOrd)
+import Control.Arrow (Arrow(first))
+import GHC.Exts (the)
 
 type Rel a b = [(a,b)]
 type Erel a = [[a]]
@@ -114,10 +116,12 @@ binaryIntersection :: Ord a => Erel a -> Erel a -> Erel a
 binaryIntersection e f = nub [ sort res | x <- e, y <- f,
   let res = x `intersect` y, not $ null res]
 
--- N-ary (finite) intersection of two equivalence relations
-intersection :: Ord a => [Erel a] -> Erel a
-intersection [] = error "Empty intersection"
-intersection l = foldr1 binaryIntersection l
+-- N-ary (finite) intersection of 0 or more equivalence relations. The first
+-- parameter, u(niverse), is used to build a trivial, full equivalence relation
+-- when the intersection of an empty set is attempted.
+intersection :: Ord a => [a] -> [Erel a] -> Erel a
+intersection u [] = [u]
+intersection _ l = foldr1 binaryIntersection l
 
 seteq :: Ord a => [a] -> [a] -> Bool
 seteq as bs = sort as == sort bs
