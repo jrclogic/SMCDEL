@@ -107,12 +107,12 @@ eval (m@(KrMS5 _ rel _),w) (Ck ags form) = all (\w' -> eval (m,w') form) vs wher
 eval (m@(KrMS5 _ rel _),w) (Ckw ags form) = alleqWith (\w' -> eval (m,w') form) vs where
   vs    = concat $ filter (elem w) ckrel
   ckrel = fusion $ concat [ apply rel i | i <- ags ]
-eval (m@(KrMS5 _ rel _),w) (Dk ags form) = all (\w' -> eval (m,w') form) vs where
+eval (m@(KrMS5 worlds rel _),w) (Dk ags form) = all (\w' -> eval (m,w') form) vs where
   vs    = concat $ filter (elem w) dkrel
-  dkrel = intersection [ apply rel i | i <- ags ]
-eval (m@(KrMS5 _ rel _),w) (Dkw ags form) = alleqWith (\w' -> eval (m,w') form) vs where
+  dkrel = intersection worlds [ apply rel i | i <- ags ]
+eval (m@(KrMS5 worlds rel _),w) (Dkw ags form) = alleqWith (\w' -> eval (m,w') form) vs where
   vs    = concat $ filter (elem w) dkrel
-  dkrel = intersection [ apply rel i | i <- ags ]
+  dkrel = intersection worlds [ apply rel i | i <- ags ]
 eval pm (PubAnnounce form1 form2) =
   not (eval pm form1) || eval (update pm form1) form2
 eval pm (PubAnnounceW form1 form2) =
