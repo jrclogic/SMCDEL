@@ -186,6 +186,17 @@ bddOf bls@(BlS voc lawbdd obdds) (Ck ags form) = lfp lambda top where
 
 bddOf bls (Ckw ags form) = dis (bddOf bls (Ck ags form)) (bddOf bls (Ck ags (Neg form)))
 
+bddOf bls@(BlS allprops lawbdd obdds) (Dk ags form) = unmvBdd result where
+  result = forallSet ps' <$> (imp <$> cpBdd lawbdd <*> (imp <$> omegai <*> cpBdd (bddOf bls form)))
+  ps'    = map fromEnum $ cp allprops
+  omegai = Tagged $ foldr (con . untag) top [obdds ! i | i <- ags]
+
+bddOf bls@(BlS allprops lawbdd obdds) (Dkw ags form) = unmvBdd result where
+  result = dis <$> part form <*> part (Neg form)
+  part f = forallSet ps' <$> (imp <$> cpBdd lawbdd <*> (imp <$> omegai <*> cpBdd (bddOf bls f)))
+  ps'    = map fromEnum $ cp allprops
+  omegai = Tagged $ foldr (con . untag) top [obdds ! i | i <- ags]
+
 bddOf bls (PubAnnounce f g) =
   imp (bddOf bls f) (bddOf (bls `update` f) g)
 bddOf bls (PubAnnounceW f g) =
@@ -544,6 +555,8 @@ reduce e@(t@(Trf addprops _ _ eventObs), x) (K a f) =
 reduce e (Kw a f)     = reduce e (Disj [K a f, K a (Neg f)])
 reduce _ Ck  {}       = Nothing
 reduce _ Ckw {}       = Nothing
+reduce _ Dk  {}       = Nothing
+reduce _ Dkw {}       = Nothing
 reduce _ PubAnnounce  {} = Nothing
 reduce _ PubAnnounceW {} = Nothing
 reduce _ Announce     {} = Nothing
