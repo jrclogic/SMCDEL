@@ -1,4 +1,5 @@
-{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, ScopedTypeVariables,
+    TupleSections #-}
 
 module SMCDEL.Symbolic.Ki where
 
@@ -113,9 +114,20 @@ bddOf bls@(BlS voc lawbdd (ag,obdds)) (Ck ags form) = lfp lambda top where
     forallSet ps' <$>
       (imp <$> cpBdd (M.size ag) lawbdd <*>
         (imp <$> (disSet <$> sequence [Tagged $ restrict (untag obdds) (ag ! i, True) | i <- ags]) <*>
-          cpBdd (M.size ag) (con (bddOf bls form) z))) 
+          cpBdd (M.size ag) (con (bddOf bls form) z)))
 
 bddOf bls (Ckw ags form) = dis (bddOf bls (Ck ags form)) (bddOf bls (Ck ags (Neg form)))
+
+bddOf bls@(BlS allprops lawbdd (ags, obdds)) (Dk ags_names form) = unmvBdd (M.size ags) result where
+  result = forallSet ps' <$> (imp <$> cpBdd (M.size ags) lawbdd <*> (imp <$> omegai <*> cpBdd (M.size ags) (bddOf bls form)))
+  ps'    = map fromEnum $ cp (M.size ags) allprops
+  omegai = Tagged $ restrictSet (untag obdds) $ map ((,True) . (ags !)) ags_names
+
+bddOf bls@(BlS allprops lawbdd (ags, obdds)) (Dkw ags_names form) = unmvBdd (M.size ags) result where
+  result = dis <$> part form <*> part (Neg form)
+  part f = forallSet ps' <$> (imp <$> cpBdd (M.size ags) lawbdd <*> (imp <$> omegai <*> cpBdd (M.size ags) (bddOf bls f)))
+  ps'    = map fromEnum $ cp (M.size ags) allprops
+  omegai = Tagged $ restrictSet (untag obdds) $ map ((,True) . (ags !)) ags_names
 
 bddOf bls (PubAnnounce f g) =
   imp (bddOf bls f) (bddOf (bls `update` f) g)
@@ -344,6 +356,8 @@ reduce e@(t@(Trf addprops _ _ (ags, eventObs)), x) (K a f) =
 reduce e (Kw a f)     = reduce e (Disj [K a f, K a (Neg f)])
 reduce _ Ck  {}       = Nothing
 reduce _ Ckw {}       = Nothing
+reduce _ Dk  {}       = Nothing
+reduce _ Dkw {}       = Nothing
 reduce _ PubAnnounce  {} = Nothing
 reduce _ PubAnnounceW {} = Nothing
 reduce _ Announce     {} = Nothing

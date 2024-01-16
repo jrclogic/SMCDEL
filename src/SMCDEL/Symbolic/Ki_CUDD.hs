@@ -126,8 +126,6 @@ ddOf bls@(BlS mgr allprops lawdd (ag, odds)) (K i form) = unmvDd mgr (M.size ag)
   omegai = Tagged $ restrictSet mgr (untag odds) ((ag ! i, True) : map (, False) agNotI) where
     agNotI =  M.elems $ M.delete i ag
 
-
-
 ddOf bls@(BlS mgr allprops lawdd (ag, odds)) (Kw i form) = unmvDd mgr (M.size ag) allprops result
   where
   result = dis mgr <$> part form <*> part (Neg form)
@@ -135,7 +133,6 @@ ddOf bls@(BlS mgr allprops lawdd (ag, odds)) (Kw i form) = unmvDd mgr (M.size ag
   ps'    = map fromEnum $ cp (M.size ag) allprops
   omegai = Tagged $ restrictSet mgr (untag odds) ((ag ! i, True) : map (, False) agNotI) where
     agNotI =  M.elems $ M.delete i ag
-
 
 ddOf bls@(BlS mgr voc (lawdd :: Dd a b c) (ag, odds)) (Ck ags form) = lfp lambda (top mgr)  where
   ps' = map fromEnum $ cp (M.size ag) voc
@@ -148,9 +145,20 @@ ddOf bls@(BlS mgr voc (lawdd :: Dd a b c) (ag, odds)) (Ck ags form) = lfp lambda
               omegai i = Tagged $ restrictSet mgr (untag odds) ((ag ! i, True) : map (, False) (agNotI i))
               agNotI i =  M.elems $ M.delete i ag
 
-
-
 ddOf bls@(BlS mgr _ _ _) (Ckw ags form) = dis mgr (ddOf bls (Ck ags form)) (ddOf bls (Ck ags (Neg form)))
+
+ddOf bls@(BlS mgr allprops lawdd (ag, odds)) (Dk ags form) = unmvDd mgr (M.size ag) allprops result
+  where
+  result = forallSet mgr ps' <$> (imp mgr <$> cpDd mgr (M.size ag) allprops lawdd <*> (imp mgr <$> omegai <*> cpDd mgr (M.size ag) allprops (ddOf bls form)))
+  ps'    = map fromEnum $ cp (M.size ag) allprops
+  omegai = Tagged $ restrictSet mgr (untag odds) $ map (\a -> (ag ! a, a `elem` ags)) $ M.keys ag
+
+ddOf bls@(BlS mgr allprops lawdd (ag, odds)) (Dkw ags form) = unmvDd mgr (M.size ag) allprops result
+  where
+  result = dis mgr <$> part form <*> part (Neg form)
+  part f = forallSet mgr ps' <$> (imp mgr <$> cpDd mgr (M.size ag) allprops lawdd <*> (imp mgr <$> omegai <*> cpDd mgr (M.size ag) allprops (ddOf bls f)))
+  ps'    = map fromEnum $ cp (M.size ag) allprops
+  omegai = Tagged $ restrictSet mgr (untag odds) $ map (\a -> (ag ! a, a `elem` ags)) $ M.keys ag
 
 ddOf bls@(BlS mgr _ _ _) (PubAnnounce f g) =
   imp mgr (ddOf bls f) (ddOf (bls `update` f) g)
@@ -436,6 +444,8 @@ reduce (e@(t@(Trf mgr addprops _ _ (ag, eventObs)), x) :: Event a b c) (K a f) =
 reduce e (Kw a f)     = reduce e (Disj [K a f, K a (Neg f)])
 reduce _ Ck  {}       = Nothing
 reduce _ Ckw {}       = Nothing
+reduce _ Dk  {}       = Nothing
+reduce _ Dkw {}       = Nothing
 reduce _ PubAnnounce  {} = Nothing
 reduce _ PubAnnounceW {} = Nothing
 reduce _ Announce     {} = Nothing
