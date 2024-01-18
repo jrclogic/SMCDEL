@@ -356,8 +356,17 @@ reduce e@(t@(Trf addprops _ _ (ags, eventObs)), x) (K a f) =
 reduce e (Kw a f)     = reduce e (Disj [K a f, K a (Neg f)])
 reduce _ Ck  {}       = Nothing
 reduce _ Ckw {}       = Nothing
-reduce _ Dk  {}       = Nothing
-reduce _ Dkw {}       = Nothing
+reduce e@(t@(Trf addprops _ _ (ags, eventObs)), x) (Dk agents f) =
+  Impl (preOf e) <$> (Conj <$> sequence
+    [Dk agents <$> reduce (t, y) f |
+       let omegai
+             = Tagged
+                 $ restrictSet (untag eventObs)
+                     $ map (\ a -> (ags ! a, a `elem` agents)) $ M.keys ags ::
+                 Tagged Dubbel Bdd,
+       y <- powerset addprops,
+      tagBddEval (mv (M.size ags) x ++ cp (M.size ags) y) omegai])
+reduce e (Dkw ags f)     = reduce e (Disj [Dk ags f, Dk ags (Neg f)])
 reduce _ PubAnnounce  {} = Nothing
 reduce _ PubAnnounceW {} = Nothing
 reduce _ Announce     {} = Nothing

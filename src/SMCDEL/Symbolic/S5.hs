@@ -624,8 +624,13 @@ reduce event@(trf@(KnTrf addprops _ _ obs), x) (K a f) =
 reduce e (Kw a f)     = reduce e (Disj [K a f, K a (Neg f)])
 reduce _ Ck  {}       = Nothing
 reduce _ Ckw {}       = Nothing
-reduce _ Dk  {}       = Nothing
-reduce _ Dkw {}       = Nothing
+reduce event@(trf@(KnTrf addprops _ _ obs), x) (Dk ags f) =
+  Impl (preOf event) <$> (Conj <$> sequence
+    [ Dk ags <$> reduce (trf,y) f | y <- powerset addprops,
+       all (\oi -> (x `intersect` oi) `seteq` (y `intersect` oi))
+       [obs ! i | i <- ags]
+    ])
+reduce e (Dkw ags f)     = reduce e (Disj [Dk ags f, Dk ags (Neg f)])
 reduce _ PubAnnounce  {} = Nothing
 reduce _ PubAnnounceW {} = Nothing
 reduce _ Announce     {} = Nothing
