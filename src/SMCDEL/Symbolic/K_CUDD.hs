@@ -466,11 +466,12 @@ reduce e@(t@(Trf mgr addprops _ _ eventObs), x) (K a f) =
 reduce e (Kw a f)     = reduce e (Disj [K a f, K a (Neg f)])
 reduce _ Ck  {}       = Nothing
 reduce _ Ckw {}       = Nothing
-reduce e@(t@(Trf mgr addprops _ _ eventObs), x) (Dk ags f) =
+reduce (e@(t@(Trf mgr addprops _ _ eventObs), x) :: Event a b c) (Dk ags f) =
   Impl (preOf e) <$> (Conj <$> sequence
     [Dk ags <$> reduce (t, y) f |
        let omegai
-             = Tagged $ foldr (con mgr) (top mgr) [untag $ eventObs ! i | i <- ags],
+             = Tagged $ foldr (con mgr) (top mgr) [untag (eventObs ! i) | i <- ags] ::
+                 Tagged Dubbel (Dd a b c),
        y <- powerset addprops,
        tagDdEval mgr (mv x ++ cp y) omegai])
 reduce e (Dkw ags f)     = reduce e (Disj [Dk ags f, Dk ags (Neg f)])
