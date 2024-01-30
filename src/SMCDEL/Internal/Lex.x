@@ -59,8 +59,8 @@ tokens :-
   "knows that"          { \ p _ -> TokenInfixKnowThat     p }
   "comknow whether"     { \ p _ -> TokenInfixCKnowWhether p }
   "comknow that"        { \ p _ -> TokenInfixCKnowThat    p }
-  "distknows whether"   { \ p _ -> TokenInfixDKnowWhether  p }
-  "distknows that"      { \ p _ -> TokenInfixDKnowThat     p }
+  "distknow whether"   { \ p _ -> TokenInfixDKnowWhether  p }
+  "distknow that"      { \ p _ -> TokenInfixDKnowThat     p }
   -- Integers and Strings:
   $dig+             { \ p s -> TokenInt (read s)      p }
   $alf [$alf $dig]* { \ p s -> TokenStr s             p }

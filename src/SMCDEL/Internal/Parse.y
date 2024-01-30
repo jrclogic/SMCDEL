@@ -61,7 +61,7 @@ import SMCDEL.Language
 %left '->' 'iff'
 %left '|' '&'
 %nonassoc '&' '|'
-%left KNOWSTHAT KNOWSWHETHER CKNOWTHAT CKNOWWHETHER
+%left KNOWSTHAT KNOWSWHETHER CKNOWTHAT CKNOWWHETHER DKNOWTHAT DKNOWWHETHER
 %left '[' ']'
 %left '<' '>'
 %left '~'
@@ -94,6 +94,10 @@ Form : TOP { Top }
      | StringList CKNOWWHETHER Form { Ckw $1 $3 }
      | '(' StringList ')' CKNOWTHAT Form { Ck $2 $5 }
      | '(' StringList ')' CKNOWWHETHER Form { Ckw $2 $5 }
+     | StringList DKNOWTHAT Form { Dk $1 $3 }
+     | StringList DKNOWWHETHER Form { Dkw $1 $3 }
+     | '(' StringList ')' DKNOWTHAT Form { Dk $2 $5 }
+     | '(' StringList ')' DKNOWWHETHER Form { Dkw $2 $5 }
      | '[' '!' Form ']'     Form { PubAnnounce  $3 $5 }
      | '[' '?' '!' Form ']' Form { PubAnnounceW $4 $6 }
      | '<' '!' Form '>'     Form { Neg (PubAnnounce  $3 (Neg $5)) }
