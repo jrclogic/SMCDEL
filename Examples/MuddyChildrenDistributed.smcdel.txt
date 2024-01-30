@@ -1,4 +1,4 @@
--- Three Muddy Children with distributed knowledge in SMCDEL
+-- Three Muddy Children in SMCDEL
 
 VARS 1,2,3
 
@@ -16,4 +16,4 @@ VALID?
   ( ~ (alice knows whether 1)
   & ~ (bob   knows whether 2)
   & ((alice,bob) distknow whether 1)
-  & ((alice,bob) distknow whether 2)
+  & ((alice,bob) distknow whether 2))
