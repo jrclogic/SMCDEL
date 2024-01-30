@@ -25,9 +25,24 @@ import SMCDEL.Internal.TexDisplay
 import SMCDEL.Language
 import SMCDEL.Other.BDD2Form
 import SMCDEL.Other.Planning
+import SMCDEL.Symbolic.K (BelStruct)
+import SMCDEL.Explicit.K (PointedModel)
 import SMCDEL.Symbolic.S5
 import SMCDEL.Translations.S5
 import qualified SMCDEL.Explicit.S5 as Exp
+
+assertValidity :: [Char] -> (Form -> Form) -> Spec
+assertValidity name form = do
+    prop ("Explicit_K_" ++ name) $
+      \bls f -> isTrue (bls::PointedModel) (form f)
+    prop ("Symbolic_K_" ++ name) $
+      \bls f -> isTrue (bls::BelStruct) (form f)
+    prop ("Explicit_S5_" ++ name) $
+      \m f -> let pm = (m::Exp.KripkeModelS5, head $ Exp.worldsOf m) in
+        pm |= form f
+    prop ("Symbolic_S5_" ++ name) $
+      \kns f -> let scene = (kns :: KnowStruct, head $ statesOf kns) in
+        scene |= form f
 
 main :: IO ()
 main = hspec $ do
@@ -177,3 +192,7 @@ main = hspec $ do
     it "3MC genScn: after announcing makes it common knowledge that someone is muddy" $
       SMCDEL.Examples.MuddyChildren.myMudBelScnInit |=
         PubAnnounce (Disj (map (PrpF . P) [1,2,3])) (Ck (map show [1::Int,2,3]) $ Disj (map (PrpF . P) [1,2,3]))
+  describe "Validities" $ do
+    assertValidity "Dk1" (\f -> Impl (Ck [] f) (Dk [] f))
+    assertValidity "Dk2" (\_ -> Neg (Dk [] Bot))
+    assertValidity "Dk3" (\_ -> Dk [] Top)
