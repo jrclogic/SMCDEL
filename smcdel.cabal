@@ -41,7 +41,6 @@ library
       SMCDEL.Examples.CoinFlip
       SMCDEL.Examples.DiningCrypto
       SMCDEL.Examples.DiningCrypto.General
-      SMCDEL.Examples.DistKnw
       SMCDEL.Examples.DoorMat
       SMCDEL.Examples.DrinkLogic
       SMCDEL.Examples.GossipKw
