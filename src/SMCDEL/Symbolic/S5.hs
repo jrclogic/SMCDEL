@@ -608,28 +608,28 @@ reduce :: Event -> Form -> Maybe Form
 reduce _ Top          = Just Top
 reduce e Bot          = pure $ Neg (preOf e)
 reduce e (PrpF p)     = Impl (preOf e) <$> Just (PrpF p) -- FIXME use change!
-reduce e (Neg f)      = Impl (preOf e) <$> (Neg <$> reduce e f)
+reduce e (Neg f)      = Impl (preOf e) . Neg <$> reduce e f
 reduce e (Conj fs)    = Conj <$> mapM (reduce e) fs
 reduce e (Disj fs)    = Disj <$> mapM (reduce e) fs
-reduce e (Xor fs)     = Impl (preOf e) <$> (Xor <$> mapM (reduce e) fs)
+reduce e (Xor fs)     = Impl (preOf e) . Xor <$> mapM (reduce e) fs
 reduce e (Impl f1 f2) = Impl <$> reduce e f1 <*> reduce e f2
 reduce e (Equi f1 f2) = Equi <$> reduce e f1 <*> reduce e f2
 reduce _ (Forall _ _) = Nothing
 reduce _ (Exists _ _) = Nothing
 reduce event@(trf@(KnTrf addprops _ _ obs), x) (K a f) =
-  Impl (preOf event) <$> (Conj <$> sequence
+  Impl (preOf event) . Conj <$> sequence
     [ K a <$> reduce (trf,y) f | y <- powerset addprops
                                , (x `intersect` (obs ! a)) `seteq` (y `intersect` (obs ! a))
-    ])
+    ]
 reduce e (Kw a f)     = reduce e (Disj [K a f, K a (Neg f)])
 reduce _ Ck  {}       = Nothing
 reduce _ Ckw {}       = Nothing
 reduce event@(trf@(KnTrf addprops _ _ obs), x) (Dk ags f) =
-  Impl (preOf event) <$> (Conj <$> sequence
+  Impl (preOf event) . Conj <$> sequence
     [ Dk ags <$> reduce (trf,y) f | y <- powerset addprops,
        all (\oi -> (x `intersect` oi) `seteq` (y `intersect` oi))
        [obs ! i | i <- ags]
-    ])
+    ]
 reduce e (Dkw ags f)     = reduce e (Disj [Dk ags f, Dk ags (Neg f)])
 reduce _ PubAnnounce  {} = Nothing
 reduce _ PubAnnounceW {} = Nothing

@@ -140,7 +140,7 @@ ddOf bls@(BlS mgr voc (lawdd :: Dd a b c) (ag, odds)) (Ck ags form) = lfp lambda
   lambda z = unmvDd mgr (M.size ag) voc $
     forallSet mgr ps' <$>
       (imp mgr <$> cpDd mgr (M.size ag) voc lawdd <*>
-        (imp mgr <$> (disSet mgr <$> sequence [omegai i | i <- ags]) <*>
+        ((imp mgr . disSet mgr <$> sequence [omegai i | i <- ags]) <*>
           cpDd mgr (M.size ag) voc (con mgr (ddOf bls form) z))) where
               omegai i = Tagged $ restrictSet mgr (untag odds) ((ag ! i, True) : map (, False) (agNotI i))
               agNotI i =  M.elems $ M.delete i ag
@@ -385,7 +385,7 @@ instance (DdCtx a b c) => Update (BelScene a b c) (Event a b c) where
     newlaw = conSet mgr $ relabelWith mgr (map (bimap fromEnum fromEnum) copyrel) (con mgr law (ddOf bls addlaw))
                     : [equ mgr (var mgr (fromEnum q)) (relabelWith mgr (map (bimap fromEnum fromEnum) copyrel) (changelaw ! q)) | q <- changeprops]
     newobs = foldl (\x y -> con mgr <$> x <*> y) (Tagged $ top mgr) newodds
-    newodds = [con mgr <$> (relabelWith mgr copyrelMVCP <$> Tagged (restrict mgr (untag odds) (ag ! i, True))) <*> Tagged (restrict mgr (untag addObs) (ag ! i, True)) | i <- M.keys ag]
+    newodds = [(con mgr . relabelWith mgr copyrelMVCP <$> Tagged (restrict mgr (untag odds) (ag ! i, True))) <*> Tagged (restrict mgr (untag addObs) (ag ! i, True)) | i <- M.keys ag]
       --previously: M.mapWithKey (\i oldobs -> con mgr <$> (relabelWith mgr copyrelMVCP <$> oldobs) <*> (addObs ! i)) odds
     news = sort $ concat
             [ s \\ changeprops
@@ -428,24 +428,24 @@ reduce :: (DdCtx a b c) => Event a b c -> Form -> Maybe Form
 reduce _ Top          = Just Top
 reduce e Bot          = Just $ Neg $ preOf e
 reduce e@(Trf mgr v _ _ _, _) (PrpF p)     = Impl (preOf e) <$> Just (ddToForm mgr v $ trfPost e p)
-reduce e (Neg f)      = Impl (preOf e) <$> (Neg <$> reduce e f)
+reduce e (Neg f)      = Impl (preOf e) . Neg <$> reduce e f
 reduce e (Conj fs)    = Conj <$> mapM (reduce e) fs
 reduce e (Disj fs)    = Disj <$> mapM (reduce e) fs
-reduce e (Xor fs)     = Impl (preOf e) <$> (Xor <$> mapM (reduce e) fs)
+reduce e (Xor fs)     = Impl (preOf e) . Xor <$> mapM (reduce e) fs
 reduce e (Impl f1 f2) = Impl <$> reduce e f1 <*> reduce e f2
 reduce e (Equi f1 f2) = Equi <$> reduce e f1 <*> reduce e f2
 reduce _ (Forall _ _) = Nothing
 reduce _ (Exists _ _) = Nothing
 reduce (e@(t@(Trf mgr addprops _ _ (ag, eventObs)), x) :: Event a b c) (K a f) =
-  Impl (preOf e) <$> (Conj <$> sequence
+  Impl (preOf e) . Conj <$> sequence
     [ K a <$> reduce (t,y) f | y <- powerset addprops -- FIXME is this a bit much?
                              , tagDdEval mgr (mv (M.size ag) x ++ cp (M.size ag) y) (Tagged $ restrict mgr (untag eventObs) (ag ! a, True) :: Tagged Dubbel (Dd a b c))
-    ])
+    ]
 reduce e (Kw a f)     = reduce e (Disj [K a f, K a (Neg f)])
 reduce _ Ck  {}       = Nothing
 reduce _ Ckw {}       = Nothing
 reduce (e@(t@(Trf mgr addprops _ _ (ag, eventObs)), x) :: Event a b c) (Dk ags f) =
-  Impl (preOf e) <$> (Conj <$> sequence
+  Impl (preOf e) . Conj <$> sequence
     [Dk ags <$> reduce (t, y) f |
        let omegai
              = Tagged
@@ -453,7 +453,7 @@ reduce (e@(t@(Trf mgr addprops _ _ (ag, eventObs)), x) :: Event a b c) (Dk ags f
                      $ map (\ a -> (ag ! a, a `elem` ags)) $ M.keys ag ::
                  Tagged Dubbel (Dd a b c),
        y <- powerset addprops,
-       tagDdEval mgr (mv (M.size ag) x ++ cp (M.size ag) y) omegai])
+       tagDdEval mgr (mv (M.size ag) x ++ cp (M.size ag) y) omegai]
 reduce e (Dkw ags f)     = reduce e (Disj [Dk ags f, Dk ags (Neg f)])
 reduce _ PubAnnounce  {} = Nothing
 reduce _ PubAnnounceW {} = Nothing

@@ -181,7 +181,7 @@ bddOf bls@(BlS voc lawbdd obdds) (Ck ags form) = lfp lambda top where
   lambda z = unmvBdd $
     forallSet ps' <$>
       (imp <$> cpBdd lawbdd <*>
-        (imp <$> (disSet <$> sequence [obdds ! i | i <- ags]) <*>
+        ((imp . disSet <$> sequence [obdds ! i | i <- ags]) <*>
           cpBdd (con (bddOf bls form) z)))
 
 bddOf bls (Ckw ags form) = dis (bddOf bls (Ck ags form)) (bddOf bls (Ck ags (Neg form)))
@@ -488,7 +488,7 @@ instance Update BelScene Event where
     newprops = sort $ props ++ addprops ++ copychangeprops
     newlaw = conSet $ relabelWith copyrel (con law (bddOf bls addlaw))
                     : [var (fromEnum q) `equ` relabelWith copyrel (changelaw ! q) | q <- changeprops]
-    newobs = M.mapWithKey (\i oldobs -> con <$> (relabelWith copyrelMVCP <$> oldobs) <*> (addObs ! i)) obdds
+    newobs = M.mapWithKey (\i oldobs -> (con . relabelWith copyrelMVCP <$> oldobs) <*> (addObs ! i)) obdds
     news = sort $ concat
             [ s \\ changeprops
             , map (apply copyrel) $ s `intersect` changeprops
@@ -539,28 +539,28 @@ reduce :: Event -> Form -> Maybe Form
 reduce _ Top          = Just Top
 reduce e Bot          = Just $ Neg $ preOf e
 reduce e (PrpF p)     = Impl (preOf e) <$> Just (formOf $ trfPost e p)
-reduce e (Neg f)      = Impl (preOf e) <$> (Neg <$> reduce e f)
+reduce e (Neg f)      = Impl (preOf e) . Neg <$> reduce e f
 reduce e (Conj fs)    = Conj <$> mapM (reduce e) fs
 reduce e (Disj fs)    = Disj <$> mapM (reduce e) fs
-reduce e (Xor fs)     = Impl (preOf e) <$> (Xor <$> mapM (reduce e) fs)
+reduce e (Xor fs)     = Impl (preOf e) . Xor <$> mapM (reduce e) fs
 reduce e (Impl f1 f2) = Impl <$> reduce e f1 <*> reduce e f2
 reduce e (Equi f1 f2) = Equi <$> reduce e f1 <*> reduce e f2
 reduce _ (Forall _ _) = Nothing
 reduce _ (Exists _ _) = Nothing
 reduce e@(t@(Trf addprops _ _ eventObs), x) (K a f) =
-  Impl (preOf e) <$> (Conj <$> sequence
+  Impl (preOf e) . Conj <$> sequence
     [ K a <$> reduce (t,y) f | y <- powerset addprops -- FIXME is this a bit much?
                              , tagBddEval (mv x ++ cp y) (eventObs ! a)
-    ])
+    ]
 reduce e (Kw a f)     = reduce e (Disj [K a f, K a (Neg f)])
 reduce _ Ck  {}       = Nothing
 reduce _ Ckw {}       = Nothing
 reduce e@(t@(Trf addprops _ _ eventObs), x) (Dk ags f) =
-  Impl (preOf e) <$> (Conj <$> sequence
+  Impl (preOf e) . Conj <$> sequence
     [Dk ags <$> reduce (t, y) f |
        let omegai = Tagged $ foldr (con . untag) top [eventObs ! i | i <- ags] :: RelBDD,
        y <- powerset addprops,
-       tagBddEval (mv x ++ cp y) omegai])
+       tagBddEval (mv x ++ cp y) omegai]
 reduce e (Dkw ags f)     = reduce e (Disj [Dk ags f, Dk ags (Neg f)])
 reduce _ PubAnnounce  {} = Nothing
 reduce _ PubAnnounceW {} = Nothing
