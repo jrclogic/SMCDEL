@@ -86,6 +86,11 @@ main = hspec $ do
     prop "optimize can shrink the model" $
       expectFailure (\m -> let pm = (m::Exp.KripkeModelS5, head $ Exp.worldsOf m)
                            in length (Exp.worldsOf pm) <= length (Exp.worldsOf (optimize (vocabOf m) pm)) )
+    describe "Dk properties" $ do
+      prop "Ck i <-> Dk i" $ \(Ag i) krm f -> Exp.eval (krm,0) (Ck [i] f `Equi` Dk [i] f)
+      prop "Dk g f `Impl` f" $ \(Group g) krm f -> Exp.eval (krm,0) (Dk g f `Impl` f)
+      prop "Dk Top" $ \(Group g) krm -> Exp.eval (krm,0) (Dk g Top)
+      prop "Neg Dk Bot" $ \(Group g) krm -> Exp.eval (krm,0) (Neg (Dk g Bot))
   describe "SMCDEL.Examples" $ do
     it "modelA: bob knows p, alice does not" $
       modelA |= Conj [K bob (PrpF (P 0)), Neg $ K alice (PrpF (P 0))]

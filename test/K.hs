@@ -24,10 +24,7 @@ main = hspec $ do
   describe "random Kripke models" $ do
     prop "Ck i -> K i" $ \(Ag i) krm f -> ExpK.eval (krm,0) (Ck [i] f `Impl` K i f)
     prop "K i <-> Dk i" $ \(Ag i) krm f -> ExpK.eval (krm,0) (K i f `Equi` Dk [i] f)
-    prop "Ck i <-> Dk i" $ \(Ag i) krm f -> ExpK.eval (krm,0) (Ck [i] f `Equi` Dk [i] f)
-    prop "Dk g f `Impl` f" $ \(Group g) krm f -> ExpK.eval (krm,0) (Dk g f `Impl` f)
     prop "Dk Top" $ \(Group g) krm -> ExpK.eval (krm,0) (Dk g Top)
-    prop "Neg Dk Bot" $ \(Group g) krm -> ExpK.eval (krm,0) (Neg (Dk g Bot))
     prop "semanticEquivExpToSym" $ \krm f -> alleq $ semanticEquivExpToSym (krm,0) f
     prop "diff" $ \krmA krmB -> diffTest (krmA,0) (krmB,0)
   describe "random belief structures" $
