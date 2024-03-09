@@ -7,7 +7,7 @@ import Data.Char (isSpace)
 import Data.GraphViz
 import Data.GraphViz.Printing (renderDot)
 import qualified Data.GraphViz.Types.Generalised as DotGen
-import Data.List ( (\\), dropWhileEnd, intercalate, nub )
+import Data.List ((\\), dropWhileEnd, intercalate, nub)
 import qualified Data.Text.Lazy as B
 import Data.Typeable()
 import System.IO

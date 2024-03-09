@@ -4,10 +4,8 @@ module SMCDEL.Internal.Help (
   apply,(!),set,applyPartial,(!=),
   powerset,restrict,rtc,tc,Erel,bl,fusion,intersection,seteq,subseteq,lfp
   ) where
-import Data.List ((\\),foldl',groupBy,sort,sortBy,union,intersect, nub)
+import Data.List ((\\),foldl',groupBy,sort,sortBy,union,intersect,nub)
 import Data.Containers.ListUtils (nubOrd)
-import Control.Arrow (Arrow(first))
-import GHC.Exts (the)
 
 type Rel a b = [(a,b)]
 type Erel a = [[a]]

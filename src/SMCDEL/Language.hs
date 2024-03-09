@@ -458,7 +458,7 @@ propsInForm (Dia _dynOp _f)    = undefined -- TODO needs HasVocab dynop!
 propsInForms :: [Form] -> [Prp]
 propsInForms fs = nub $ concatMap propsInForm fs
 
--- | List of all agents} occurring in a formula.
+-- | List of all agents occurring in a formula.
 agentsInForm :: Form -> [Agent]
 agentsInForm Top                = []
 agentsInForm Bot                = []

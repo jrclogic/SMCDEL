@@ -1,4 +1,28 @@
-module Main where
+module Main (main) where
+
+{- $
+This benchmark compares different model checking methods using the Muddy Children example.
+See "SMCDEL.Examples.MuddyChildren" for the example itself.
+
+We use the /Criterion/ library to benchmark different solution methods, roughly sorted by speed:
+
+- The number triangle approach from Gierasimczuk and Szymanik (2011)
+- SMCDEL with CacBDD for S5
+- SMCDEL with CUDD for S5
+- SMCDEL with CUDD using ZDDs for S5
+- SMCDEL with decision-diagrams for S5
+- SMCDEL with CacBDD for K
+- DEMO-S5 by van Eijck (2014)
+- SMCDEL via translation from Kripke models for S5
+- SMCDEL via translation from Kripke models for K
+
+The benchmark compares how long it takes to answer the following question:
+"For \(n\) children, when \(m\) of them are muddy, how many announcements of
+`Nobody knows their own state.' are needed to let at least one child know their own state?".
+For this purpose we recursively define the formula to be checked and a loop function which uses the given model checker to find the answer.
+
+To run this benchmark and create a PDF with the results plot, run @make bench/muddychildren.pdf@ in the SMCDEL folder.
+-}
 
 import Control.Monad (when)
 import Criterion.Main
@@ -29,10 +53,13 @@ import qualified SMCDEL.Translations.K
 import qualified SMCDEL.Other.MCTRIANGLE
 import qualified SMCDEL.Symbolic.K
 
+-- | The formula to be checked.
 checkForm :: Int -> Int -> Form
 checkForm n 0 = nobodyknows n
 checkForm n k = PubAnnounce (nobodyknows n) (checkForm n (k-1))
 
+-- | Generic function to solve the puzzle.
+-- This will be instantiated with different `evalViaBdd` functions for different BDD packages.
 findNumberWith :: (Int -> Int -> a, a -> Form -> Bool) -> Int -> Int -> Int
 findNumberWith (start,evalfunction) n m = k where
   k | loop 0 == (m-1) = m-1
@@ -90,34 +117,41 @@ findNumberTransK :: Int -> Int -> Int
 findNumberTransK = findNumberWith (start,SMCDEL.Symbolic.K.evalViaBdd) where
   start n m = SMCDEL.Translations.K.kripkeToBls $ mudGenKrpInit n m
 
-mudDemoKrpInit :: Int -> Int -> DEMO_S5.EpistM [Bool]
-mudDemoKrpInit n m = DEMO_S5.Mo states agents [] rels points where
-  states = DEMO_S5.bTables n
-  agents = map DEMO_S5.Ag [1..n]
-  rels = [(DEMO_S5.Ag i, [[tab1++[True]++tab2,tab1++[False]++tab2] |
-                   tab1 <- DEMO_S5.bTables (i-1),
-                   tab2 <- DEMO_S5.bTables (n-i) ]) | i <- [1..n] ]
-  points = [replicate (n-m) False ++ replicate m True]
-
+-- | Find the Number using DEMO-S5.
+-- Here for an explicit state model checker like DEMO-S5 we can not use the
+-- same loop function because we want to hand on the current model to the next step
+-- instead of computing it again and again.
 findNumberDemoS5 :: Int -> Int -> Int
-findNumberDemoS5 n m = findNumberDemoLoop n m 0 start where
-  start = DEMO_S5.updPa (mudDemoKrpInit n m) (DEMO_S5.fatherN n)
+findNumberDemoS5 n m = findNumberDemoLoop 0 start where
+  start = DEMO_S5.updPa mudDemoKrpInit (DEMO_S5.fatherN n)
+  mudDemoKrpInit = DEMO_S5.Mo states agents [] rels points where
+    states = DEMO_S5.bTables n
+    agents = map DEMO_S5.Ag [1..n]
+    rels = [(DEMO_S5.Ag i, [[tab1++[True]++tab2,tab1++[False]++tab2] |
+                     tab1 <- DEMO_S5.bTables (i-1),
+                     tab2 <- DEMO_S5.bTables (n-i) ]) | i <- [1..n] ]
+    points = [replicate (n-m) False ++ replicate m True]
+  findNumberDemoLoop :: Int -> DEMO_S5.EpistM [Bool] -> Int
+  findNumberDemoLoop count curMod =
+    if DEMO_S5.isTrue curMod (DEMO_S5.dont n)
+      then findNumberDemoLoop (count+1) (DEMO_S5.updPa curMod (DEMO_S5.dont n))
+      else count
 
-findNumberDemoLoop :: Int -> Int -> Int -> DEMO_S5.EpistM [Bool] -> Int
-findNumberDemoLoop n m count curMod =
-  if DEMO_S5.isTrue curMod (DEMO_S5.dont n)
-    then findNumberDemoLoop n m (count+1) (DEMO_S5.updPa curMod (DEMO_S5.dont n))
-    else count
-
+-- | Solve the puzzle with the number triangle approach.
+-- See "SMCDEL.Other.MCTRIANGLE" for the details.
+-- Note that here the formula \texttt{nobodyknows} does not depend on the number of agents.
+-- Therefore the loop function does not have to pass on any variables.
 findNumberTriangle :: Int -> Int -> Int
 findNumberTriangle n m = findNumberTriangleLoop 0 start where
-  start = SMCDEL.Other.MCTRIANGLE.mcUpdate (SMCDEL.Other.MCTRIANGLE.mcModel (n-m,m)) (SMCDEL.Other.MCTRIANGLE.Qf SMCDEL.Other.MCTRIANGLE.some)
-
-findNumberTriangleLoop :: Int -> SMCDEL.Other.MCTRIANGLE.McModel -> Int
-findNumberTriangleLoop count curMod =
-  if SMCDEL.Other.MCTRIANGLE.eval curMod SMCDEL.Other.MCTRIANGLE.nobodyknows
-    then findNumberTriangleLoop (count+1) (SMCDEL.Other.MCTRIANGLE.mcUpdate curMod SMCDEL.Other.MCTRIANGLE.nobodyknows)
-    else count
+  start = SMCDEL.Other.MCTRIANGLE.mcUpdate
+            (SMCDEL.Other.MCTRIANGLE.mcModel (n-m,m))
+            (SMCDEL.Other.MCTRIANGLE.Qf SMCDEL.Other.MCTRIANGLE.some)
+  findNumberTriangleLoop count curMod =
+    if SMCDEL.Other.MCTRIANGLE.eval curMod SMCDEL.Other.MCTRIANGLE.nobodyknows
+      then findNumberTriangleLoop
+             (count+1)
+             (SMCDEL.Other.MCTRIANGLE.mcUpdate curMod SMCDEL.Other.MCTRIANGLE.nobodyknows)
+      else count
 
 main :: IO ()
 main = prepareMain >> benchMain >> convertMain
@@ -128,9 +162,9 @@ benchMain = do
   defaultMainWith myConfig (map mybench
     [ ("Triangle"  , findNumberTriangle  , [7..40] )
     , ("CacBDD"    , findNumberCacBDD    , [3..40] )
-    , ("DD"        , findNumberDD        , [3..30] )
     , ("CUDD"      , findNumberCUDD mgr  , [3..40] )
     , ("CUDDz"     , findNumberCUDDz mgr , [3..40] )
+    , ("DD"        , findNumberDD        , [3..30] )
     , ("K"         , findNumberK         , [3..12] )
     , ("DEMOS5"    , findNumberDemoS5    , [3..12] )
     , ("Trans"     , findNumberTrans     , [3..12] )
@@ -140,6 +174,9 @@ benchMain = do
     run f k = bench (show k) $ whnf (\n -> f n n) k
     myConfig = defaultConfig { Criterion.Types.csvFile = Just theCSVname }
 
+-- * CSV to pgfplots
+
+-- | The filename to which the benchmark results will be written in CSV.
 theCSVname :: String
 theCSVname = "bench/muddychildren-results.csv"
 
@@ -152,6 +189,7 @@ prepareMain = do
     oldDATfile <- doesFileExist (theCSVname ++ ".dat")
     when oldDATfile $ removeFile (theCSVname ++ ".dat")
 
+-- | Convert the .csv file to a .dat file to be use with pgfplots.
 convertMain :: IO ()
 convertMain = do
   putStrLn "Reading muddychildren-results.csv and converting to .dat for pgfplots."
