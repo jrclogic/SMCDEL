@@ -1,4 +1,6 @@
+{-# OPTIONS_HADDOCK hide #-}
 module SMCDEL.Internal.Token where
+
 data Token a -- == AlexPn
   = TokenVARS              {apn :: a}
   | TokenLAW               {apn :: a}

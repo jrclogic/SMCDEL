@@ -15,7 +15,7 @@ MCBENCHMARKS = Triangle CacBDD DD CUDD CUDDz K DEMOS5 Trans TransK
 
 bench/muddychildren.pdf: Makefile bench/muddychildren.hs bench/muddychildren.tex
 	stack bench :bench-muddychildren --benchmark-arguments "$(MCBENCHMARKS) --csv bench/muddychildren-results.csv"
-	cd bench && latexmk -pdf -quiet -interaction=nonstopmode
+	cd bench && latexmk -pdf -quiet -interaction=nonstopmode muddychildren
 
 todo:
 	@bash -c 'grep -nr "TODO" {src,exec,test,bench}'

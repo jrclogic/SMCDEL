@@ -7,7 +7,7 @@ cabal-version: 1.12
 name:           smcdel
 version:        1.3.0
 synopsis:       Symbolic Model Checking for Dynamic Epistemic Logic
-description:    See README.md and SMCDEL.pdf for references and documentation.
+description:    See README.md for references and documentation.
 category:       Logic
 homepage:       https://github.com/jrclogic/SMCDEL#readme
 bug-reports:    https://github.com/jrclogic/SMCDEL/issues

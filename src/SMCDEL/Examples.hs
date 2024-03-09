@@ -33,8 +33,12 @@ modelB =
     [ (0,[(P 0,True)]), (1,[(P 0,True)]), (2,[(P 0,False)]) ]
   , 0)
 
-knsA, knsB :: KnowScene
+-- | The knowledge structure equivalent to `modelA`, obtained using `kripkeToKns`.
+knsA :: KnowScene
 knsA = kripkeToKns modelA
+
+-- | The knowledge structure equivalent to `modelB`, obtained using `kripkeToKns`.
+knsB :: KnowScene
 knsB = kripkeToKns modelB
 
 -- | A Kripke model with three states 0,1,2 where 0 and 1 are bisimilar --- it is redundant.

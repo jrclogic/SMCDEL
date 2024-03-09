@@ -1,5 +1,7 @@
 {
 {-# OPTIONS_GHC -w #-}
+{-# OPTIONS_HADDOCK hide #-}
+
 module SMCDEL.Internal.Parse where
 import SMCDEL.Internal.Token
 import SMCDEL.Internal.Lex
