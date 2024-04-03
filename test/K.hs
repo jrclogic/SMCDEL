@@ -31,8 +31,10 @@ main = hspec $ do
     prop "Dk Top" $ \(Group g) krm -> ExpK.eval (krm,0) (Dk g Top)
     prop "semanticEquivExpToSym" $ \krm f -> alleq $ semanticEquivExpToSym (krm,0) f
     prop "diff" $ \krmA krmB -> diffTest (krmA,0) (krmB,0)
-  describe "random belief structures" $
+  describe "random belief structures" $ do
     prop "semanticEquivSymToExp" $ \bls f -> alleq $ semanticEquivSymToExp (bls, head (statesOf bls)) f
+    prop "evalViaBdd agrees on simplified formulas" $
+      \bls f -> SymK.evalViaBdd bls f === SymK.evalViaBdd bls (simplify f)
   describe "multipointed belief structures (all-pointed, for now)" $
     prop "semanticEquivSymToExp" $ \bls f -> alleq $ semanticEquivSymToExpMulti bls f
   prop "optimize on belief structures preserves truth" $
