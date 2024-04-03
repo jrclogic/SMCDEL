@@ -1,3 +1,7 @@
+{- |
+-- * Testing for K
+-}
+
 module Main (main) where
 
 import Data.Dynamic (toDyn)
@@ -119,6 +123,10 @@ singleChangeTest myact (SF f) =
       Just g  -> pure $ SymK.evalViaBdd (kripkeToBls myMod) (simplify g)
   ++ [ SymK.evalViaBddReduce myScn (actionToEvent (myact,0)) f ]
 
+-- TODO: announcingW should be the same as announcing that or that not etc.
+
+-- * Tests with random models and structures
+
 semanticEquivExpToSym :: PointedModel -> SimplifiedForm -> [Bool]
 semanticEquivExpToSym pm (SF f) = [ pm |= f
                                   , TransK.kripkeToBls pm |= f ]
@@ -127,12 +135,19 @@ semanticEquivSymToExp :: BelScene -> SimplifiedForm -> [Bool]
 semanticEquivSymToExp scn (SF f) = [ scn |= f
                                    , TransK.blsToKripke scn |= f ]
 
+-- * Testing multi-pointed structures and models
+
 semanticEquivSymToExpMulti :: BelStruct -> SimplifiedForm -> [Bool]
 semanticEquivSymToExpMulti bls (SF f) = [ bls |= f
                                         , (bls, boolBddOf Top) |= f
                                         , (krm, worldsOf krm) |= f ] where
   (krm,_) = TransK.blsToKripke (bls,undefined)
 
+-- TODO: add tests for multi-pointed structures/models `update` multi-pointed actions/transformers
+
+-- | Test the `diffPointed` function.
+-- It should either find a bisimulation between the two given
+-- models, or find a formula to distinguish them.
 diffTest :: PointedModel -> PointedModel -> Bool
 diffTest pmA pmB =
   case diffPointed pmA pmB of

@@ -1,5 +1,9 @@
 {-# LANGUAGE FlexibleInstances, TupleSections #-}
 
+{- |
+Converting between Kripke Models and Belief Structures
+-}
+
 module SMCDEL.Translations.K where
 
 import Data.HasCacBDD hiding (Top,Bot)
@@ -17,6 +21,7 @@ import SMCDEL.Symbolic.S5 (boolBddOf)
 import SMCDEL.Translations.S5 (booloutof)
 import SMCDEL.Other.BDD2Form
 
+-- | Convert a belief scene to a pointed Kripke model.
 blsToKripke :: BelScene -> PointedModel
 blsToKripke (f@(BlS _ _ obdds), curs) = (m, cur) where
   links = zip (statesOf f) [0..]

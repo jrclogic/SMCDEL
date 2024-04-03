@@ -1,4 +1,15 @@
+{- |
+
+-- * Sum and Product as a Benchmark
+
+We compare the performance of SMCDEL and DEMO-S5 on the Sum \& Product problem.
+
+We use the implementation in the module \texttt{SMCDEL.Examples.SumAndProduct},
+see Section~\ref{subsec:exSAP}.
+-}
+
 module Main (main) where
+
 import Criterion.Main
 import Data.List (groupBy,sortBy)
 import Data.Time (getCurrentTime, diffUTCTime)
@@ -7,11 +18,14 @@ import SMCDEL.Explicit.DEMO_S5
 import SMCDEL.Examples.SumAndProduct
 import SMCDEL.Symbolic.S5
 
---possible pairs 1<x<y, x+y<=100
+-- * DEMO definitions
+-- The following is based on <http://www.cs.otago.ac.nz/staffpriv/hans/sumpro/>.
+
+-- | Two agents
 alice, bob :: Agent
 (alice,bob) = (Ag 0,Ag 1)
 
---initial pointed epistemic model
+-- | Initial pointed epistemic model with possible pairs 1<x<y, x+y<=100.
 msnp :: EpistM (Int,Int)
 msnp = Mo pairs [alice,bob] [] rels pairs where
   rels  = [ (alice,partWith (+)) , (bob,partWith (*)) ]
@@ -20,17 +34,19 @@ msnp = Mo pairs [alice,bob] [] rels pairs where
 
 fmrs1e, fmrp2e, fmrs3e :: DemoForm (Int,Int)
 
---Sum says: I knew that you didn't know the two numbers.
-fmrs1e = Kn alice (Conj [Disj[Ng (Info p),
-                         Ng (Kn bob (Info p))]| p <- pairs])
+-- | Sum says: I knew that you didn't know the two numbers.
+fmrs1e = Kn alice (Conj [ Disj [ Ng (Info p)
+                               , Ng (Kn bob (Info p))
+                               ]
+                        | p <- pairs])
 
---Product says: Now I know the two numbers
-fmrp2e = Conj [ Disj[Ng (Info p),
-                     Kn bob (Info p) ] | p <- pairs]
+-- | Product says: Now I know the two numbers
+fmrp2e = Conj [ Disj [ Ng (Info p)
+                     , Kn bob (Info p) ] | p <- pairs]
 
---Sum says: Now I know the two numbers too
-fmrs3e = Conj [ Disj[Ng (Info p),
-                     Kn alice (Info p) ] | p <- pairs]
+-- | Sum says: Now I know the two numbers too
+fmrs3e = Conj [ Disj [ Ng (Info p)
+                     , Kn alice (Info p) ] | p <- pairs]
 
 main :: IO ()
 main = do

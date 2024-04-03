@@ -1,4 +1,8 @@
-{-# LANGUAGE OverloadedStrings#-}
+{-# LANGUAGE OverloadedStrings #-}
+
+{- |
+-- * Testing the web interface
+-}
 
 module Main (main) where
 

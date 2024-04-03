@@ -11,6 +11,7 @@ New:
 - Web and CLI: add `ONEOF` keyword to allow formulas like `ONEOF (p, q, r)` - fix #21
 - Web and CLI: allow lists after Kw for formulas like `bob knows whether (p, q)`
 - Add gitpod and devcontainer configurations
+- Haddock documentation, replacing the literate Haskell PDF document
 
 Changed:
 

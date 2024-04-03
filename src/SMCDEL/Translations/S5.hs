@@ -1,5 +1,12 @@
 {-# LANGUAGE TupleSections #-}
 
+{- | Converting between S5 Kripke Models and Knowledge Structures
+
+In this module we define and implement translation methods to connect the
+semantics from the two previous sections. This essentially allows us to switch
+back and forth between explicit and symbolic model checking methods.
+-}
+
 module SMCDEL.Translations.S5 where
 
 import Data.Containers.ListUtils (nubOrd)
@@ -13,6 +20,9 @@ import SMCDEL.Explicit.S5
 import SMCDEL.Internal.Help (anydiffWith,alldiff,alleqWith,apply,powerset,(!),seteq,subseteq)
 import SMCDEL.Other.BDD2Form
 
+-- * Tools for Equivalence
+
+-- | A function mapping worlds to states.
 type StateMap = World -> State
 
 equivalentWith :: PointedModelS5 -> KnowScene -> StateMap -> Bool
@@ -39,6 +49,9 @@ findStateMap pm@(KrMS5 _ _ val, w) scn@(kns, s)
     allMaps  = [ \v -> baseMap v ++ restf v | restf <- allFuncs (worldsOf pm) (powerset extraProps) ]
     goodMaps = filter (\g -> g w == s && equivalentWith pm scn g) allMaps
 
+-- * From Knowledge Structures to S5 Kripke Models
+
+
 knsToKripke :: KnowScene -> PointedModelS5
 knsToKripke (kns, curState) = (m, curWorld) where
   (m@(KrMS5 worlds _ _), g) = knsToKripkeWithG kns
@@ -63,6 +76,9 @@ knsToKripkeMulti (kns,statesBdd) = (m, ws) where
   (m, g) = knsToKripkeWithG kns
   ws = filter (\w -> evaluateFun statesBdd (\k -> P k `elem` g w)) (worldsOf m)
 
+-- *  From S5 Kripke Models to Knowledge Structures
+
+
 kripkeToKns :: PointedModelS5 -> KnowScene
 kripkeToKns (m, curWorld) = (kns, curState) where
     (kns, g)  = kripkeToKnsWithG m
@@ -84,11 +100,14 @@ kripkeToKnsWithG m@(KrMS5 worlds rel val) = (KnS ps law obs, g) where
   law       = disSet [ booloutof (g w) ps | w <- worlds ]
   obs       = [ (i,newps i) | i<- ags ]
 
+-- | BDD to say that exactly this subset of a given vocabulary is true.
 booloutof :: [Prp] -> [Prp] -> Bdd
 booloutof ps qs = conSet $
   [ var n | (P n) <- ps ] ++
   [ neg $ var n | (P n) <- qs \\ ps ]
 
+-- | Convert a multipointed S5 Kripke model to a knoweldge structure.
+-- See also `smartKripkeToKns`.
 kripkeToKnsMulti :: MultipointedModelS5 -> MultipointedKnowScene
 kripkeToKnsMulti (model, curWorlds) = (kns, curStatesLaw) where
   (kns, g) = kripkeToKnsWithG model
@@ -121,12 +140,14 @@ descableRels m@(KrMS5 ws rel val) = all (descable . fst) rel where
 -- | Try to find an equivalent knowledge structure without
 -- additional propositions. Will succeed iff valuations are
 -- unique and relations can be described using observariables.
+-- This is an alternative to `kripkeToKnsMulti`.
 smartKripkeToKns :: PointedModelS5 -> Maybe KnowScene
 smartKripkeToKns (m, cur) =
   if uniqueVals m && descableRels m
     then Just (smartKripkeToKnsWithoutChecks (m, cur))
     else Nothing
 
+-- | Unsafe version of `smartKripkeToKns`.
 smartKripkeToKnsWithoutChecks :: PointedModelS5 -> KnowScene
 smartKripkeToKnsWithoutChecks (m@(KrMS5 worlds rel val), cur) =
   (KnS ps law obs, curs) where
@@ -136,6 +157,13 @@ smartKripkeToKnsWithoutChecks (m@(KrMS5 worlds rel val), cur) =
     obs = map (\(i,_) -> (i,obsOf i) ) rel
     obsOf = fst.obsnobs m
     curs = map fst $ filter snd $ apply val cur
+
+-- TODO: add a translation that uses start if if works, but normal translation otherwise?
+
+-- TODO: test the above on symmetric and random models, how does it perform?
+
+-- * From Knowledge Transformers to S5 Action Models
+
 
 transformerToActionModelWithG :: KnowTransformer -> (ActionModelS5, StateMap)
 transformerToActionModelWithG trf@(KnTrf addprops addlaw changelaw addobs) = (ActMS5 acts actrel, g) where
@@ -161,6 +189,13 @@ eventToActionMulti :: MultipointedEvent -> MultipointedActionModelS5
 eventToActionMulti (trf, actualEventLaw) = (actm, factions) where
   (actm@(ActMS5 acts _), g) = transformerToActionModelWithG trf
   factions = [ a | (a,_) <- acts, bddEval (g a) actualEventLaw ]
+
+-- TODO add tests for the translations of unpointed and multipointed events above!
+
+-- TODO Should "Event" rather be called "Pointed KnowTransformer" ?
+
+-- * From S5 Action Models to Knowledge Transformers
+
 
 actionToTransformerWithMap :: ActionModelS5 -> (KnowTransformer, StateMap)
 actionToTransformerWithMap (ActMS5 acts actrel) = (KnTrf addprops addlaw changelaw addobs, eventMap) where

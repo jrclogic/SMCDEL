@@ -1,3 +1,16 @@
+{- |
+
+-- * Translation tests in S5
+
+In this module we test our implementations for correctness, using
+QuickCheck for automation and randomization.
+
+We generate random formulas and then evaluate them on Kripke models
+and knowledge structures of which we already know that they are
+equivalent. The test algorithm then checks whether the different
+methods we implemented agree on the result.
+-}
+
 module Main (main) where
 
 import Data.Dynamic (toDyn)
@@ -13,6 +26,7 @@ import SMCDEL.Translations.S5
 import SMCDEL.Examples
 import SMCDEL.Internal.TaggedBDD
 
+-- | Run all tests from this module.
 main :: IO ()
 main = hspec $
   describe "SMCDEL.Translations" $ do
@@ -26,6 +40,10 @@ main = hspec $
     prop "single action"            (\am f -> alleq $ singleActionTest am f)
     prop "propulations"             propulationTest
 
+-- * Semantic Equivalence
+
+
+-- | A Kripke model where Alice knows everything and the other agents do not know anything.
 mymodel :: PointedModelS5
 mymodel = (KrMS5 ws rel val, 0) where
   buildTable partrows p = [ (p,v):pr | v <- [True,False], pr <- partrows ]
@@ -34,10 +52,14 @@ mymodel = (KrMS5 ws rel val, 0) where
   ws    = map fst val
   rel   = ("0", map (:[]) ws) : [ (show i,[ws]) | i <- [1..5::Int] ]
 
+-- | Knowledge structure equivalent to `mymodel`.
 myscn :: KnowScene
 myscn = (KnS ps (boolBddOf Top) (("0",ps):[(show i,[]) | i<-[1..5::Int]]) , ps)
   where ps = [P 0 .. P 4]
 
+-- | Check for a given formula whether the implementations of the different
+-- semantics and translation methods agree on whether the formula holds in
+-- `mymodel` or `myscn`.
 semanticEquivTest :: Form -> Bool
 semanticEquivTest f = alleq
   [ Exp.eval mymodel f                      -- evaluate directly on Kripke
@@ -47,6 +69,7 @@ semanticEquivTest f = alleq
   , Sym.evalViaBdd (kripkeToKns mymodel) f  -- evaluate on corresponding KNS
   ]
 
+-- | Same as `semanticEquivTest` but for validity instead of truth.
 semanticValidTest :: Form -> Bool
 semanticValidTest f = alleq
   [ Exp.valid (fst mymodel) f                      -- evaluate directly on Kripke
@@ -56,20 +79,33 @@ semanticValidTest f = alleq
   , Sym.whereViaBdd (fst $ kripkeToKns mymodel) f == Sym.statesOf (fst $ kripkeToKns mymodel)
   ]
 
+-- * Tests for conversions
+
+-- | Given a Kripke model, check that the number of states of the resut of
+-- `kripkeToKns` is the same as the number of worlds when converting it back
+-- to a Kripke model with `knsToKripke`.
+-- (It need not be the same as the number of worlds of the original model.)
 numOfStatesTest :: KripkeModelS5 -> Bool
 numOfStatesTest m@(KrMS5 oldws _ _) = numberOfStates kns == length news where
   scn@(kns, _) = kripkeToKns (m, head oldws)
   (KrMS5 news _ _, _) = knsToKripke scn
 
+-- | Check that a model and the result of `kripkeToKnsWithG` is `equivalentWith`.
 lemmaEquivTestKr :: KripkeModelS5 -> Bool
 lemmaEquivTestKr m@(KrMS5 ws _ _) = equivalentWith (m, head ws) (kns, g (head ws)) g where
   (kns,g) = kripkeToKnsWithG m
 
+-- | Check that a knowledge structure and the result of `knsToKripkeWithG` are `equivalentWith`.
 lemmaEquivTestKnS :: KnowStruct -> Bool
 lemmaEquivTestKnS kns = equivalentWith (m, w) (kns, g w) g where
   (m, g) = knsToKripkeWithG kns
   w = head (worldsOf m)
 
+-- * Public and Group Announcements
+
+-- |
+-- We can do public announcements in various ways.
+-- The following tests check that the results of all methods are the same.
 pubAnnounceTest :: Prp -> SimplifiedForm -> Bool
 pubAnnounceTest prp (SF g) = alleq
   [ Exp.eval mymodel (PubAnnounce f g)
@@ -83,6 +119,8 @@ pubAnnounceTest prp (SF g) = alleq
       f = PrpF prp
       dynName = "publicly announce " ++ show prp
 
+-- | Same as `pubAnnounceTest`,
+-- but for semi-private group announcements instead of public announcements.
 announceTest :: SimplifiedForm -> Group -> SimplifiedForm -> [Bool]
 announceTest (SF f) (Group listeners) (SF g) =
   [ Exp.eval mymodel (Announce listeners f g) -- directly on Kripke
@@ -100,6 +138,14 @@ announceTest (SF f) (Group listeners) (SF g) =
     in not precon || Sym.evalViaBdd newKns g
   ]
 
+-- * Random Action Models
+
+-- | The Arbitrary instance for action models in module `SMCDEL.Explicit.S5`
+-- generates a random action model with four actions. To ensure that it is
+-- compatible with all models the actual action token has \(\top\) as precondition.
+-- The other three action tokens have random formulas as preconditions.
+-- Similar to the model above the first agent can tell the actions apart and
+-- everyone else confuses them.
 singleActionTest :: ActionModelS5 -> Form -> [Bool]
 singleActionTest myact f = [a,b,c,d] where
   a = Exp.eval (update mymodel (myact,0::Action)) f
@@ -109,6 +155,11 @@ singleActionTest myact f = [a,b,c,d] where
     Nothing -> c
     Just g  -> Sym.evalViaBdd (kripkeToKns mymodel) g
 
+-- TODO: Random Transformers and corresponding Action Models
+
+-- * Tests for Bisimulations
+
+-- | A test for `checkPropu`.
 propulationTest :: KripkeModelS5 -> Bool
 propulationTest m = checkPropu (allsamebdd (vocabOf kns1)) (fst kns1) (fst kns2) (vocabOf kns1) where
   kns1 = kripkeToKns (m,head $ worldsOf m)

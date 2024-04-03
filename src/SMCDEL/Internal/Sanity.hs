@@ -3,6 +3,7 @@ module SMCDEL.Internal.Sanity where
 import SMCDEL.Internal.Parse
 import SMCDEL.Language
 
+-- | Sanity checks that are used by both the CLI and the Web interface.
 sanityCheck :: CheckInput -> [String]
 sanityCheck (CheckInput vocabInts lawform obsSpec jobs) =
   let

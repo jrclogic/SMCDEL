@@ -7,7 +7,10 @@ module SMCDEL.Internal.Help (
 import Data.List ((\\),foldl',groupBy,sort,sortBy,union,intersect,nub)
 import Data.Containers.ListUtils (nubOrd)
 
+-- | A binary relation, represented by a list of tuples.
 type Rel a b = [(a,b)]
+
+-- | An equivalence relation given by equivalence classes, as a list of lists.
 type Erel a = [[a]]
 
 alleq  :: Eq a => [a] -> Bool
