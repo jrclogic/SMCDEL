@@ -35,6 +35,11 @@ main = hspec $ do
     prop "semanticEquivSymToExp" $ \bls f -> alleq $ semanticEquivSymToExp (bls, head (statesOf bls)) f
     prop "evalViaBdd agrees on simplified formulas" $
       \bls f -> SymK.evalViaBdd bls f === SymK.evalViaBdd bls (simplify f)
+  modifyMaxSuccess (const 1000) $ describe "satisfiable formulas distinguishing K from S5" $ do
+    prop "Ck ags Bot" $ expectFailure (\bls (Group ags) -> SymK.evalViaBdd bls (Ck ags Bot))
+    prop "Dk ags Bot" $ expectFailure (\bls (Group ags) -> SymK.evalViaBdd bls (Ck ags Bot))
+    prop "(K i f) and (Neg f)" $ expectFailure (\bls (Ag i) f -> SymK.evalViaBdd bls (Conj [K i f, Neg f]))
+    prop "(K i f) and (Neg (K i (K i f)))" $ expectFailure (\bls (Ag i) f -> SymK.evalViaBdd bls (Conj [K i f,  Neg (K i (K i f))]))
   describe "multipointed belief structures (all-pointed, for now)" $
     prop "semanticEquivSymToExp" $ \bls f -> alleq $ semanticEquivSymToExpMulti bls f
   prop "optimize on belief structures preserves truth" $

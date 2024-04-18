@@ -338,10 +338,7 @@ subformulas (AnnounceW is f g) = AnnounceW is f g : nub (subformulas f ++ subfor
 subformulas (Dia dynop f)      = Dia dynop f : subformulas f
 
 shrinkform :: Form -> [Form]
-shrinkform f =
-  if f /= simplify f
-    then [simplify f]
-    else (subformulas f \\ [f]) ++ otherShrinks f
+shrinkform f = [ simplify f | f /= simplify f ] ++ (subformulas f \\ [f]) ++ otherShrinks f
   where
     otherShrinks (Conj     fs) = [Conj     gs | gs <- powerset fs \\ [fs]]
     otherShrinks (Disj     fs) = [Disj     gs | gs <- powerset fs \\ [fs]]
@@ -538,7 +535,7 @@ simStep (Exists ps f) = Exists ps (simStep f)
 simStep (K a f)       = K a (simStep f)
 simStep (Kw a f)      = Kw a (simStep f)
 simStep (Ck _   Top)  = Top
-simStep (Ck _   Bot)  = Bot
+simStep (Ck ags Bot)  = Ck ags Bot -- Not equivalent to Bot in K.
 simStep (Ck ags f)    = Ck ags (simStep f)
 simStep (Ckw _   Top) = Top
 simStep (Ckw _   Bot) = Top

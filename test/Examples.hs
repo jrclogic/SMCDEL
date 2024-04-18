@@ -71,6 +71,11 @@ main = hspec $ do
                 in isTrue scene f === isTrue (generatedSubstructure scene) f
     modifyMaxSuccess (const 1000) $ prop "optimize can reduce the vocabulary" $
       expectFailure (\kns -> length (vocabOf (kns :: KnowStruct)) == length (vocabOf (optimize defaultVocabulary kns)))
+    describe "some S5 validities" $ do
+      prop "Ck ags f --> f" $ \kns (Group ags) f -> evalViaBdd (kns, head (statesOf kns)) (Ck ags f `Impl` f)
+      prop "Dk ags f --> f" $ \kns (Group ags) f -> evalViaBdd (kns, head (statesOf kns)) (Ck ags f `Impl` f)
+      prop "K i f --> f" $ \kns (Ag i) f -> evalViaBdd (kns, head (statesOf kns)) (K i f `Impl` f)
+      prop "K i f --> K i (K i f)" $ \kns (Ag i) f -> evalViaBdd (kns, head (statesOf kns)) (K i f `Impl` K i (K i f))
   describe "SMCDEL.Other.BDD2Form" $ do
     prop "boolBddOf . formOf == id" $
       \b -> b === boolBddOf (formOf b)

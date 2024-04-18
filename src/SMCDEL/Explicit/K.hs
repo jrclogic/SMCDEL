@@ -139,6 +139,8 @@ instance Semantics KripkeModel where
 instance Semantics MultipointedModel where
   isTrue (m,ws) f = all (\w -> isTrue (m,w) f) ws
 
+-- | Transitive closure of the union of the relations of a group.
+-- Note that this is not necessarily reflexive.
 groupRel :: KripkeModel -> [Agent] -> World -> [World]
 groupRel (KrM m) ags w = sort $ lfp extend (oneStepReachFrom w) where
   oneStepReachFrom x = concat [ snd (m ! x) ! a | a <- ags ]
