@@ -49,7 +49,7 @@ test-web:
   script:
     - apt-get update -yqq
     - apt-get install -y --no-install-recommends graphviz dot2tex libtinfo5 texlive-latex-base poppler-utils preview-latex-style texlive-pstricks wget firefox-esr openjdk-11-jre-headless
-    - stack --no-terminal test smcdel:exe:smcdel-web smcdel:test:web
+    - stack --no-terminal test --flag smcdel:web smcdel:exe:smcdel-web smcdel:test:web
   cache:
     <<: *global_cache
     policy: pull
@@ -58,7 +58,7 @@ test-CUDD:
   stage: test
   script:
     - rm -rf .stack-work/install/*/*/*/hpc
-    - stack --no-terminal test --coverage smcdel:test:CUDD
+    - stack --no-terminal test --flag smcdel:with-cudd --coverage smcdel:test:CUDD
   coverage: '/(\d+)% top-level declarations used/'
   after_script:
     - rm -rf ./hpc

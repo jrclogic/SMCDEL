@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 module Main (main) where
 
 {- $
@@ -8,8 +10,8 @@ We use the /Criterion/ library to benchmark different solution methods, roughly 
 
 - The number triangle approach from Gierasimczuk and Szymanik (2011)
 - SMCDEL with CacBDD for S5
-- SMCDEL with CUDD for S5
-- SMCDEL with CUDD using ZDDs for S5
+- SMCDEL with CUDD for S5 (only when the build flag `with-cudd` is on)
+- SMCDEL with CUDD using ZDDs for S5 (only when the build flag `with-cudd` is on)
 - SMCDEL with decision-diagrams for S5
 - SMCDEL with CacBDD for K
 - DEMO-S5 by van Eijck (2014)
@@ -42,16 +44,19 @@ import System.Directory
 import SMCDEL.Language
 import SMCDEL.Examples.MuddyChildren
 import SMCDEL.Internal.Help (apply)
-import SMCDEL.Internal.MyHaskCUDD
 import qualified SMCDEL.Explicit.DEMO_S5 as DEMO_S5
 import qualified SMCDEL.Explicit.S5
 import qualified SMCDEL.Symbolic.S5
 import qualified SMCDEL.Symbolic.S5_DD
-import qualified SMCDEL.Symbolic.S5_CUDD
 import qualified SMCDEL.Translations.S5
 import qualified SMCDEL.Translations.K
 import qualified SMCDEL.Other.MCTRIANGLE
 import qualified SMCDEL.Symbolic.K
+
+#ifdef WITH_CUDD
+import SMCDEL.Internal.MyHaskCUDD
+import qualified SMCDEL.Symbolic.S5_CUDD
+#endif
 
 -- | The formula to be checked.
 checkForm :: Int -> Int -> Form
@@ -79,6 +84,7 @@ findNumberDD :: Int -> Int -> Int
 findNumberDD = findNumberWith (ddMudScnInit,SMCDEL.Symbolic.S5_DD.evalViaBdd) where
   ddMudScnInit n m = ( SMCDEL.Symbolic.S5_DD.KnS (mudPs n) (SMCDEL.Symbolic.S5_DD.boolBddOf Top) [ (show i,delete (P i) (mudPs n)) | i <- [1..n] ], mudPs m )
 
+#ifdef WITH_CUDD
 findNumberCUDD :: Manager -> Int -> Int -> Int
 findNumberCUDD mgr n m =
   let cuddMudScnInit = ( SMCDEL.Symbolic.S5_CUDD.KnS mgr (mudPs n) (SMCDEL.Symbolic.S5_CUDD.boolDdOf mgr Top :: Dd B O1 I1) [ (show i, delete (P i) (mudPs n)) | i <- [1..n] ], mudPs m )
@@ -88,6 +94,7 @@ findNumberCUDDz :: Manager -> Int -> Int -> Int
 findNumberCUDDz mgr n m =
   let cuddMudScnInit = ( SMCDEL.Symbolic.S5_CUDD.KnS mgr (mudPs n) (SMCDEL.Symbolic.S5_CUDD.boolDdOf mgr Top :: Dd Z O1 I1) [ (show i, delete (P i) (mudPs n)) | i <- [1..n] ], mudPs m )
   in findNumberWith (const $ const cuddMudScnInit, SMCDEL.Symbolic.S5_CUDD.evalViaDd) n m
+#endif
 
 findNumberTrans :: Int -> Int -> Int
 findNumberTrans = findNumberWith (start,SMCDEL.Symbolic.S5.evalViaBdd) where
@@ -158,12 +165,16 @@ main = prepareMain >> benchMain >> convertMain
 
 benchMain :: IO ()
 benchMain = do
+#ifdef WITH_CUDD
   mgr <- makeManagerZ 40 -- one CUDD manager for BDDs and ZDDs
+#endif
   defaultMainWith myConfig (map mybench
     [ ("Triangle"  , findNumberTriangle  , [7..40] )
     , ("CacBDD"    , findNumberCacBDD    , [3..40] )
+#ifdef WITH_CUDD
     , ("CUDD"      , findNumberCUDD mgr  , [3..40] )
     , ("CUDDz"     , findNumberCUDDz mgr , [3..40] )
+#endif
     , ("DD"        , findNumberDD        , [3..30] )
     , ("K"         , findNumberK         , [3..12] )
     , ("DEMOS5"    , findNumberDemoS5    , [3..12] )

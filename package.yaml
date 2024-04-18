@@ -27,6 +27,17 @@ build-tools:
   - alex
   - happy
 
+flags:
+  with-cudd:
+    default: false
+    manual: true
+  cli:
+    default: true
+    manual: true
+  web:
+    default: false
+    manual: true
+
 library:
   source-dirs:
     - src
@@ -34,7 +45,6 @@ library:
     - base >= 4.8 && < 5
     - array
     - containers
-    - cudd == 0.1.0.0
     - directory
     - graphviz
     - HasCacBDD >= 0.2.0.0 && < 0.3
@@ -45,34 +55,56 @@ library:
     - text
     - time
     - decision-diagrams
+  when:
+  - condition: flag(with-cudd)
+    dependencies:
+    - cudd == 0.1.0.0
+    exposed-modules:
+    - SMCDEL.Internal.MyHaskCUDD
+    - SMCDEL.Symbolic.K_CUDD
+    - SMCDEL.Symbolic.Ki_CUDD
+    - SMCDEL.Symbolic.S5_CUDD
+    - SMCDEL.Examples.SumAndProduct.General
+    - SMCDEL.Examples.DiningCrypto.General
 
 executables:
   smcdel:
     source-dirs: exec
     main: smcdel.hs
     other-modules: Paths_smcdel
-    dependencies:
-      - base >= 4.8 && < 5
-      - ansi-terminal
-      - directory
-      - filepath
-      - process
-      - smcdel
+    when:
+    - condition: flag(cli)
+      then:
+        dependencies:
+          - base >= 4.8 && < 5
+          - ansi-terminal
+          - directory
+          - filepath
+          - process
+          - smcdel
+      else:
+        buildable: false
+
   smcdel-web:
     source-dirs: exec
     main: smcdel-web.hs
     ghc-options: -threaded
-    dependencies:
-      - base >= 4.8 && < 5
-      - deepseq
-      - file-embed
-      - scotty
-      - HasCacBDD >= 0.2.0.0 && < 0.3
-      - js-jquery >= 3
-      - smcdel
-      - template-haskell
-      - text
-      - warp
+    when:
+    - condition: flag(web)
+      then:
+        dependencies:
+          - base >= 4.8 && < 5
+          - deepseq
+          - file-embed
+          - scotty
+          - HasCacBDD >= 0.2.0.0 && < 0.3
+          - js-jquery >= 3
+          - smcdel
+          - template-haskell
+          - text
+          - warp
+      else:
+        buildable: false
 
 tests:
   examples:
@@ -103,23 +135,33 @@ tests:
   web:
     main: test/Web.hs
     ghc-options: -with-rtsopts=-M8G
-    dependencies:
-      - base
-      - process
-      - sandwich
-      - sandwich-webdriver
-      - text
-      - webdriver
+    when:
+    - condition: flag(web)
+      then:
+        dependencies:
+          - base
+          - process
+          - sandwich
+          - sandwich-webdriver
+          - text
+          - webdriver
+      else:
+        buildable: false
   CUDD:
     main: test/CUDD.hs
     ghc-options: -with-rtsopts=-M8G
-    dependencies:
-      - base >= 4.8 && < 5
-      - containers
-      - HasCacBDD
-      - hspec
-      - QuickCheck
-      - smcdel
+    when:
+    - condition: flag(with-cudd)
+      then:
+        dependencies:
+          - base >= 4.8 && < 5
+          - containers
+          - HasCacBDD
+          - hspec
+          - QuickCheck
+          - smcdel
+      else:
+        buildable: false
 
 benchmarks:
   bench-diningcrypto:
@@ -152,45 +194,66 @@ benchmarks:
       - smcdel
       - split
       - vector
+    when:
+    - condition: flag(with-cudd)
+      then:
+        cpp-options: "-DWITH_OPENGL"
+      else:
+        cpp-options: ""
 
   sizes-muddychildren:
     source-dirs:     sizeExperiments
     main:            muddychildren.hs
-    dependencies:
-      - base >= 4.8 && < 5
-      - bytestring
-      - cassava
-      - criterion
-      - directory
-      - scientific
-      - smcdel
-      - split
-      - vector
+    when:
+    - condition: flag(with-cudd)
+      then:
+        dependencies:
+          - base >= 4.8 && < 5
+          - bytestring
+          - cassava
+          - criterion
+          - directory
+          - scientific
+          - smcdel
+          - split
+          - vector
+      else:
+        buildable: false
 
   sizes-diningcryptographers:
     source-dirs:     sizeExperiments
     main:            diningcryptographers.hs
-    dependencies:
-      - base >= 4.8 && < 5
-      - bytestring
-      - cassava
-      - criterion
-      - directory
-      - scientific
-      - smcdel
-      - split
-      - vector
+    when:
+    - condition: flag(with-cudd)
+      then:
+        dependencies:
+          - base >= 4.8 && < 5
+          - bytestring
+          - cassava
+          - criterion
+          - directory
+          - scientific
+          - smcdel
+          - split
+          - vector
+      else:
+        buildable: false
 
   sizes-sumandproduct:
     source-dirs:     sizeExperiments
     main:            sumandproduct.hs
-    dependencies:
-      - base >= 4.8 && < 5
-      - bytestring
-      - cassava
-      - criterion
-      - directory
-      - scientific
-      - smcdel
-      - split
-      - vector
+    when:
+    - condition: flag(with-cudd)
+      then:
+        dependencies:
+          - base >= 4.8 && < 5
+          - bytestring
+          - cassava
+          - criterion
+          - directory
+          - scientific
+          - smcdel
+          - split
+          - vector
+      else:
+        buildable: false

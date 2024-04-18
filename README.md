@@ -51,12 +51,8 @@ On Debian, just do `sudo apt install graphviz dot2tex libtinfo5 texlive-latex-ba
 
 1) Use *stack* from https://www.stackage.org
 
-- `stack build` will compile everything. This might fail if one of
-  the BDD packages written in C and C++ is missing. In this case,
-  install those manually and then try `stack build` again.
-
-- `stack install` will put two executables `smcdel` and `smcdel-web`
-  into ~/.local/bin which should be in your `PATH` variable.
+- `stack install` will build and install an executable `smcdel`
+  into `~/.local/bin` which should be in your `PATH` variable.
 
 2) Create a text file `MuddyShort.smcdel.txt` which describes the knowledge structure and the formulas you want to check for truth or validity:
 
@@ -92,7 +88,8 @@ On Debian, just do `sudo apt install graphviz dot2tex libtinfo5 texlive-latex-ba
 
     More example files are in the folder [Examples](https://github.com/jrclogic/SMCDEL/tree/master/Examples).
 
-4) To use the web interface run `smcdel-web` and then open <http://localhost:3000/index.html>.
+4) To also build and install the web interface, run `stack install --flag smcdel:web`
+   Then you can run `smcdel-web` and open <http://localhost:3000/index.html>.
 
 
 ## Advanced usage
