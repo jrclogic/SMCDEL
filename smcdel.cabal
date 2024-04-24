@@ -163,7 +163,7 @@ executable smcdel-web
       , deepseq
       , file-embed
       , js-jquery >=3
-      , scotty
+      , scotty >=0.11.0 && <0.20
       , smcdel
       , template-haskell
       , text

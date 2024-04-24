@@ -97,7 +97,7 @@ executables:
           - base >= 4.8 && < 5
           - deepseq
           - file-embed
-          - scotty
+          - scotty >= 0.11.0 && < 0.20
           - HasCacBDD >= 0.2.0.0 && < 0.3
           - js-jquery >= 3
           - smcdel
