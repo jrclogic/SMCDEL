@@ -72,7 +72,7 @@ and
 
 *Dependencies*:
 To get all visualisation functions working, [graphviz](https://graphviz.org/), [dot2tex](https://github.com/kjellmf/dot2tex) and some LaTeX packages should be installed.
-On Debian, please do `sudo apt install graphviz dot2tex libtinfo5 texlive-latex-base poppler-utils preview-latex-style texlive-pstricks`.
+On Debian, please do `sudo apt install graphviz dot2tex libtinfo5 texlive-latex-base poppler-utils preview-latex-style texlive-pstricks zlib1g-dev`.
 
 
 ## Used BDD packages
