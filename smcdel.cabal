@@ -98,18 +98,19 @@ library
     , happy
   build-depends:
       HasCacBDD >=0.2.0.0 && <0.3
-    , QuickCheck
-    , array
+    , QuickCheck >=2.14.3 && <2.15
+    , array >=0.5.4 && <0.6
     , base >=4.8 && <5
-    , containers
-    , decision-diagrams
-    , directory
-    , graphviz
-    , process
-    , tagged
-    , temporary
-    , text
-    , time
+    , containers >=0.6.7 && <0.7
+    , decision-diagrams >=0.2.0 && <0.3
+    , directory >=1.3.7 && <1.4
+    , filepath >=1.4.2 && <1.5
+    , graphviz >=2999.20.2 && <2999.21
+    , process >=1.6.18 && <1.7
+    , tagged >=0.8.0 && <0.9
+    , temporary ==1.3.*
+    , text >=2.0.2 && <2.1
+    , time >=1.12.2 && <1.13
   default-language: Haskell2010
   if flag(with-cudd)
     exposed-modules:
@@ -135,11 +136,11 @@ executable smcdel
   default-language: Haskell2010
   if flag(cli)
     build-depends:
-        ansi-terminal
+        ansi-terminal >=0.11.5 && <1.2
       , base >=4.8 && <5
-      , directory
-      , filepath
-      , process
+      , directory >=1.3.7 && <1.4
+      , filepath >=1.4.2 && <1.5
+      , process >=1.6.18 && <1.7
       , smcdel
   else
     buildable: False
