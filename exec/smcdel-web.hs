@@ -95,7 +95,9 @@ fixTeXinSVG = TL.replace "$" ""
   . TL.replace "} " " "
 
 myCatch :: String -> IO String
-myCatch f = catch (evaluate (force f) :: IO String) (\e-> return ("ERROR: " ++ show (e :: SomeException)))
+myCatch f = Control.Exception.catch
+  (evaluate (force f) :: IO String)
+  (\e-> return ("ERROR: " ++ show (e :: SomeException)))
 
 doJobsWebSafe :: KnowStruct -> [Job] -> IO String
 doJobsWebSafe _     [] = return ""
