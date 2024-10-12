@@ -10,7 +10,7 @@ import Data.List
 import Data.Maybe
 import Test.Hspec
 import Test.Hspec.QuickCheck
-import Test.QuickCheck (expectFailure,(===))
+import Test.QuickCheck (expectFailure,(===),(==>))
 
 import SMCDEL.Examples
 import SMCDEL.Examples.DiningCrypto
@@ -63,12 +63,12 @@ main = hspec $ do
     prop "boolEvalViaBdd agrees on simplified formulas" $
       \(BF bf) props -> let truths = nub props in
         boolEvalViaBdd truths bf === boolEvalViaBdd truths (simplify bf)
-    prop "optimize preserves truth" $
+    prop "optimize preserves truth (without global modality)" $
       \kns f -> let scene = (kns :: KnowStruct, head $ statesOf kns)
-                in isTrue scene f === isTrue (optimize defaultVocabulary scene) f
-    prop "generatedSubstructure preserves truth" $
+                in not (containsGlobal f) ==> isTrue scene f === isTrue (optimize defaultVocabulary scene) f
+    prop "generatedSubstructure preserves truth (without global modality)" $
       \kns f -> let scene = (kns :: KnowStruct, booloutof (head $ statesOf kns) (vocabOf kns) )
-                in isTrue scene f === isTrue (generatedSubstructure scene) f
+                in not (containsGlobal f) ==> isTrue scene f === isTrue (generatedSubstructure scene) f
     modifyMaxSuccess (const 1000) $ prop "optimize can reduce the vocabulary" $
       expectFailure (\kns -> length (vocabOf (kns :: KnowStruct)) == length (vocabOf (optimize defaultVocabulary kns)))
     describe "some S5 validities" $ do

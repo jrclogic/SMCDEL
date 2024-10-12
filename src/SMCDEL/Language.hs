@@ -348,6 +348,10 @@ shrinkform f = [ simplify f | f /= simplify f ] ++ (subformulas f \\ [f]) ++ oth
     otherShrinks (Exists ps g) = [Exists qs g | qs <- powerset ps \\ [ps]]
     otherShrinks _ = []
 
+-- | Does the formula contain a global modality?
+containsGlobal :: Form -> Bool
+containsGlobal f = or [ True | (G _) <- subformulas f ]
+
 -- * Substitution
 
 -- | Substitute a formula for a proposition in a formula.
