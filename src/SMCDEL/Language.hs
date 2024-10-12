@@ -77,31 +77,29 @@ The language \( \mathcal{L}(V) \) for a set of propositions \(V\) and a finite s
     \mid  \phi \rightarrow \phi  \mid  \phi \leftrightarrow \phi
     \mid  \forall P \phi  \mid  \exists P \phi
     \mid  K_i \phi  \mid  C_\Delta \phi \mid D_\Delta \phi
-    \mid  [!\phi] \phi  \mid  [\Delta ! \phi] \phi \]
-where \(p \in V\), \(P \subseteq V\), \(|P|<\omega\), \(\Phi\subseteq\mathcal{L}(V)\), \(|\Phi|<\omega\), \(i \in I\) and \(\Delta \subset I\).
-We also write \(\phi \land \psi\) for \(\bigwedge \{ \phi,\psi \}\) and \(\phi \lor \psi\) for \(\bigvee \{ \phi,\psi \}\).
+    \mid  [!\phi] \phi
+    \mid  \langle \mathsf{DYN} \rangle \phi
+where \(p \in V\), \(P \subseteq V\), \(|P|<\omega\), \(\Phi\subseteq\mathcal{L}(V)\), \(|\Phi|<\omega\), \(i \in I\), \(\Delta \subset I\) and \(\mathsf{DYN}\) is of an arbitrary type.
+We also write \(\phi \land \psi\) for \(\bigwedge \{ \phi, \psi \}\) and \(\phi \lor \psi\) for \(\bigvee \{ \phi, \psi \}\).
 The \emph{boolean} formulas are those without \(K_i\), \(C_\Delta\), \(D_\Delta\), \([!\phi]\) and \([\Delta!\phi]\).
 
 Hence, a formula can be (in this order):
-The constant top or bottom, an atomic proposition, a negation, a conjunction, a disjunction, an exclusive or, an implication, a bi-implication, a universal or existential quantification over a set of propositions, or a statement about knowledge, common-knowledge, distributed knowledge, a public announcement or an announcement to a group.
+The constant top or bottom, an atomic proposition, a negation, a conjunction, a disjunction, an exclusive or, an implication, a bi-implication, a universal or existential quantification over a set of propositions, or a statement about knowledge, common-knowledge, distributed knowledge, a public announcement or a dynamic diamond.
 
 Some of these connectives are inter-definable, for example \(\phi\leftrightarrow\psi\) and \(\bigwedge \{ \psi\rightarrow\phi,\phi\rightarrow\psi \}\) are equivalent according to all semantics which we will use here.
 Hence we could shorten Definition~\ref{def-dellang} and treat some connectives as abbreviations.
 This would lead to brevity and clarity in the formal definitions, but also to a decrease in performance of our model checking implementations.
 To continue with the first example: If we have Binary Decision Diagrams (BDDs) for \(\phi\) and \(\psi\), computing the BDD for \(\phi\leftrightarrow\psi\) in one operation by calling the appropriate method of a BDD package will be faster than rewriting it to a conjunction of two implications and then making three calls to these corresponding functions of the BDD package.
 
-We extend our language with abbreviations for "knowing whether" and "announcing whether".
+We extend our language with abbreviations for "knowing whether", "commonly knowing whether" and "distributed knowing whether":
 
 \[ K^?_i \phi := \bigvee \{ K_i \phi , K_i (\lnot \phi) \} \]
 
-\[ D^?_i \phi := \bigvee \{ D_i \phi , D_i (\lnot \phi) \} \]
+\[ D^?_\Delta \phi := \bigvee \{ D_\Delta \phi , D_\Delta (\lnot \phi) \} \]
 
-\[ [?! \phi] \psi := \bigwedge \{ \phi \rightarrow [!\phi]\psi , \lnot \phi \rightarrow [!\lnot\phi]\psi \} \]
+\[ D^?_\Delta \phi := \bigvee \{ D_\Delta \phi , D_\Delta (\lnot \phi) \} \]
 
-\[ [I ?! \phi] \psi := \bigwedge \{ \phi \rightarrow [I ! \phi]\psi , \lnot \phi \rightarrow [I !\lnot\phi]\psi \} \]
-
-Note that - also for performance reasons - the three "whether" operators
-occur as primitives and not as abbreviations.
+For performance reasons these "whether" operators are primitives and not abbreviations.
 -}
 
 -- | Formulas
@@ -124,9 +122,6 @@ data Form
   | Ckw [Agent] Form            -- ^ Common knowing whether
   | Dkw [Agent] Form            -- ^ Distributed knowing whether
   | PubAnnounce Form Form       -- ^ Public announcement that
-  | PubAnnounceW Form Form      -- ^ Public announcement whether
-  | Announce [Agent] Form Form  -- ^ (Semi-)Private announcement that
-  | AnnounceW [Agent] Form Form -- ^ (Semi-)Private announcement whether
   | Dia DynamicOp Form          -- ^ Dynamic Diamond
   deriving (Eq,Ord,Show)
 
@@ -136,20 +131,27 @@ data Form
 ite :: Form -> Form -> Form -> Form
 ite f g h = Conj [f `Impl` g, Neg f `Impl` h]
 
--- | Abbreviation for a sequence of announcements using.
+-- | Sequence of public announcements.
 pubAnnounceStack :: [Form] -> Form -> Form
 pubAnnounceStack = flip $ foldr PubAnnounce
 
+-- | Announcement-whether
+-- \([?! \phi] \psi := \bigwedge \{ \phi \rightarrow [!\phi]\psi , \lnot \phi \rightarrow [!\lnot\phi]\psi \} \)
+pubAnnounceW :: Form -> Form -> Form
+pubAnnounceW af f = Conj [ af `Impl` PubAnnounce af f
+                         , Neg af `Impl` PubAnnounce (Neg af) f ]
+
+-- | Sequence of public announcement-whether.
 pubAnnounceWhetherStack :: [Form] -> Form -> Form
-pubAnnounceWhetherStack = flip $ foldr PubAnnounceW
+pubAnnounceWhetherStack = flip $ foldr pubAnnounceW
 
 -- | Abbreviation to say that exactly a given subset of a set of propositions is true.
 booloutofForm :: [Prp] -> [Prp] -> Form
 booloutofForm ps qs = Conj $ [ PrpF p | p <- ps ] ++ [ Neg $ PrpF r | r <- qs \\ ps ]
 
+-- | Exactly one formula in the given list is true.
 oneOf :: [Form] -> Form
 oneOf fs = Conj [ Disj fs, Conj [ Neg $ Conj [f1, f2] | f1 <- fs, f2 <- fs \\ [f1] ] ]
-
 
 -- * Dynamic Operators
 
@@ -212,7 +214,7 @@ class (Show a, Show b, HasAgents a, Semantics a, HasPrecondition b) => Update a 
                    , "\n  x = ", show x
                    , "\n  y = ", show y
                    , "\n  preOf y = ", show (preOf y)
-                   , "\n  preCheck y = ", show (preCheck x y)
+                   , "\n  preCheck x y = ", show (preCheck x y)
                    , "\n  checkResults: ", show checkResults ]
                where checkResults = [ c x y | c <- checks ]
 
@@ -258,9 +260,6 @@ ppFormWith trans (Kw i f)      = "Kw " ++ i ++ " " ++ ppFormWith trans f
 ppFormWith trans (Ckw is f)    = "Ckw " ++ showSet is ++ " " ++ ppFormWith trans f
 ppFormWith trans (Dkw is f)    = "Dkw " ++ showSet is ++ " " ++ ppFormWith trans f
 ppFormWith trans (PubAnnounce f g)  = "[! " ++ ppFormWith trans f ++ "] " ++ ppFormWith trans g
-ppFormWith trans (PubAnnounceW f g) = "[?! " ++ ppFormWith trans f ++ "] " ++ ppFormWith trans g
-ppFormWith trans (Announce is f g)  = "[" ++ intercalate ", " is ++ " ! " ++ ppFormWith trans f ++ "]" ++ ppFormWith trans g
-ppFormWith trans (AnnounceW is f g) = "[" ++ intercalate ", " is ++ " ?! " ++ ppFormWith trans f ++ "]" ++ ppFormWith trans g
 ppFormWith trans (Dia (Dyn s _) f)  = "<" ++ s ++ ">" ++ ppFormWith trans f
 
 -- | Generates LaTeX code for a formula.
@@ -293,9 +292,6 @@ texForm (Dk ags f)    = "Dk_{\\{\n" ++ intercalate "," ags ++ "\n\\}} " ++ texFo
 texForm (Ckw ags f)   = "Ck^?_{\\{\n" ++ intercalate "," ags ++ "\n\\}} " ++ texForm f
 texForm (Dkw ags f)   = "Dk^?_{\\{\n" ++ intercalate "," ags ++ "\n\\}} " ++ texForm f
 texForm (PubAnnounce f g)   = "[!" ++ texForm f ++ "] " ++ texForm g
-texForm (PubAnnounceW f g)  = "[?!" ++ texForm f ++ "] " ++ texForm g
-texForm (Announce ags f g)  = "[" ++ intercalate "," ags ++ "!" ++ texForm f ++ "] " ++ texForm g
-texForm (AnnounceW ags f g) = "[" ++ intercalate "," ags ++ "?!" ++ texForm f ++ "] " ++ texForm g
 texForm (Dia (Dyn s _) f)   = " \\langle " ++ s ++ " \\rangle " ++ texForm f
 
 instance TexAble Prp where
@@ -332,9 +328,6 @@ subformulas (Kw i f)      = Kw i f : subformulas f
 subformulas (Ckw is f)    = Ckw is f : subformulas f
 subformulas (Dkw is f)    = Dkw is f : subformulas f
 subformulas (PubAnnounce  f g) = PubAnnounce  f g : nub (subformulas f ++ subformulas g)
-subformulas (PubAnnounceW f g) = PubAnnounceW f g : nub (subformulas f ++ subformulas g)
-subformulas (Announce  is f g) = Announce  is f g : nub (subformulas f ++ subformulas g)
-subformulas (AnnounceW is f g) = AnnounceW is f g : nub (subformulas f ++ subformulas g)
 subformulas (Dia dynop f)      = Dia dynop f : subformulas f
 
 shrinkform :: Form -> [Form]
@@ -379,9 +372,6 @@ substit q psi (Ckw ags f)  = Ckw ags (substit q psi f)
 substit q psi (Dk ags f)   = Dk ags (substit q psi f)
 substit q psi (Dkw ags f)  = Dkw ags (substit q psi f)
 substit q psi (PubAnnounce f g)   = PubAnnounce (substit q psi f) (substit q psi g)
-substit q psi (PubAnnounceW f g)  = PubAnnounceW (substit q psi f) (substit q psi g)
-substit q psi (Announce ags f g)  = Announce ags (substit q psi f) (substit q psi g)
-substit q psi (AnnounceW ags f g) = AnnounceW ags (substit q psi f) (substit q psi g)
 substit _ _   (Dia _ _)           = error "Cannot substitute in dynamic diamonds."
 
 -- | Apply multiple substitutions after each other.
@@ -420,9 +410,6 @@ replPsInF repl (Ckw ags f) = Ckw ags (replPsInF repl f)
 replPsInF repl (Dk ags f)  = Dk ags (replPsInF repl f)
 replPsInF repl (Dkw ags f) = Dkw ags (replPsInF repl f)
 replPsInF repl (PubAnnounce f g)   = PubAnnounce   (replPsInF repl f) (replPsInF repl g)
-replPsInF repl (PubAnnounceW f g)  = PubAnnounceW  (replPsInF repl f) (replPsInF repl g)
-replPsInF repl (Announce ags f g)  = Announce  ags (replPsInF repl f) (replPsInF repl g)
-replPsInF repl (AnnounceW ags f g) = AnnounceW ags (replPsInF repl f) (replPsInF repl g)
 replPsInF _    (Dia _ _)           = undefined -- TODO needs propsIn dynop!
 
 -- * Vocabulary of a formula
@@ -446,10 +433,7 @@ propsInForm (Ck _ f)           = propsInForm f
 propsInForm (Ckw _ f)          = propsInForm f
 propsInForm (Dk _ f)           = propsInForm f
 propsInForm (Dkw _ f)          = propsInForm f
-propsInForm (Announce _ f g)   = nub $ propsInForm f ++ propsInForm g
-propsInForm (AnnounceW _ f g)  = nub $ propsInForm f ++ propsInForm g
 propsInForm (PubAnnounce f g)  = nub $ propsInForm f ++ propsInForm g
-propsInForm (PubAnnounceW f g) = nub $ propsInForm f ++ propsInForm g
 propsInForm (Dia _dynOp _f)    = undefined -- TODO needs HasVocab dynop!
 
 propsInForms :: [Form] -> [Prp]
@@ -474,10 +458,7 @@ agentsInForm (Ck is f)          = nub $ is ++ agentsInForm f
 agentsInForm (Ckw is f)         = nub $ is ++ agentsInForm f
 agentsInForm (Dk is f)          = nub $ is ++ agentsInForm f
 agentsInForm (Dkw is f)         = nub $ is ++ agentsInForm f
-agentsInForm (Announce is f g)  = nub $ is ++ agentsInForm f ++ agentsInForm g
-agentsInForm (AnnounceW is f g) = nub $ is ++ agentsInForm f ++ agentsInForm g
 agentsInForm (PubAnnounce f g)  = nub $ agentsInForm f ++ agentsInForm g
-agentsInForm (PubAnnounceW f g) = nub $ agentsInForm f ++ agentsInForm g
 agentsInForm (Dia _dynOp _f)    = undefined -- TODO needs HasVocab dynop!
 
 -- * Simplification
@@ -549,9 +530,6 @@ simStep (Dkw ags f)   = Dkw ags (simStep f)
 simStep (PubAnnounce Top f) = simStep f
 simStep (PubAnnounce Bot _) = Top
 simStep (PubAnnounce  f g)  = PubAnnounce  (simStep f) (simStep g)
-simStep (PubAnnounceW f g)  = PubAnnounceW (simStep f) (simStep g)
-simStep (Announce  ags f g) = Announce  ags (simStep f) (simStep g)
-simStep (AnnounceW ags f g) = AnnounceW ags (simStep f) (simStep g)
 simStep (Dia dynop f)       = Dia dynop (simStep f)
 
 {- $
@@ -607,8 +585,8 @@ instance Arbitrary Form where
     form 0 = oneof [ pure Top
                    , pure Bot
                    , PrpF <$> arbitrary ]
-    form n = oneof [ pure SMCDEL.Language.Top
-                   , pure SMCDEL.Language.Bot
+    form n = oneof [ pure Top
+                   , pure Bot
                    , PrpF <$> arbitrary
                    , Neg <$> form n'
                    , Conj <$> listOf (form n')
@@ -622,10 +600,8 @@ instance Arbitrary Form where
                    , Kw  <$> arbitraryAg <*> form n'
                    , Ckw <$> arbitraryAgs <*> form n'
                    , Dkw <$> arbitraryAgs <*> form n'
-                   , PubAnnounce  <$> form n' <*> form n'
-                   , PubAnnounceW <$> form n' <*> form n'
-                   , Announce  <$> arbitraryAgs <*> form n' <*> form n'
-                   , AnnounceW <$> arbitraryAgs <*> form n' <*> form n' ]
+                   , PubAnnounce <$> form n' <*> form n'
+                   ]
       where
         n' = n `div` 5
         arbitraryAg = (\(Ag i) -> i) <$> arbitrary

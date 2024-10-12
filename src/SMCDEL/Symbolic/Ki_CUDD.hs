@@ -162,21 +162,6 @@ ddOf bls@(BlS mgr allprops lawdd (ag, odds)) (Dkw ags form) = unmvDd mgr (M.size
 
 ddOf bls@(BlS mgr _ _ _) (PubAnnounce f g) =
   imp mgr (ddOf bls f) (ddOf (bls `update` f) g)
-ddOf bls@(BlS mgr _ _ _) (PubAnnounceW f g) =
-  ifthenelse mgr (ddOf bls f)
-    (ddOf  (bls `update` f    ) g)
-    (ddOf  (bls `update` Neg f) g)
-
-ddOf bls@(BlS mgr props _ _) (Announce ags f g) =
-  imp mgr (ddOf bls f) (restrict mgr dd2 (k,True)) where
-    dd2  = ddOf (announce bls ags f) g
-    (P k) = freshp props
-
-ddOf bls@(BlS mgr props _ _) (AnnounceW ags f g) =
-  ifthenelse mgr (ddOf bls f) dd2a dd2b where
-    dd2a = restrict mgr (ddOf  (announce bls ags f      ) g) (k,True)
-    dd2b = restrict mgr (ddOf  (announce bls ags (Neg f)) g) (k,True)
-    (P k) = freshp props
 
 ddOf _ (Dia (Dyn _ _) _) = error "Dia Dyn operator is not implemented in Ki_CUDD"
 
@@ -218,15 +203,6 @@ instance (DdCtx a b c) => Update (BelStruct a b c) Form where
 
 instance (DdCtx a b c) => Update (BelScene a b c) Form where
   unsafeUpdate (kns,s) psi = (unsafeUpdate kns psi,s)
-
-announce :: (DdCtx a b c) => BelStruct a b c -> [Agent] -> Form -> BelStruct a b c
-announce bls@(BlS mgr props lawdd (ag, odds)) ags psi = BlS mgr newprops newlawdd (ag, newodds) where
-  (P k)     = freshp props
-  newprops  = sort $ P k : props
-  newlawdd = con mgr lawdd (imp mgr (var mgr k) (ddOf  bls psi))
-  newodds  = foldl (\x y -> con mgr <$> x <*> y) (Tagged $ top mgr) [newOfor i $ Tagged (restrict mgr (untag odds) (ag ! i, True)) | i <- M.keys ag]
-  newOfor i oi | i `elem` ags = con mgr <$> oi <*> (equ mgr <$> mvDd mgr (M.size ag) newprops (var mgr k) <*> cpDd mgr (M.size ag) newprops (var mgr k))
-               | otherwise    = con mgr <$> oi <*> (neg mgr <$> cpDd mgr (M.size ag) newprops (var mgr k)) -- p_psi'
 
 whereViaDd :: DdCtx a b c => BelStruct a b c -> Form -> [KnState]
 whereViaDd kns f = statesOf (kns `update` f)
@@ -456,9 +432,6 @@ reduce (e@(t@(Trf mgr addprops _ _ (ag, eventObs)), x) :: Event a b c) (Dk ags f
        tagDdEval mgr (mv (M.size ag) x ++ cp (M.size ag) y) omegai]
 reduce e (Dkw ags f)     = reduce e (Disj [Dk ags f, Dk ags (Neg f)])
 reduce _ PubAnnounce  {} = Nothing
-reduce _ PubAnnounceW {} = Nothing
-reduce _ Announce     {} = Nothing
-reduce _ AnnounceW    {} = Nothing
 reduce _ Dia          {} = Nothing
 
 ddReduce :: (DdCtx a b c) => BelScene a b c -> Event a b c -> Form -> Dd a b c

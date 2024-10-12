@@ -131,21 +131,6 @@ bddOf bls@(BlS allprops lawbdd (ags, obdds)) (Dkw ags_names form) = unmvBdd (M.s
 
 bddOf bls (PubAnnounce f g) =
   imp (bddOf bls f) (bddOf (bls `update` f) g)
-bddOf bls (PubAnnounceW f g) =
-  ifthenelse (bddOf bls f)
-    (bddOf (bls `update` f    ) g)
-    (bddOf (bls `update` Neg f) g)
-
-bddOf bls@(BlS props _ _) (Announce ags f g) =
-  imp (bddOf bls f) (restrict bdd2 (k,True)) where
-    bdd2  = bddOf (announce bls ags f) g
-    (P k) = freshp props
-
-bddOf bls@(BlS props _ _) (AnnounceW ags f g) =
-  ifthenelse (bddOf bls f) bdd2a bdd2b where
-    bdd2a = restrict (bddOf (announce bls ags f      ) g) (k,True)
-    bdd2b = restrict (bddOf (announce bls ags (Neg f)) g) (k,True)
-    (P k) = freshp props
 
 bddOf bls (Dia (Dyn dynLabel d) f) =
     con (bddOf bls preCon)                    -- 5. Prefix with "precon AND ..." (diamond!)
@@ -368,9 +353,6 @@ reduce e@(t@(Trf addprops _ _ (ags, eventObs)), x) (Dk agents f) =
       tagBddEval (mv (M.size ags) x ++ cp (M.size ags) y) omegai]
 reduce e (Dkw ags f)     = reduce e (Disj [Dk ags f, Dk ags (Neg f)])
 reduce _ PubAnnounce  {} = Nothing
-reduce _ PubAnnounceW {} = Nothing
-reduce _ Announce     {} = Nothing
-reduce _ AnnounceW    {} = Nothing
 reduce _ Dia          {} = Nothing
 
 bddReduce :: BelScene -> Event -> Form -> Bdd

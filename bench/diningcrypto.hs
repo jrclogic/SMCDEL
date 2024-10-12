@@ -83,7 +83,7 @@ import SMCDEL.Examples.DiningCrypto
 -- Note that this formula is different from the one in "SMCDEL.Examples.DiningCrypto"
 benchDcCheckForm :: Int -> Form
 benchDcCheckForm n =
-  PubAnnounceW (Xor [genDcReveal n i | i<-[1..n] ]) $
+  pubAnnounceW (Xor [genDcReveal n i | i<-[1..n] ]) $
   -- pubAnnounceWhetherStack [ genDcReveal n i | i<-[1..n] ] $ -- slow!
     Impl (Neg (PrpF $ P 1)) $
       Disj [ K "1" (Conj [Neg $ PrpF $ P k | k <- [1..n]  ])

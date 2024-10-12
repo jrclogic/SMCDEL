@@ -115,16 +115,6 @@ eval (m@(KrMS5 worlds rel _),w) (Dkw ags form) = alleqWith (\w' -> eval (m,w') f
   dkrel = intersection worlds [ apply rel i | i <- ags ]
 eval pm (PubAnnounce form1 form2) =
   not (eval pm form1) || eval (update pm form1) form2
-eval pm (PubAnnounceW form1 form2) =
-  if eval pm form1
-    then eval (update pm form1) form2
-    else eval (update pm (Neg form1)) form2
-eval pm (Announce ags form1 form2) =
-  not (eval pm form1) || eval (announce pm ags form1) form2
-eval pm (AnnounceW ags form1 form2) =
-  if eval pm form1
-    then eval (announce pm ags form1) form2
-    else eval (announce pm ags (Neg form1)) form2
 eval pm (Dia (Dyn dynLabel d) f) = case fromDynamic d of
   Just pactm -> eval pm (preOf (pactm :: PointedActionModelS5)) && eval (pm `update` pactm) f
   Nothing    -> case fromDynamic d of
@@ -158,22 +148,6 @@ instance Update PointedModelS5 Form where
 instance Update MultipointedModelS5 Form where
   unsafeUpdate (m,ws) f =
     let newm = unsafeUpdate m f in (newm, ws `intersect` worldsOf newm)
-
-announce :: PointedModelS5 -> [Agent] -> Form -> PointedModelS5
-announce pm@(m@(KrMS5 sts rel val), cur) ags form =
-  if eval pm form then (KrMS5 sts newrel val, cur)
-                  else error "announce failed: Liar!"
-  where
-    split ws = map sort.(\(x,y) -> [x,y]) $ partition (\s -> eval (m,s) form) ws
-    newrel = map nrel rel
-    nrel (i,ri) | i `elem` ags = (i, concatMap (filter ([]/=) . split) ri)
-                | otherwise    = (i,ri)
-
-announceAction :: [Agent] -> [Agent] -> Form -> PointedActionModelS5
-announceAction everyone listeners f = (am, 1) where
-  am = ActMS5 -- [(Action,(Form,PostCondition))] [(Agent,Partition)]
-    [ (1, (f, [])), (2, (Top, [])) ]
-    [ (i, if i `elem` listeners then [[1],[2]] else [[1,2]] ) | i <- everyone ]
 
 instance KripkeLike KripkeModelS5 where
   directed = const False
@@ -393,3 +367,16 @@ instance Update MultipointedModelS5 MultipointedActionModelS5 where
       newrel            = [ (a, nTransPartsFor a)  | a <- map fst oldrel ]
       newcurs           = concat [ map (\(_,_,x) -> x) $ copiesOf (s,a) | s <- oldcurs, a <- factions ]
       cartProd xs ys    = [ (x,y) | x <- xs, y <- ys ]
+
+-- * Frequently-used Action Models
+
+-- | Public announcement as an action model.
+pubAnnounceAction :: [Agent] -> Form -> PointedActionModelS5
+pubAnnounceAction ags f = (ActMS5 [(0,(f,[]))] [ (i,[[0]]) | i <- ags ], 0)
+
+-- | Semi-private group announcement as an action model.
+groupAnnounceAction :: [Agent] -> [Agent] -> Form -> PointedActionModelS5
+groupAnnounceAction everyone listeners f = (am, 1) where
+  am = ActMS5
+    [ (1, (f, [])), (2, (Neg f, [])) ]
+    [ (i, if i `elem` listeners then [[1],[2]] else [[1,2]] ) | i <- everyone ]

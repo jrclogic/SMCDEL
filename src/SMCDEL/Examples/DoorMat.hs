@@ -1,8 +1,8 @@
 module SMCDEL.Examples.DoorMat where
 
-import SMCDEL.Explicit.S5 as Exp hiding (announce)
+import SMCDEL.Explicit.S5 as Exp
 import SMCDEL.Language
-import SMCDEL.Symbolic.S5 hiding (announce)
+import SMCDEL.Symbolic.S5
 import SMCDEL.Translations.S5
 import SMCDEL.Other.Planning
 

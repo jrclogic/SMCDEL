@@ -74,7 +74,7 @@ actionToEvent (ActM am, faction) = (Trf addprops addlaw changelaw eventObs, efac
 eventToAction :: Event -> PointedActionModel
 eventToAction (t@(Trf addprops addlaw changelaw eventObs), efacts) = (ActM am, faction) where
   actlist    = zip (powerset addprops) [0..]
-  am         = M.fromList [ (a, Act (preFor ps) (postFor ps) (relFor ps)) | (ps,a) <- actlist, preFor ps /= Bot ]
+  am         = M.fromList [ (a, Act (preFor ps) (postFor ps) (relFor ps)) | (ps,a) <- actlist ]
   preFor ps  = simplify $ substitSet (map (, Top) ps ++ map (, Bot) (addprops \\ ps)) addlaw
   postFor ps = M.fromList [ (q, formOf $ (changelaw ! q) `restrictSet` [(p, P p `elem` ps) | (P p) <- addprops]) | q <- M.keys changelaw ]
   relFor ps  = M.fromList [(i,rFor i) | i <- agentsOf t] where

@@ -101,15 +101,9 @@ Form : TOP { Top }
      | '(' StringList ')' DKNOWTHAT Form { Dk $2 $5 }
      | '(' StringList ')' DKNOWWHETHER Form { Dkw $2 $5 }
      | '[' '!' Form ']'     Form { PubAnnounce  $3 $5 }
-     | '[' '?' '!' Form ']' Form { PubAnnounceW $4 $6 }
+     | '[' '?' '!' Form ']' Form { pubAnnounceW $4 $6 }
      | '<' '!' Form '>'     Form { Neg (PubAnnounce  $3 (Neg $5)) }
-     | '<' '?' '!' Form '>' Form { Neg (PubAnnounceW $4 (Neg $6)) }
-     -- announcements to a group:
-     | '[' StringList '!' Form ']'     Form { Announce $2 $4 $6 }
-     | '[' StringList '?' '!' Form ']' Form { AnnounceW $2 $5 $7 }
-     | '<' StringList '!' Form '>'     Form { Neg (Announce  $2 $4 (Neg $6)) }
-     | '<' StringList '?' '!' Form '>' Form { Neg (AnnounceW $2 $5 (Neg $7)) }
-     -- boolean quantifiers:
+     | '<' '?' '!' Form '>' Form { Neg (pubAnnounceW $4 (Neg $6)) }
      | 'Forall' IntList Form { Forall (map P $2) $3 }
      | 'Exists' IntList Form { Exists (map P $2) $3 }
 FormList : Form { [$1] } | Form COMMA FormList { $1:$3 }

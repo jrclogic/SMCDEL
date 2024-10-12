@@ -6,8 +6,6 @@
 
 module SMCDEL.Examples where
 
-import Data.List ((\\),sort)
-
 import SMCDEL.Explicit.S5
 import SMCDEL.Internal.TaggedBDD
 import SMCDEL.Language
@@ -79,18 +77,8 @@ myPropu = allsamebdd (vocabOf myKNS)
 
 -- * Different Announcements
 
--- | Public announcement as an action model.
-pubAnnounceAction :: [Agent] -> Form -> PointedActionModelS5
-pubAnnounceAction ags f = (ActMS5 [(0,(f,[]))] [ (i,[[0]]) | i <- ags ], 0)
-
 examplePaAction :: PointedActionModelS5
 examplePaAction = pubAnnounceAction [alice,bob] (PrpF (P 0))
-
--- | Group announcement as an action model.
-groupAnnounceAction :: [Agent] -> [Agent] -> Form -> PointedActionModelS5
-groupAnnounceAction everyone listeners f = (ActMS5 [(0,(f,[])),(1,(Neg f,[]))] actrel, 0)
-  where actrel = sort $ [ (i,[[0],[1]]) | i <- listeners ]
-                     ++ [ (i,[[0 , 1]]) | i <- everyone \\ listeners ]
 
 exampleGroupAnnounceAction :: PointedActionModelS5
 exampleGroupAnnounceAction = groupAnnounceAction [alice, bob] [alice] (PrpF (P 0))

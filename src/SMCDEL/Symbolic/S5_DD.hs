@@ -188,16 +188,6 @@ eval (kns@(KnS _ _ obs),s) (Dkw ags form) = alleqWith (\s' -> eval (kns,s') form
   oi = nub $ concat [obs ! i | i <- ags]
 eval scn (PubAnnounce form1 form2) =
   not (eval scn form1) || eval (update scn form1) form2
-eval (kns,s) (PubAnnounceW form1 form2) =
-  if eval (kns, s) form1
-    then eval (update kns form1, s) form2
-    else eval (update kns (Neg form1), s) form2
-eval scn (Announce ags form1 form2) =
-  not (eval scn form1) || eval (announceOnScn scn ags form1) form2
-eval scn (AnnounceW ags form1 form2) =
-  if eval scn form1
-    then eval (announceOnScn scn ags form1      ) form2
-    else eval (announceOnScn scn ags (Neg form1)) form2
 eval scn (Dia (Dyn dynLabel d) f) = case fromDynamic d of
   Just event -> eval scn (preOf (event :: Event))
                 && eval (scn `update` event) f
@@ -245,21 +235,8 @@ bddOf kns@(KnS allprops lawbdd obs) (Dkw ags form) =
   disSet [ forallSet otherps (imp lawbdd (bddOf kns f)) | f <- [form, Neg form] ] where
     otherps = map (\(P n) -> n) $ allprops \\ uoi
     uoi = nub (concat [obs ! i | i <- ags])
-bddOf kns@(KnS props _ _) (Announce ags form1 form2) =
-  imp (bddOf kns form1) (restrict bdd2 (k,True)) where
-    bdd2  = bddOf (announce kns ags form1) form2
-    (P k) = freshp props
-bddOf kns@(KnS props _ _) (AnnounceW ags form1 form2) =
-  ifthenelse (bddOf kns form1) bdd2a bdd2b where
-    bdd2a = restrict (bddOf (announce kns ags form1) form2) (k,True)
-    bdd2b = restrict (bddOf (announce kns ags form1) form2) (k,False)
-    (P k) = freshp props
 bddOf kns (PubAnnounce form1 form2) =
   imp (bddOf kns form1) (bddOf (update kns form1) form2)
-bddOf kns (PubAnnounceW form1 form2) =
-  ifthenelse (bddOf kns form1) newform2a newform2b where
-    newform2a = bddOf (update kns form1) form2
-    newform2b = bddOf (update kns (Neg form1)) form2
 
 bddOf kns (Dia (Dyn dynLabel d) f) =
     con (bddOf kns preCon)                    -- 5. Prefix with "precon AND ..." (diamond!)
@@ -571,9 +548,6 @@ reduce event@(trf@(KnTrf addprops _ _ obs), x) (Dk ags f) =
     ]
 reduce e (Dkw a f)     = reduce e (Disj [Dk a f, Dk a (Neg f)])
 reduce _ PubAnnounce  {} = Nothing
-reduce _ PubAnnounceW {} = Nothing
-reduce _ Announce     {} = Nothing
-reduce _ AnnounceW    {} = Nothing
 reduce _ Dia          {} = Nothing
 
 instance Arbitrary KnowStruct where

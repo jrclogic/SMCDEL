@@ -172,16 +172,6 @@ eval (kns@(KnS _ _ obs),s) (Dkw ags form) = alleqWith (\s' -> eval (kns,s') form
   oi = nub $ concat [obs ! i | i <- ags]
 eval scn (PubAnnounce form1 form2) =
   not (eval scn form1) || eval (update scn form1) form2
-eval (kns,s) (PubAnnounceW form1 form2) =
-  if eval (kns, s) form1
-    then eval (update kns form1, s) form2
-    else eval (update kns (Neg form1), s) form2
-eval scn (Announce ags form1 form2) =
-  not (eval scn form1) || eval (announceOnScn scn ags form1) form2
-eval scn (AnnounceW ags form1 form2) =
-  if eval scn form1
-    then eval (announceOnScn scn ags form1      ) form2
-    else eval (announceOnScn scn ags (Neg form1)) form2
 eval scn (Dia (Dyn dynLabel d) f) = case fromDynamic d of
   Just event -> eval scn (preOf (event :: Event))
                 && eval (scn `update` event) f
@@ -217,21 +207,6 @@ We also have to define how knowledge structures are changed by public and group 
 The following functions correspond to the last two points of the semantics Definition above.
 -}
 
--- TODO remove these, replace with transformers. (at least remove group announcement)
-
-announce :: KnowStruct -> [Agent] -> Form -> KnowStruct
-announce kns@(KnS props lawbdd obs) ags psi = KnS newprops newlawbdd newobs where
-  proppsi@(P k) = freshp props
-  newprops  = sort $ proppsi : props
-  newlawbdd = con lawbdd (equ (var k) (bddOf kns psi))
-  newobs    = [(i, obs ! i ++ [proppsi | i `elem` ags]) | i <- map fst obs]
-
-announceOnScn :: KnowScene -> [Agent] -> Form -> KnowScene
-announceOnScn (kns@(KnS props _ _),s) ags psi
-  | eval (kns,s) psi = (announce kns ags psi, sort $ freshp props : s)
-  | otherwise        = error "Liar!"
-
-
 -- * Symbolic Evaluation
 
 bddOf :: KnowStruct -> Form -> Bdd
@@ -264,29 +239,15 @@ bddOf kns@(KnS allprops lawbdd obs) (Dkw ags form) =
   disSet [ forallSet otherps (imp lawbdd (bddOf kns f)) | f <- [form, Neg form] ] where
     otherps = map (\(P n) -> n) $ allprops \\ uoi
     uoi = nub (concat [obs ! i | i <- ags])
-bddOf kns@(KnS props _ _) (Announce ags form1 form2) =
-  imp (bddOf kns form1) (restrict bdd2 (k,True)) where
-    bdd2  = bddOf (announce kns ags form1) form2
-    (P k) = freshp props
-bddOf kns@(KnS props _ _) (AnnounceW ags form1 form2) =
-  ifthenelse (bddOf kns form1) bdd2a bdd2b where
-    bdd2a = restrict (bddOf (announce kns ags form1) form2) (k,True)
-    bdd2b = restrict (bddOf (announce kns ags form1) form2) (k,False)
-    (P k) = freshp props
 bddOf kns (PubAnnounce form1 form2) =
   imp (bddOf kns form1) (bddOf (update kns form1) form2)
-bddOf kns (PubAnnounceW form1 form2) =
-  ifthenelse (bddOf kns form1) newform2a newform2b where
-    newform2a = bddOf (update kns form1) form2
-    newform2b = bddOf (update kns (Neg form1)) form2
-
 bddOf kns (Dia (Dyn dynLabel d) f) =
     con (bddOf kns preCon)                    -- 5. Prefix with "precon AND ..." (diamond!)
     . relabelWith copyrelInverse              -- 4. Copy back changeProps V_-^o to V_-
     . simulateActualEvents                    -- 3. Simulate actual event(s) [see below]
     . substitSimul [ (k, changeLaw ! p)       -- 2. Replace changeProps V_ with postcons
                    | p@(P k) <- changeProps]  --    (no "relabelWith copyrel", undone in 4)
-    . bddOf (kns `update` trf)                -- 1. boolean equivalent wrt new struct
+    . bddOf (kns `unsafeUpdate` trf)          -- 1. boolean equivalent wrt new struct
     $ f
   where
     changeProps = map fst changeLaw
@@ -457,12 +418,7 @@ instance HasPrecondition MultipointedEvent where
   preOf (KnTrf addprops addlaw _ _, xsBdd) =
     simplify $ Exists addprops (Conj [ formOf xsBdd, addlaw ])
 
--- | A public announcement, the easiest example of a knowledge transformer.
-publicAnnounce :: [Agent] -> Form -> Event
-publicAnnounce agents f = (noChange KnTrf [] f myobs, []) where
-  myobs = [ (i,[]) | i <- agents ]
-
--- | shift addprops to ensure that props and newprops are disjoint:
+-- | Shift addprops to ensure that props and newprops are disjoint:
 shiftPrepare :: KnowStruct -> KnowTransformer -> (KnowTransformer, [(Prp,Prp)])
 shiftPrepare (KnS props _ _) (KnTrf addprops addlaw changelaw eventObs) =
   (KnTrf shiftaddprops addlawShifted changelawShifted eventObsShifted, shiftrel) where
@@ -632,9 +588,6 @@ reduce event@(trf@(KnTrf addprops _ _ obs), x) (Dk ags f) =
     ]
 reduce e (Dkw ags f)     = reduce e (Disj [Dk ags f, Dk ags (Neg f)])
 reduce _ PubAnnounce  {} = Nothing
-reduce _ PubAnnounceW {} = Nothing
-reduce _ Announce     {} = Nothing
-reduce _ AnnounceW    {} = Nothing
 reduce _ Dia          {} = Nothing
 
 -- * Random Knowledge Structures
@@ -651,3 +604,16 @@ instance Arbitrary KnowStruct where
       ) defaultAgents
     return $ KnS myVocabulary (boolBddOf statelaw) obs
   shrink kns = [ withoutProps [p] kns | length (vocabOf kns) > 1, p <- vocabOf kns \\ defaultVocabulary ]
+
+-- * Frequently-used Transformers
+
+-- | A public announcement, the easiest example of a knowledge transformer.
+pubAnnounceTrf :: [Agent] -> Form -> Event
+pubAnnounceTrf agents f = (noChange KnTrf [] f myobs, []) where
+  myobs = [ (i,[]) | i <- agents ]
+
+-- | Semi-private group announcement as an action model.
+groupAnnounceTrf :: [Agent] -> [Agent] -> Form -> Event
+groupAnnounceTrf everyone listeners f = (noChange KnTrf [fresh] (PrpF fresh `Equi` f) myobs, [fresh]) where
+  fresh = freshp $ propsInForm f
+  myobs = [ (i, [fresh | i `elem` listeners]) | i <- everyone ]

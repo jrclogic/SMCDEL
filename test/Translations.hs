@@ -23,7 +23,6 @@ import SMCDEL.Language
 import SMCDEL.Symbolic.S5 as Sym
 import SMCDEL.Explicit.S5 as Exp
 import SMCDEL.Translations.S5
-import SMCDEL.Examples
 import SMCDEL.Internal.TaggedBDD
 
 -- | Run all tests from this module.
@@ -35,8 +34,8 @@ main = hspec $
     prop "lemma equivalence Kripke" lemmaEquivTestKr
     prop "lemma equivalence KnS"    lemmaEquivTestKnS
     prop "number of states"         numOfStatesTest
-    prop "public announcement"      pubAnnounceTest
-    prop "group announcement"       (\sf gl sg  -> alleq $ announceTest sf gl sg)
+    prop "public announcement"      (\ sf sg -> alleq $ pubAnnounceTest sf sg)
+    prop "group announcement"       (\ sf gl sg  -> alleq $ groupAnnounceTest sf gl sg)
     prop "single action"            (\am f -> alleq $ singleActionTest am f)
     prop "propulations"             propulationTest
 
@@ -103,39 +102,62 @@ lemmaEquivTestKnS kns = equivalentWith (m, w) (kns, g w) g where
 
 -- * Public and Group Announcements
 
--- |
--- We can do public announcements in various ways.
--- The following tests check that the results of all methods are the same.
-pubAnnounceTest :: Prp -> SimplifiedForm -> Bool
-pubAnnounceTest prp (SF g) = alleq
+-- | Public announcements can be done in various ways.
+-- This test checks that the results of all methods are the same.
+pubAnnounceTest :: SimplifiedForm -> SimplifiedForm -> [Bool]
+pubAnnounceTest (SF f) (SF g) =
   [ Exp.eval mymodel (PubAnnounce f g)
   , Sym.eval (kripkeToKns mymodel) (PubAnnounce f g)
   , Sym.evalViaBdd (kripkeToKns mymodel) (PubAnnounce f g)
-  , Sym.evalViaBdd (update (kripkeToKns mymodel) (actionToEvent (pubAnnounceAction (agentsOf mymodel) f))) g
-  , Sym.evalViaBdd (update (kripkeToKns mymodel) (publicAnnounce (agentsOf mymodel) f)) g
-  , Exp.eval mymodel (Dia (Dyn dynName (toDyn $ pubAnnounceAction (agentsOf mymodel) f)) g)
-  , Sym.evalViaBdd (kripkeToKns mymodel) (Dia (Dyn dynName (toDyn $ actionToEvent $ pubAnnounceAction (agentsOf mymodel) f)) g)
-  ] where
-      f = PrpF prp
-      dynName = "publicly announce " ++ show prp
+  , let
+      precon = Sym.evalViaBdd (kripkeToKns mymodel) f
+      action = actionToEvent (pubAnnounceAction (agentsOf mymodel) f)
+    in
+      not precon || Sym.evalViaBdd (unsafeUpdate (kripkeToKns mymodel) action) g
+  , let
+      precon = Sym.evalViaBdd (kripkeToKns mymodel) f
+    in
+      not precon || Sym.evalViaBdd (unsafeUpdate (kripkeToKns mymodel) (pubAnnounceTrf (agentsOf mymodel) f)) g
+  , Exp.eval mymodel
+    (box (Dyn ("publicly announce " ++ show f)
+          (toDyn $ pubAnnounceAction (agentsOf mymodel) f))
+      g)
+  , Sym.evalViaBdd (kripkeToKns mymodel)
+    (box (Dyn ("publicly announce " ++ show f)
+          (toDyn $ actionToEvent $ pubAnnounceAction (agentsOf mymodel) f))
+      g)
+  ]
 
--- | Same as `pubAnnounceTest`,
--- but for semi-private group announcements instead of public announcements.
-announceTest :: SimplifiedForm -> Group -> SimplifiedForm -> [Bool]
-announceTest (SF f) (Group listeners) (SF g) =
-  [ Exp.eval mymodel (Announce listeners f g) -- directly on Kripke
-  , let -- apply action model to Kripke
+-- | Semi private-group announcements can be done in various ways.
+-- This test checks that the results of all methods are the same.
+groupAnnounceTest :: SimplifiedForm -> Group -> SimplifiedForm -> [Bool]
+groupAnnounceTest (SF f) (Group listeners) (SF g) =
+  [ let -- apply action model to Kripke
       precon   = Exp.eval mymodel f
       action   = groupAnnounceAction (agentsOf mymodel) listeners f
       newModel = update mymodel action
     in not precon || Exp.eval newModel g
-  , Exp.eval mymodel (box (Dyn ("announce " ++ show f ++ " to " ++ show listeners) (toDyn $ groupAnnounceAction (agentsOf mymodel) listeners f)) g)
-  , Sym.evalViaBdd (kripkeToKns mymodel) (Announce listeners f g) -- BDD on equivalent kns
+  , Exp.eval mymodel
+    (box (Dyn ("announce " ++ show f ++ " to " ++ show listeners)
+           (toDyn $ groupAnnounceAction (agentsOf mymodel) listeners f))
+      g)
   , let -- apply equivalent transformer to equivalent kns
       precon  = Sym.evalViaBdd (kripkeToKns mymodel) f
       equiTrf = actionToEvent (groupAnnounceAction (agentsOf mymodel) listeners f)
       newKns  = update (kripkeToKns mymodel) equiTrf
     in not precon || Sym.evalViaBdd newKns g
+  , Sym.evalViaBdd (kripkeToKns mymodel)
+    (box (Dyn ("announce " ++ show f ++ " to " ++ show listeners)
+           (toDyn $ actionToEvent $ groupAnnounceAction (agentsOf mymodel) listeners f))
+      g)
+  , Exp.eval mymodel
+    (box (Dyn ("announce " ++ show f ++ " to " ++ show listeners)
+           (toDyn $ eventToAction $ groupAnnounceTrf (agentsOf mymodel) listeners f))
+      g)
+  , Sym.evalViaBdd (kripkeToKns mymodel)
+    (box (Dyn ("announce " ++ show f ++ " to " ++ show listeners)
+           (toDyn $ groupAnnounceTrf (agentsOf mymodel) listeners f))
+      g)
   ]
 
 -- * Random Action Models

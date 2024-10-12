@@ -117,15 +117,6 @@ eval (m,w) (Ckw ags form) = alleqWith (\w' -> eval (m,w') form) (groupRel m ags 
 eval (m,w) (Dk ags form) = all (\w' -> eval (m,w') form) (distRel m ags w)
 eval (m,w) (Dkw ags form) = alleqWith (\w' -> eval (m,w') form) (distRel m ags w)
 eval (m,w) (PubAnnounce f g) = not (eval (m,w) f) || eval (update (m,w) f) g
-eval (m,w) (PubAnnounceW f g) = eval (update m aform, w) g where
-  aform | eval (m,w) f = f
-        | otherwise     = Neg f
-eval (m,w) (Announce listeners f g) = not (eval (m,w) f) || eval newm g where
-  newm = (m,w) `update` announceAction (agentsOf m) listeners f
-eval (m,w) (AnnounceW listeners f g) = eval newm g where
-  newm = (m,w) `update` announceAction (agentsOf m) listeners aform
-  aform | eval (m,w) f = f
-        | otherwise    = Neg f
 eval pm (Dia (Dyn dynLabel d) f) = case fromDynamic d of
   Just pactm -> eval pm (preOf (pactm :: PointedActionModel)) && eval (pm `update` pactm) f
   Nothing    -> error $ "cannot update Kripke model with '" ++ dynLabel ++ "':\n  " ++ show d
@@ -165,8 +156,8 @@ instance Update MultipointedModel Form where
   unsafeUpdate (m,ws) f =
     let newm = unsafeUpdate m f in (newm, ws `intersect` worldsOf newm)
 
-announceAction :: [Agent] -> [Agent] -> Form -> PointedActionModel
-announceAction everyone listeners f = (ActM am, 1) where
+groupAnnounceAction :: [Agent] -> [Agent] -> Form -> PointedActionModel
+groupAnnounceAction everyone listeners f = (ActM am, 1) where
   am = M.fromList
     [ (1, Act { pre = f,   post = M.empty, rel = M.fromList $ [(i,[1]) | i <- listeners] ++ [(i,[2]) | i <- everyone \\ listeners] } )
     , (2, Act { pre = Top, post = M.empty, rel = M.fromList [(i,[2]) | i <- everyone] } )

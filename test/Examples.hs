@@ -48,11 +48,11 @@ main = hspec $ do
       \(BF bf) (BF bg) -> (tex bf /= tex bg) || boolBddOf bf == boolBddOf bg
     let testForm = Forall [P 3] $ Equi
           (Disj [ Bot, PrpF $ P 3, Bot ])
-          (Conj [ Top , Xor [Top,Kw alice (PrpF (P 4))] , AnnounceW [alice,bob] (PrpF (P 5)) (Kw bob $ PrpF (P 5)) ])
+          (Conj [ Top , Xor [Top,Kw alice (PrpF (P 4))] , PubAnnounce (PrpF (P 5)) (Kw bob $ PrpF (P 5)) ])
     it "we can LaTeX the testForm" $ tex testForm === intercalate "\n"
         [ " \\forall \\{ p_{3} \\} ( \\bigvee \\{"
         , " \\bot , p_{3} ,\\bot \\} \\leftrightarrow \\bigwedge \\{"
-        , "\\top , ( \\top \\oplus K^?_{\\text{Alice}} p_{4} ) ,[Alice,Bob?! p_{5} ] K^?_{\\text{Bob}} p_{5} \\} ) " ]
+        , "\\top , ( \\top \\oplus K^?_{\\text{Alice}} p_{4} ) ,[! p_{5} ] K^?_{\\text{Bob}} p_{5} \\} ) " ]
     it "svgViaTex works for modelA" $
         isInfixOf "stroke-linecap:butt" (svgViaTex modelA)
     prop "svgViaTex can yield strings of different length" $

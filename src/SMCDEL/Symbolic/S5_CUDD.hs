@@ -82,33 +82,13 @@ ddOf kns@(KnS mgr allprops lawbdd obs) (Dkw ags form) =
   disSet mgr [ forallSet mgr otherps (imp mgr lawbdd (ddOf kns f)) | f <- [form, Neg form] ] where
     otherps = map (\(P n) -> n) $ allprops \\ uoi
     uoi = nub (concat [obs ! i | i <- ags])
-ddOf kns@(KnS mgr props _ _) (Announce ags form1 form2) =
-  imp mgr (ddOf kns form1) (restrict mgr bdd2 (k,True)) where
-    bdd2  = ddOf (announce kns ags form1) form2
-    (P k) = freshp props
-ddOf kns@(KnS mgr props _ _) (AnnounceW ags form1 form2) =
-  ifthenelse mgr (ddOf kns form1) bdd2a bdd2b where
-    bdd2a = restrict mgr (ddOf (announce kns ags form1) form2) (k,True)
-    bdd2b = restrict mgr (ddOf (announce kns ags form1) form2) (k,False)
-    (P k) = freshp props
 ddOf kns@(KnS mgr _ _ _) (PubAnnounce form1 form2) = imp mgr (ddOf kns form1) newform2 where
     newform2 = ddOf (pubAnnounce kns form1) form2
-ddOf kns@(KnS mgr _ _ _) (PubAnnounceW form1 form2) =
-  ifthenelse mgr (ddOf kns form1) newform2a newform2b where
-    newform2a = ddOf (pubAnnounce kns form1) form2
-    newform2b = ddOf (pubAnnounce kns (Neg form1)) form2
 ddOf _ (Dia _ _) = error "Dynamic operators are not implemented in S5_CUDD."
 
 pubAnnounce :: (DdCtx a b c) => KnowStruct a b c -> Form -> KnowStruct a b c
 pubAnnounce kns@(KnS mgr props lawbdd obs) psi = KnS mgr props newlawbdd obs where
   newlawbdd = con mgr lawbdd (ddOf kns psi)
-
-announce :: (DdCtx a b c) => KnowStruct a b c -> [Agent] -> Form -> KnowStruct a b c
-announce kns@(KnS mgr props lawbdd obs) ags psi = KnS mgr newprops newlawbdd newobs where
-  proppsi@(P k) = freshp props
-  newprops  = proppsi:props
-  newlawbdd = con mgr lawbdd (equ mgr (var mgr k) (ddOf kns psi))
-  newobs    = [(i, apply obs i ++ [proppsi | i `elem` ags]) | i <- map fst obs]
 
 evalAssDD :: (DdCtx a b c) => Cudd.Cudd.DdManager -> Dd a b c -> (Int -> Bool) -> Bool
 evalAssDD mgr (dd :: Dd a b c) f = bool where

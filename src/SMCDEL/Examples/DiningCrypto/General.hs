@@ -50,7 +50,7 @@ nobodyknowsWhoPaid = Conj
   , Impl (PrpF (P 3)) (Conj [Neg $ K "1" (PrpF $ P 3), Neg $ K "2" (PrpF $ P 3) ]) ]
 
 dcCheckForm :: Form
-dcCheckForm = PubAnnounceW (reveal 1) $ PubAnnounceW (reveal 2) $ PubAnnounceW (reveal 3) $
+dcCheckForm = pubAnnounceW (reveal 1) $ pubAnnounceW (reveal 2) $ pubAnnounceW (reveal 3) $
     Conj [ everyoneKnowsWhetherNSApaid, nobodyknowsWhoPaid ]
 
 dcValid :: Bool

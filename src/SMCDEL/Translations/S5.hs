@@ -168,7 +168,7 @@ smartKripkeToKnsWithoutChecks (m@(KrMS5 worlds rel val), cur) =
 transformerToActionModelWithG :: KnowTransformer -> (ActionModelS5, StateMap)
 transformerToActionModelWithG trf@(KnTrf addprops addlaw changelaw addobs) = (ActMS5 acts actrel, g) where
   actlist = zip (powerset addprops) [0..(2 ^ length addprops - 1)]
-  acts    = [ (a, (preFor ps, postsFor ps)) | (ps,a) <- actlist, preFor ps /= Bot ] where
+  acts    = [ (a, (preFor ps, postsFor ps)) | (ps,a) <- actlist ] where
     preFor ps = simplify $ substitSet (map (, Top) ps ++ map (, Bot) (addprops \\ ps)) addlaw
     postsFor ps =
       [ (q, formOf $ restrictSet (changelaw ! q) [(p, P p `elem` ps) | (P p) <- addprops])
@@ -183,7 +183,15 @@ transformerToActionModelWithG trf@(KnTrf addprops addlaw changelaw addobs) = (Ac
 eventToAction :: Event -> PointedActionModelS5
 eventToAction (trf, event) = (actm, faction) where
   (actm@(ActMS5 acts _), g) = transformerToActionModelWithG trf
-  faction = head [ a | (a,_) <- acts, g a == event ]
+  faction = case [ a | (a,_) <- acts, g a == event ] of
+    [fct] -> fct
+    _ -> error $ unlines
+      [ "Could not find faction:"
+      , "  acts = " ++ show acts
+      , "  map (g . fst) acts = " ++ show (map (g . fst) acts)
+      , "  event = " ++ show event
+      , "  trf = " ++ show trf
+      ]
 
 eventToActionMulti :: MultipointedEvent -> MultipointedActionModelS5
 eventToActionMulti (trf, actualEventLaw) = (actm, factions) where

@@ -161,21 +161,6 @@ ddOf bls@(BlS mgr allprops lawdd odds) (Dkw ags form) = unmvDd mgr allprops resu
 
 ddOf bls@(BlS mgr _ _ _) (PubAnnounce f g) =
   imp mgr (ddOf bls f) (ddOf  (pubAnnounce bls f) g)
-ddOf bls@(BlS mgr _ _ _) (PubAnnounceW f g) =
-  ifthenelse mgr (ddOf bls f)
-    (ddOf  (pubAnnounce bls f      ) g)
-    (ddOf  (pubAnnounce bls (Neg f)) g)
-
-ddOf bls@(BlS mgr props law obs) (Announce ags f g) =
-  imp mgr (ddOf bls f) (restrict mgr dd2 (k,True)) where
-    dd2  = ddOf (announce (BlS mgr props law obs) ags f) g
-    (P k) = freshp props
-
-ddOf bls@(BlS mgr props law obs) (AnnounceW ags f g) =
-  ifthenelse mgr (ddOf bls f) dd2a dd2b where
-    dd2a = restrict mgr (ddOf  (announce (BlS mgr props law obs) ags f      ) g) (k,True)
-    dd2b = restrict mgr (ddOf  (announce (BlS mgr props law obs) ags (Neg f)) g) (k,True)
-    (P k) = freshp props
 
 ddOf _ (Dia _ _) = error "Dynamic operators are not implemented in K_CUDD."
 
@@ -476,7 +461,4 @@ reduce (e@(t@(Trf mgr addprops _ _ eventObs), x) :: Event a b c) (Dk ags f) =
        tagDdEval mgr (mv x ++ cp y) omegai]
 reduce e (Dkw ags f)     = reduce e (Disj [Dk ags f, Dk ags (Neg f)])
 reduce _ PubAnnounce  {} = Nothing
-reduce _ PubAnnounceW {} = Nothing
-reduce _ Announce     {} = Nothing
-reduce _ AnnounceW    {} = Nothing
 reduce _ Dia          {} = Nothing
