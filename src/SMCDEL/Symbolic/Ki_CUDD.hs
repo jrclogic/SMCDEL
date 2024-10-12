@@ -160,6 +160,9 @@ ddOf bls@(BlS mgr allprops lawdd (ag, odds)) (Dkw ags form) = unmvDd mgr (M.size
   ps'    = map fromEnum $ cp (M.size ag) allprops
   omegai = Tagged $ restrictSet mgr (untag odds) $ map (\a -> (ag ! a, a `elem` ags)) $ M.keys ag
 
+ddOf bls@(BlS mgr allprops lawbdd _) (G form) =
+  forallSet mgr (map (\(P n) -> n) allprops) (imp mgr lawbdd (ddOf bls form))
+
 ddOf bls@(BlS mgr _ _ _) (PubAnnounce f g) =
   imp mgr (ddOf bls f) (ddOf (bls `update` f) g)
 
@@ -431,6 +434,7 @@ reduce (e@(t@(Trf mgr addprops _ _ (ag, eventObs)), x) :: Event a b c) (Dk ags f
        y <- powerset addprops,
        tagDdEval mgr (mv (M.size ag) x ++ cp (M.size ag) y) omegai]
 reduce e (Dkw ags f)     = reduce e (Disj [Dk ags f, Dk ags (Neg f)])
+reduce _ (G _)           = Nothing
 reduce _ PubAnnounce  {} = Nothing
 reduce _ Dia          {} = Nothing
 

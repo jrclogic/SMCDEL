@@ -121,6 +121,7 @@ data Form
   | Kw Agent Form               -- ^ Knowing whether
   | Ckw [Agent] Form            -- ^ Common knowing whether
   | Dkw [Agent] Form            -- ^ Distributed knowing whether
+  | G Form                      -- ^ Global modality
   | PubAnnounce Form Form       -- ^ Public announcement that
   | Dia DynamicOp Form          -- ^ Dynamic Diamond
   deriving (Eq,Ord,Show)
@@ -259,6 +260,7 @@ ppFormWith trans (Dk is f)     = "Dk " ++ showSet is ++ " " ++ ppFormWith trans 
 ppFormWith trans (Kw i f)      = "Kw " ++ i ++ " " ++ ppFormWith trans f
 ppFormWith trans (Ckw is f)    = "Ckw " ++ showSet is ++ " " ++ ppFormWith trans f
 ppFormWith trans (Dkw is f)    = "Dkw " ++ showSet is ++ " " ++ ppFormWith trans f
+ppFormWith trans (G      f)    = "G " ++ ppFormWith trans f
 ppFormWith trans (PubAnnounce f g)  = "[! " ++ ppFormWith trans f ++ "] " ++ ppFormWith trans g
 ppFormWith trans (Dia (Dyn s _) f)  = "<" ++ s ++ ">" ++ ppFormWith trans f
 
@@ -291,6 +293,7 @@ texForm (Ck ags f)    = "Ck_{\\{\n" ++ intercalate "," ags ++ "\n\\}} " ++ texFo
 texForm (Dk ags f)    = "Dk_{\\{\n" ++ intercalate "," ags ++ "\n\\}} " ++ texForm f
 texForm (Ckw ags f)   = "Ck^?_{\\{\n" ++ intercalate "," ags ++ "\n\\}} " ++ texForm f
 texForm (Dkw ags f)   = "Dk^?_{\\{\n" ++ intercalate "," ags ++ "\n\\}} " ++ texForm f
+texForm (G f)         = "G " ++ texForm f
 texForm (PubAnnounce f g)   = "[!" ++ texForm f ++ "] " ++ texForm g
 texForm (Dia (Dyn s _) f)   = " \\langle " ++ s ++ " \\rangle " ++ texForm f
 
@@ -327,6 +330,7 @@ subformulas (Dk is f)     = Dk is f : subformulas f
 subformulas (Kw i f)      = Kw i f : subformulas f
 subformulas (Ckw is f)    = Ckw is f : subformulas f
 subformulas (Dkw is f)    = Dkw is f : subformulas f
+subformulas (G f)         = G f : subformulas f
 subformulas (PubAnnounce  f g) = PubAnnounce  f g : nub (subformulas f ++ subformulas g)
 subformulas (Dia dynop f)      = Dia dynop f : subformulas f
 
@@ -371,6 +375,7 @@ substit q psi (Ck ags f)   = Ck ags (substit q psi f)
 substit q psi (Ckw ags f)  = Ckw ags (substit q psi f)
 substit q psi (Dk ags f)   = Dk ags (substit q psi f)
 substit q psi (Dkw ags f)  = Dkw ags (substit q psi f)
+substit q psi (G f)        = G (substit q psi f)
 substit q psi (PubAnnounce f g)   = PubAnnounce (substit q psi f) (substit q psi g)
 substit _ _   (Dia _ _)           = error "Cannot substitute in dynamic diamonds."
 
@@ -409,6 +414,7 @@ replPsInF repl (Ck ags f)  = Ck ags (replPsInF repl f)
 replPsInF repl (Ckw ags f) = Ckw ags (replPsInF repl f)
 replPsInF repl (Dk ags f)  = Dk ags (replPsInF repl f)
 replPsInF repl (Dkw ags f) = Dkw ags (replPsInF repl f)
+replPsInF repl (G f)       = G (replPsInF repl f)
 replPsInF repl (PubAnnounce f g)   = PubAnnounce   (replPsInF repl f) (replPsInF repl g)
 replPsInF _    (Dia _ _)           = undefined -- TODO needs propsIn dynop!
 
@@ -433,6 +439,7 @@ propsInForm (Ck _ f)           = propsInForm f
 propsInForm (Ckw _ f)          = propsInForm f
 propsInForm (Dk _ f)           = propsInForm f
 propsInForm (Dkw _ f)          = propsInForm f
+propsInForm (G f)              = propsInForm f
 propsInForm (PubAnnounce f g)  = nub $ propsInForm f ++ propsInForm g
 propsInForm (Dia _dynOp _f)    = undefined -- TODO needs HasVocab dynop!
 
@@ -458,6 +465,7 @@ agentsInForm (Ck is f)          = nub $ is ++ agentsInForm f
 agentsInForm (Ckw is f)         = nub $ is ++ agentsInForm f
 agentsInForm (Dk is f)          = nub $ is ++ agentsInForm f
 agentsInForm (Dkw is f)         = nub $ is ++ agentsInForm f
+agentsInForm (G f)              = agentsInForm f
 agentsInForm (PubAnnounce f g)  = nub $ agentsInForm f ++ agentsInForm g
 agentsInForm (Dia _dynOp _f)    = undefined -- TODO needs HasVocab dynop!
 
@@ -527,6 +535,8 @@ simStep (Dk ags f)    = Dk ags (simStep f)
 simStep (Dkw _   Top) = Top
 simStep (Dkw _   Bot) = Top
 simStep (Dkw ags f)   = Dkw ags (simStep f)
+simStep (G Top)       = Top
+simStep (G f)         = G (simStep f)
 simStep (PubAnnounce Top f) = simStep f
 simStep (PubAnnounce Bot _) = Top
 simStep (PubAnnounce  f g)  = PubAnnounce  (simStep f) (simStep g)
@@ -600,6 +610,7 @@ instance Arbitrary Form where
                    , Kw  <$> arbitraryAg <*> form n'
                    , Ckw <$> arbitraryAgs <*> form n'
                    , Dkw <$> arbitraryAgs <*> form n'
+                   , G <$> form n'
                    , PubAnnounce <$> form n' <*> form n'
                    ]
       where

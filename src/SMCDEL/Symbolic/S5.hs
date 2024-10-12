@@ -170,6 +170,7 @@ eval (kns@(KnS _ _ obs),s) (Dk ags form) = all (\s' -> eval (kns,s') form) there
 eval (kns@(KnS _ _ obs),s) (Dkw ags form) = alleqWith (\s' -> eval (kns,s') form) theres where
   theres = filter (\s' -> seteq (s' `intersect` oi) (s `intersect` oi)) (statesOf kns)
   oi = nub $ concat [obs ! i | i <- ags]
+eval (kns, _) (G form) = all (\s' -> eval (kns,s') form) (statesOf kns)
 eval scn (PubAnnounce form1 form2) =
   not (eval scn form1) || eval (update scn form1) form2
 eval scn (Dia (Dyn dynLabel d) f) = case fromDynamic d of
@@ -239,6 +240,8 @@ bddOf kns@(KnS allprops lawbdd obs) (Dkw ags form) =
   disSet [ forallSet otherps (imp lawbdd (bddOf kns f)) | f <- [form, Neg form] ] where
     otherps = map (\(P n) -> n) $ allprops \\ uoi
     uoi = nub (concat [obs ! i | i <- ags])
+bddOf kns@(KnS allprops lawbdd _) (G form) =
+  forallSet (map (\(P n) -> n) allprops) (imp lawbdd (bddOf kns form))
 bddOf kns (PubAnnounce form1 form2) =
   imp (bddOf kns form1) (bddOf (update kns form1) form2)
 bddOf kns (Dia (Dyn dynLabel d) f) =
@@ -587,6 +590,7 @@ reduce event@(trf@(KnTrf addprops _ _ obs), x) (Dk ags f) =
        [obs ! i | i <- ags]
     ]
 reduce e (Dkw ags f)     = reduce e (Disj [Dk ags f, Dk ags (Neg f)])
+reduce e (G f)           = G <$> reduce e f
 reduce _ PubAnnounce  {} = Nothing
 reduce _ Dia          {} = Nothing
 

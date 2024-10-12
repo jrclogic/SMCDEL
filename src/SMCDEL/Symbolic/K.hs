@@ -197,6 +197,9 @@ bddOf bls@(BlS allprops lawbdd obdds) (Dkw ags form) = unmvBdd result where
   ps'    = map fromEnum $ cp allprops
   omegai = Tagged $ foldr (con . untag) top [obdds ! i | i <- ags]
 
+bddOf bls@(BlS allprops lawbdd _) (G form) =
+  forallSet (map (\(P n) -> n) allprops) (imp lawbdd (bddOf bls form))
+
 bddOf bls (PubAnnounce f g) =
   imp (bddOf bls f) (bddOf (bls `update` f) g)
 
@@ -538,6 +541,7 @@ reduce e@(t@(Trf addprops _ _ eventObs), x) (Dk ags f) =
        y <- powerset addprops,
        tagBddEval (mv x ++ cp y) omegai]
 reduce e (Dkw ags f)     = reduce e (Disj [Dk ags f, Dk ags (Neg f)])
+reduce _ (G _)           = Nothing
 reduce _ PubAnnounce  {} = Nothing
 reduce _ Dia          {} = Nothing
 

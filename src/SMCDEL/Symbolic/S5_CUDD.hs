@@ -82,6 +82,8 @@ ddOf kns@(KnS mgr allprops lawbdd obs) (Dkw ags form) =
   disSet mgr [ forallSet mgr otherps (imp mgr lawbdd (ddOf kns f)) | f <- [form, Neg form] ] where
     otherps = map (\(P n) -> n) $ allprops \\ uoi
     uoi = nub (concat [obs ! i | i <- ags])
+ddOf kns@(KnS mgr allprops lawbdd _) (G form) =
+  forallSet mgr (map (\(P n) -> n) allprops) (imp mgr lawbdd (ddOf kns form))
 ddOf kns@(KnS mgr _ _ _) (PubAnnounce form1 form2) = imp mgr (ddOf kns form1) newform2 where
     newform2 = ddOf (pubAnnounce kns form1) form2
 ddOf _ (Dia _ _) = error "Dynamic operators are not implemented in S5_CUDD."

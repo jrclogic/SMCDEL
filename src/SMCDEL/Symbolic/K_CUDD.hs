@@ -159,6 +159,9 @@ ddOf bls@(BlS mgr allprops lawdd odds) (Dkw ags form) = unmvDd mgr allprops resu
   ps'    = map fromEnum $ cp allprops
   omegai = Tagged $ foldr (con mgr) (top mgr) [untag $ odds ! i | i <- ags]
 
+ddOf bls@(BlS mgr allprops lawbdd _) (G form) =
+  forallSet mgr (map (\(P n) -> n) allprops) (imp mgr lawbdd (ddOf bls form))
+
 ddOf bls@(BlS mgr _ _ _) (PubAnnounce f g) =
   imp mgr (ddOf bls f) (ddOf  (pubAnnounce bls f) g)
 
@@ -451,6 +454,7 @@ reduce e@(t@(Trf mgr addprops _ _ eventObs), x) (K a f) =
 reduce e (Kw a f)     = reduce e (Disj [K a f, K a (Neg f)])
 reduce _ Ck  {}       = Nothing
 reduce _ Ckw {}       = Nothing
+reduce _ (G _)        = Nothing
 reduce (e@(t@(Trf mgr addprops _ _ eventObs), x) :: Event a b c) (Dk ags f) =
   Impl (preOf e) . Conj <$> sequence
     [Dk ags <$> reduce (t, y) f |

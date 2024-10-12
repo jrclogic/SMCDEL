@@ -57,13 +57,14 @@ import SMCDEL.Language
   CKNOWWHETHER { TokenInfixCKnowWhether _ }
   DKNOWTHAT    { TokenInfixDKnowThat    _ }
   DKNOWWHETHER { TokenInfixDKnowWhether _ }
+  G            { TokenG                 _ }
   'Forall'     { TokenForall            _ }
   'Exists'     { TokenExists            _ }
 
 %left '->' 'iff'
 %left '|' '&'
 %nonassoc '&' '|'
-%left KNOWSTHAT KNOWSWHETHER CKNOWTHAT CKNOWWHETHER DKNOWTHAT DKNOWWHETHER
+%left KNOWSTHAT KNOWSWHETHER CKNOWTHAT CKNOWWHETHER DKNOWTHAT DKNOWWHETHER G
 %left '[' ']'
 %left '<' '>'
 %left '~'
@@ -89,6 +90,7 @@ Form : TOP { Top }
      | INT { PrpF (P $1) }
      | K String Form { K $2 $3 }
      | Kw String Form { Kw $2 $3 }
+     | G Form { $2 }
      | String KNOWSTHAT Form { K $1 $3 }
      | String KNOWSWHETHER Form { Kw $1 $3 }
      | String KNOWSWHETHER '(' FormList ')' { Conj (map (Kw $1) $4) }

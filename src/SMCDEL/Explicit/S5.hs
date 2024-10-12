@@ -113,6 +113,7 @@ eval (m@(KrMS5 worlds rel _),w) (Dk ags form) = all (\w' -> eval (m,w') form) vs
 eval (m@(KrMS5 worlds rel _),w) (Dkw ags form) = alleqWith (\w' -> eval (m,w') form) vs where
   vs    = concat $ filter (elem w) dkrel
   dkrel = intersection worlds [ apply rel i | i <- ags ]
+eval (m@(KrMS5 worlds _ _),_) (G form) = all (\w' -> eval (m,w') form) worlds
 eval pm (PubAnnounce form1 form2) =
   not (eval pm form1) || eval (update pm form1) form2
 eval pm (Dia (Dyn dynLabel d) f) = case fromDynamic d of

@@ -116,6 +116,7 @@ eval (m,w) (Ck ags form) = all (\w' -> eval (m,w') form) (groupRel m ags w)
 eval (m,w) (Ckw ags form) = alleqWith (\w' -> eval (m,w') form) (groupRel m ags w)
 eval (m,w) (Dk ags form) = all (\w' -> eval (m,w') form) (distRel m ags w)
 eval (m,w) (Dkw ags form) = alleqWith (\w' -> eval (m,w') form) (distRel m ags w)
+eval (KrM m, _) (G f) = all (\w' -> eval (KrM m, w') f) (M.keys m)
 eval (m,w) (PubAnnounce f g) = not (eval (m,w) f) || eval (update (m,w) f) g
 eval pm (Dia (Dyn dynLabel d) f) = case fromDynamic d of
   Just pactm -> eval pm (preOf (pactm :: PointedActionModel)) && eval (pm `update` pactm) f
