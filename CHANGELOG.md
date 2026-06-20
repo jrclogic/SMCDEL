@@ -16,6 +16,7 @@ Changed:
 - Bug fix: in `transformerToActionModelWithG` do not filter
 - Bug fix: in `bddOf` for `Dia` use `unsafeUpdate`
 - Bug fix in HasCacBDD-0.3.0.0: segfault on Apple M1 and ARM
+- Bug fix in HasCacBDD-0.4.0.0: lawful Show and Read instances
 - Web: use `WEBPATH` for running behind non-rewriting proxy
 - CLI: only use colored text when stdout is a terminal
 

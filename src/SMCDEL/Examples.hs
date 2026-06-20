@@ -87,7 +87,7 @@ $(addSvg 'redundantModel)
 -- | The knowledge structure equivalent to `redundantModel`.
 --
 -- >>> myKNS
--- (KnS [P 0,P 2] Var 0 (Var 2 Top Bot) (Var 2 Bot Top) [("Alice",[]),("Bob",[P 2])],[P 0,P 2])
+-- (KnS [P 0,P 2] (ifthenelse (var 0) (var 2) (neg (var 2))) [("Alice",[]),("Bob",[P 2])],[P 0,P 2])
 myKNS :: KnowScene
 myKNS = kripkeToKns redundantModel
 $(addSvg 'myKNS)

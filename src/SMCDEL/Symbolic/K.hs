@@ -261,7 +261,7 @@ propRel2bdd props relation = pure $ disSet (M.elems $ M.mapWithKey linkbdd relat
 -- >>> samplerel
 -- fromList [([],[[],[P 1],[P 2],[P 1,P 2]]),([P 1],[[P 1],[P 1,P 2]]),([P 1,P 2],[[P 1,P 2]]),([P 2],[[P 2],[P 1,P 2]])]
 -- >>> SMCDEL.Symbolic.K.propRel2bdd [P 1, P 2] SMCDEL.Symbolic.K.samplerel
--- Tagged Var 2 (Var 3 (Var 4 (Var 5 Top Bot) Top) Bot) (Var 4 (Var 5 Top Bot) Top)
+-- Tagged (ifthenelse (var 2) (ifthenelse (var 3) (ifthenelse (var 4) (var 5) top) bot) (ifthenelse (var 4) (var 5) top))
 --
 samplerel ::  M.Map State [State]
 samplerel = M.fromList [

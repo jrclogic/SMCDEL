@@ -90,7 +90,7 @@ $(addSvg 'dmResultBobKripke)
 
 {-$
 >>> snd ((dmStart `asSeenBy` "Bob") `asSeenBy` "Anne")
-Top
+top
 
 >>> reachesOn (Do "tryTake" tryTake (Check dmGoal Stop)) dmGoal dmStart
 True
@@ -107,7 +107,7 @@ dmCoop = CoopTask dmStart [("Bob",tryTakeL)] dmGoal
 {- $
 
 >>> findPlan 3 dm
-[Do "tryTake" (KnTrf [P 3] (Equi (PrpF (P 3)) (PrpF (P 1))) [(P 1,Var 1 (Var 3 Bot Top) Bot),(P 2,Var 2 Top (Var 3 Top Bot))] [("Anne",[]),("Bob",[P 3])],Top) Stop]
+[Do "tryTake" (KnTrf [P 3] (Equi (PrpF (P 3)) (PrpF (P 1))) [(P 1,ifthenelse (var 1) (neg (var 3)) bot),(P 2,ifthenelse (var 2) top (var 3))] [("Anne",[]),("Bob",[P 3])],top) Stop]
 
 However, this is not an implicitly coordinated (ic) plan:
 
