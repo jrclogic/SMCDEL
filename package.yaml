@@ -6,6 +6,7 @@ maintainer: Malvin Gattinger <malvin@w4eg.eu>
 license: GPL-2
 github: jrclogic/SMCDEL
 category: Logic
+spec-version: 0.36.0
 
 custom-setup:
   dependencies:

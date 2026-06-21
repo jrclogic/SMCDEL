@@ -96,8 +96,6 @@ library
       SMCDEL.Translations.Convert
       SMCDEL.Translations.K
       SMCDEL.Translations.S5
-  other-modules:
-      Paths_smcdel
   hs-source-dirs:
       src
   ghc-options: -Wall
@@ -156,8 +154,6 @@ executable smcdel
 
 executable smcdel-web
   main-is: smcdel-web.hs
-  other-modules:
-      Paths_smcdel
   hs-source-dirs:
       exec
   ghc-options: -Wall -threaded
@@ -183,8 +179,6 @@ executable smcdel-web
 test-suite CUDD
   type: exitcode-stdio-1.0
   main-is: test/CUDD.hs
-  other-modules:
-      Paths_smcdel
   ghc-options: -Wall -with-rtsopts=-M8G
   build-tools:
       alex
@@ -204,8 +198,6 @@ test-suite CUDD
 test-suite doctest
   type: exitcode-stdio-1.0
   main-is: test/doctest.hs
-  other-modules:
-      Paths_smcdel
   ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
   build-tools:
       alex
@@ -221,8 +213,6 @@ test-suite doctest
 test-suite examples
   type: exitcode-stdio-1.0
   main-is: test/Examples.hs
-  other-modules:
-      Paths_smcdel
   ghc-options: -Wall -with-rtsopts=-M8G
   build-tools:
       alex
@@ -238,8 +228,6 @@ test-suite examples
 test-suite k
   type: exitcode-stdio-1.0
   main-is: test/K.hs
-  other-modules:
-      Paths_smcdel
   ghc-options: -Wall -with-rtsopts=-M8G
   build-tools:
       alex
@@ -255,8 +243,6 @@ test-suite k
 test-suite translations
   type: exitcode-stdio-1.0
   main-is: test/Translations.hs
-  other-modules:
-      Paths_smcdel
   ghc-options: -Wall -with-rtsopts=-M8G
   build-tools:
       alex
@@ -270,8 +256,6 @@ test-suite translations
 test-suite web
   type: exitcode-stdio-1.0
   main-is: test/Web.hs
-  other-modules:
-      Paths_smcdel
   ghc-options: -Wall -with-rtsopts=-M8G
   build-tools:
       alex
@@ -291,8 +275,6 @@ test-suite web
 benchmark bench-diningcrypto
   type: exitcode-stdio-1.0
   main-is: diningcrypto.hs
-  other-modules:
-      Paths_smcdel
   hs-source-dirs:
       bench
   ghc-options: -Wall
@@ -308,8 +290,6 @@ benchmark bench-diningcrypto
 benchmark bench-muddychildren
   type: exitcode-stdio-1.0
   main-is: muddychildren.hs
-  other-modules:
-      Paths_smcdel
   hs-source-dirs:
       bench
   ghc-options: -Wall
@@ -334,8 +314,6 @@ benchmark bench-muddychildren
 benchmark bench-sumandproduct
   type: exitcode-stdio-1.0
   main-is: sumandproduct.hs
-  other-modules:
-      Paths_smcdel
   hs-source-dirs:
       bench
   ghc-options: -Wall
@@ -352,8 +330,6 @@ benchmark bench-sumandproduct
 benchmark sizes-diningcryptographers
   type: exitcode-stdio-1.0
   main-is: diningcryptographers.hs
-  other-modules:
-      Paths_smcdel
   hs-source-dirs:
       sizeExperiments
   ghc-options: -Wall
@@ -378,8 +354,6 @@ benchmark sizes-diningcryptographers
 benchmark sizes-muddychildren
   type: exitcode-stdio-1.0
   main-is: muddychildren.hs
-  other-modules:
-      Paths_smcdel
   hs-source-dirs:
       sizeExperiments
   ghc-options: -Wall
@@ -404,8 +378,6 @@ benchmark sizes-muddychildren
 benchmark sizes-sumandproduct
   type: exitcode-stdio-1.0
   main-is: sumandproduct.hs
-  other-modules:
-      Paths_smcdel
   hs-source-dirs:
       sizeExperiments
   ghc-options: -Wall
