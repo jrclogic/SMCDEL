@@ -29,7 +29,7 @@ define('ace/mode/smcdel_highlight_rules', function(require, exports, module) {
         this.$rules = {
             "start" : [ {
                 token : "comment",
-                regex : "--*.*$"
+                regex : "---*.*$"
             }, {
                 token : "constant.numeric", // float
                 regex : "[+-]?\\d+(?:(?:\\.\\d*)?(?:[eE][+-]?\\d+)?)?\\b"
