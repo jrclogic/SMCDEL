@@ -266,7 +266,7 @@ transformerToActionModelWithG trf@(KnTrf addprops addlaw changelaw addobs) = (Ac
     postsFor ps =
       [ (q, formOf $ restrictSet (changelaw ! q) [(p, P p `elem` ps) | (P p) <- addprops])
       | q <- map fst changelaw ]
-  actrel    = [(i,rFor i) | i <- agentsOf trf] where
+  actrel    = [(i,rFor i) | i <- agentsIn trf] where
     rFor i  = map (map snd) (groupBy ( \ (x,_) (y,_) -> x==y ) (pairs i))
     pairs i = sort $ map (\(set,a) -> (intersect set $ addobs ! i,a))
                          (filter ((`elem` map fst acts) . snd) actlist)
@@ -335,7 +335,7 @@ actionToTransformerWithMap (ActMS5 acts actrel) = (KnTrf addprops addlaw changel
   actions = map fst acts
   ags          = map fst actrel
   addprops     = actionprops ++ actrelprops
-  (P fstnewp)  = freshp . propsInForms $ concat [ pre : concatMap (\(p,f) -> [PrpF p, f]) posts | (_,(pre,posts)) <- acts]  -- avoid props occurring anywhere in the in action model
+  (P fstnewp)  = freshp . propsIn $ concat [ pre : concatMap (\(p,f) -> [PrpF p, f]) posts | (_,(pre,posts)) <- acts]  -- avoid props occurring anywhere in the in action model
   actionprops  = [P fstnewp..P maxactprop] -- new props to distinguish all actions
   maxactprop   = fstnewp + ceiling (logBase 2 (fromIntegral $ length actions) :: Float) -1
   actpropsRel  = zip actions (powerset actionprops)

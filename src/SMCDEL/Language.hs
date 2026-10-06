@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, ExistentialQuantification, InstanceSigs #-}
 
 {- |
 This module defines the language of Dynamic Epistemic Logic (DEL).
@@ -10,11 +10,11 @@ the symbolic model checkers.
 module SMCDEL.Language where
 
 import Data.List (nub,intercalate,(\\))
-import Data.Dynamic
 import Data.Maybe (fromMaybe)
+import Data.Typeable (Typeable)
 
 import Test.QuickCheck
-import SMCDEL.Internal.Help (powerset)
+import SMCDEL.Internal.Help (powerset,subseteq)
 import SMCDEL.Internal.TexDisplay
 
 -- * Propositions and Agents
@@ -41,7 +41,19 @@ freshp []   = P 1
 freshp prps = P (maximum (map fromEnum prps) + 1)
 
 class HasVocab a where
+  -- | What is the full vocabulary of this object?
   vocabOf :: a -> [Prp]
+
+class UsesVocab a where
+  -- | Which propositions occur in this object?
+  -- Can be a part of the full vocabulary we work with.
+  propsIn :: a -> [Prp]
+  -- | Replace/substitute the propositions in the given object.
+  replPsIn :: [(Prp,Prp)] -> a -> a
+
+instance UsesVocab a => UsesVocab [a] where
+  propsIn xs = nub $ concatMap propsIn xs
+  replPsIn repl = map (replPsIn repl)
 
 type Agent = String
 
@@ -59,10 +71,11 @@ newtype AgAgent = Ag Agent deriving (Eq,Ord,Show)
 instance Arbitrary AgAgent where
   arbitrary = elements $ map Ag defaultAgents
 
+-- | A group is a non-empty list of agents.
 newtype Group = Group [Agent] deriving (Eq,Ord,Show)
 
--- generate a random group, always including agent 1
 instance Arbitrary Group where
+  -- | Generate a random group, always including agent @"1"@.
   arbitrary = fmap (Group.("1":)) $ sublistOf $ defaultAgents \\ ["1"]
 
 {- * Formulas
@@ -168,7 +181,15 @@ oneOf fs = Conj [ Disj fs, Conj [ Neg $ Conj [f1, f2] | f1 <- fs, f2 <- fs \\ [f
 
 -- * Dynamic Operators
 
-data DynamicOp = Dyn !String !Dynamic
+-- | The values of a type can be used as a dynamic operator in formulas
+-- whenever we know how to show them, what agents occur in them and we
+-- what the precondition of this operator is.
+-- This does /not/ yet guarantee we can actually evaluate thos formulas, as
+-- this will depend on the semantics used. See also @Update@.
+class (Typeable b, Show b, UsesAgents b, UsesVocab b, HasPrecondition b) => DynOp b
+
+-- | A dynamic operator comes with a @String@ label, used for showing and equality.
+data DynamicOp = forall a . DynOp a => Dyn String a
 
 instance Eq DynamicOp where
   Dyn a _ == Dyn b _ = a == b
@@ -176,6 +197,13 @@ instance Ord DynamicOp where
   compare (Dyn a _) (Dyn b _) = compare a b
 instance Show DynamicOp where
   show (Dyn a _) = "Dyn " ++ show a ++ " _"
+
+instance UsesVocab DynamicOp where
+  propsIn (Dyn _ op) = propsIn op
+  replPsIn repl (Dyn l op) = Dyn l (replPsIn repl op)
+
+instance UsesAgents DynamicOp where
+  agentsIn (Dyn _ op) = agentsIn op
 
 -- | The dynamic box operator
 box :: DynamicOp -> Form -> Form
@@ -188,7 +216,11 @@ box op f = Neg (Dia op (Neg f))
 class HasAgents a where
   agentsOf :: a -> [Agent]
 
-class HasVocab a => Semantics a where
+class UsesAgents a where
+  -- | Which agents occur in this object?
+  agentsIn :: a -> [Agent]
+
+class (HasVocab a, HasAgents a) => Semantics a where
   isTrue :: a -> Form -> Bool
 
 -- | The \(\vDash\) symbol for semantics.
@@ -203,8 +235,14 @@ class DefaultPoint a b where
   pointDef :: a -> (a,b)
 
 instance (HasVocab a, Pointed a b) => HasVocab (a,b) where vocabOf = vocabOf . fst
+instance (UsesVocab a, Pointed a b) => UsesVocab (a,b) where
+  propsIn = propsIn . fst
+  -- | NOTE: We assume that no replacement in xb is needed.
+  -- This holds for (multi)pointed action models and transformers.
+  replPsIn repl (xa, xb) = (replPsIn repl xa, xb)
 
 instance (HasAgents a, Pointed a b) => HasAgents (a,b) where agentsOf = agentsOf . fst
+instance (UsesAgents a, Pointed a b) => UsesAgents (a,b) where agentsIn = agentsIn . fst
 
 class ToMulti a b where
   toMulti :: a -> b
@@ -221,7 +259,9 @@ class HasPrecondition a where
 instance HasPrecondition Form where
   preOf = id
 
-class (Show a, Show b, HasAgents a, Semantics a, HasPrecondition b) => Update a b where
+instance DynOp Form
+
+class (Show a, Semantics a, DynOp b) => Update a b where
   {-# MINIMAL unsafeUpdate #-}
   unsafeUpdate :: a -> b -> a
   checks :: [a -> b -> Bool]
@@ -316,7 +356,7 @@ texForm (Ckw ags f)   = "Ck^?_{\\{\n" ++ intercalate "," ags ++ "\n\\}} " ++ tex
 texForm (Dkw ags f)   = "Dk^?_{\\{\n" ++ intercalate "," ags ++ "\n\\}} " ++ texForm f
 texForm (G f)         = "G " ++ texForm f
 texForm (PubAnnounce f g)   = "[!" ++ texForm f ++ "] " ++ texForm g
-texForm (Dia (Dyn s _) f)   = " \\langle " ++ s ++ " \\rangle " ++ texForm f
+texForm (Dia (Dyn s _) f)   = " \\langle \\text{" ++ s ++ "} \\rangle " ++ texForm f
 
 instance TexAble Prp where
   tex (P 0) = " p "
@@ -419,80 +459,78 @@ substitOutOf truths allps = substitSet [(p, if p `elem` truths then Top else Bot
 replPsInP :: [(Prp,Prp)] -> Prp -> Prp
 replPsInP repl p = fromMaybe p (lookup p repl)
 
--- | Replace propositions in a formula.
--- In contrast to the previous substitution function this *is* simultaneous.
-replPsInF :: [(Prp,Prp)] -> Form -> Form
-replPsInF _       Top      = Top
-replPsInF _       Bot      = Bot
-replPsInF repl (PrpF p)    = PrpF $ replPsInP repl p
-replPsInF repl (Neg f)     = Neg $ replPsInF repl f
-replPsInF repl (Conj fs)   = Conj $ map (replPsInF repl) fs
-replPsInF repl (Disj fs)   = Disj $ map (replPsInF repl) fs
-replPsInF repl (Xor  fs)   = Xor  $ map (replPsInF repl) fs
-replPsInF repl (Impl f g)  = Impl (replPsInF repl f) (replPsInF repl g)
-replPsInF repl (Equi f g)  = Equi (replPsInF repl f) (replPsInF repl g)
-replPsInF repl (Forall ps f) = Forall (map (replPsInP repl) ps) (replPsInF repl f)
-replPsInF repl (Exists ps f) = Exists (map (replPsInP repl) ps) (replPsInF repl f)
-replPsInF repl (K i f)     = K i (replPsInF repl f)
-replPsInF repl (Kw i f)    = Kw i (replPsInF repl f)
-replPsInF repl (Ck ags f)  = Ck ags (replPsInF repl f)
-replPsInF repl (Ckw ags f) = Ckw ags (replPsInF repl f)
-replPsInF repl (Dk ags f)  = Dk ags (replPsInF repl f)
-replPsInF repl (Dkw ags f) = Dkw ags (replPsInF repl f)
-replPsInF repl (G f)       = G (replPsInF repl f)
-replPsInF repl (PubAnnounce f g)   = PubAnnounce   (replPsInF repl f) (replPsInF repl g)
-replPsInF _    (Dia _ _)           = undefined -- TODO needs propsIn dynop!
-
 -- * Vocabulary of a formula
 
--- | List of all propositions occurring in a formula.
-propsInForm :: Form -> [Prp]
-propsInForm Top                = []
-propsInForm Bot                = []
-propsInForm (PrpF p)           = [p]
-propsInForm (Neg f)            = propsInForm f
-propsInForm (Conj fs)          = nub $ concatMap propsInForm fs
-propsInForm (Disj fs)          = nub $ concatMap propsInForm fs
-propsInForm (Xor  fs)          = nub $ concatMap propsInForm fs
-propsInForm (Impl f g)         = nub $ concatMap propsInForm [f,g]
-propsInForm (Equi f g)         = nub $ concatMap propsInForm [f,g]
-propsInForm (Forall ps f)      = nub $ ps ++ propsInForm f
-propsInForm (Exists ps f)      = nub $ ps ++ propsInForm f
-propsInForm (K _ f)            = propsInForm f
-propsInForm (Kw _ f)           = propsInForm f
-propsInForm (Ck _ f)           = propsInForm f
-propsInForm (Ckw _ f)          = propsInForm f
-propsInForm (Dk _ f)           = propsInForm f
-propsInForm (Dkw _ f)          = propsInForm f
-propsInForm (G f)              = propsInForm f
-propsInForm (PubAnnounce f g)  = nub $ propsInForm f ++ propsInForm g
-propsInForm (Dia _dynOp _f)    = undefined -- TODO needs HasVocab dynop!
+instance UsesVocab Form where
+  -- | List of all propositions occurring in a formula.
+  propsIn :: Form -> [Prp]
+  propsIn Top                = []
+  propsIn Bot                = []
+  propsIn (PrpF p)           = [p]
+  propsIn (Neg f)            = propsIn f
+  propsIn (Conj fs)          = nub $ concatMap propsIn fs
+  propsIn (Disj fs)          = nub $ concatMap propsIn fs
+  propsIn (Xor  fs)          = nub $ concatMap propsIn fs
+  propsIn (Impl f g)         = nub $ concatMap propsIn [f,g]
+  propsIn (Equi f g)         = nub $ concatMap propsIn [f,g]
+  propsIn (Forall ps f)      = nub $ ps ++ propsIn f
+  propsIn (Exists ps f)      = nub $ ps ++ propsIn f
+  propsIn (K _ f)            = propsIn f
+  propsIn (Kw _ f)           = propsIn f
+  propsIn (Ck _ f)           = propsIn f
+  propsIn (Ckw _ f)          = propsIn f
+  propsIn (Dk _ f)           = propsIn f
+  propsIn (Dkw _ f)          = propsIn f
+  propsIn (G f)              = propsIn f
+  propsIn (PubAnnounce f g)  = nub $ propsIn f ++ propsIn g
+  propsIn (Dia op f)         = nub $ propsIn op ++ propsIn f -- uses HasVocab DynamicOp
+  -- | Replace propositions in a formula.
+  -- In contrast to the previous substitution function this *is* simultaneous.
+  replPsIn :: [(Prp,Prp)] -> Form -> Form
+  replPsIn _       Top      = Top
+  replPsIn _       Bot      = Bot
+  replPsIn repl (PrpF p)    = PrpF $ replPsInP repl p
+  replPsIn repl (Neg f)     = Neg $ replPsIn repl f
+  replPsIn repl (Conj fs)   = Conj $ map (replPsIn repl) fs
+  replPsIn repl (Disj fs)   = Disj $ map (replPsIn repl) fs
+  replPsIn repl (Xor  fs)   = Xor  $ map (replPsIn repl) fs
+  replPsIn repl (Impl f g)  = Impl (replPsIn repl f) (replPsIn repl g)
+  replPsIn repl (Equi f g)  = Equi (replPsIn repl f) (replPsIn repl g)
+  replPsIn repl (Forall ps f) = Forall (map (replPsInP repl) ps) (replPsIn repl f)
+  replPsIn repl (Exists ps f) = Exists (map (replPsInP repl) ps) (replPsIn repl f)
+  replPsIn repl (K i f)     = K i (replPsIn repl f)
+  replPsIn repl (Kw i f)    = Kw i (replPsIn repl f)
+  replPsIn repl (Ck ags f)  = Ck ags (replPsIn repl f)
+  replPsIn repl (Ckw ags f) = Ckw ags (replPsIn repl f)
+  replPsIn repl (Dk ags f)  = Dk ags (replPsIn repl f)
+  replPsIn repl (Dkw ags f) = Dkw ags (replPsIn repl f)
+  replPsIn repl (G f)       = G (replPsIn repl f)
+  replPsIn repl (PubAnnounce f g)   = PubAnnounce   (replPsIn repl f) (replPsIn repl g)
+  replPsIn repl (Dia op f)  = Dia (replPsIn repl op) (replPsIn repl f)
 
-propsInForms :: [Form] -> [Prp]
-propsInForms fs = nub $ concatMap propsInForm fs
-
--- | List of all agents occurring in a formula.
-agentsInForm :: Form -> [Agent]
-agentsInForm Top                = []
-agentsInForm Bot                = []
-agentsInForm (PrpF _)           = []
-agentsInForm (Neg f)            = agentsInForm f
-agentsInForm (Conj fs)          = nub $ concatMap agentsInForm fs
-agentsInForm (Disj fs)          = nub $ concatMap agentsInForm fs
-agentsInForm (Xor  fs)          = nub $ concatMap agentsInForm fs
-agentsInForm (Impl f g)         = nub $ concatMap agentsInForm [f,g]
-agentsInForm (Equi f g)         = nub $ concatMap agentsInForm [f,g]
-agentsInForm (Forall _ f)       = agentsInForm f
-agentsInForm (Exists _ f)       = agentsInForm f
-agentsInForm (K i f)            = nub $ i : agentsInForm f
-agentsInForm (Kw i f)           = nub $ i : agentsInForm f
-agentsInForm (Ck is f)          = nub $ is ++ agentsInForm f
-agentsInForm (Ckw is f)         = nub $ is ++ agentsInForm f
-agentsInForm (Dk is f)          = nub $ is ++ agentsInForm f
-agentsInForm (Dkw is f)         = nub $ is ++ agentsInForm f
-agentsInForm (G f)              = agentsInForm f
-agentsInForm (PubAnnounce f g)  = nub $ agentsInForm f ++ agentsInForm g
-agentsInForm (Dia _dynOp _f)    = undefined -- TODO needs HasVocab dynop!
+instance UsesAgents Form where
+  -- | List of all agents occurring in a formula.
+  agentsIn :: Form -> [Agent]
+  agentsIn Top                = []
+  agentsIn Bot                = []
+  agentsIn (PrpF _)           = []
+  agentsIn (Neg f)            = agentsIn f
+  agentsIn (Conj fs)          = nub $ concatMap agentsIn fs
+  agentsIn (Disj fs)          = nub $ concatMap agentsIn fs
+  agentsIn (Xor  fs)          = nub $ concatMap agentsIn fs
+  agentsIn (Impl f g)         = nub $ concatMap agentsIn [f,g]
+  agentsIn (Equi f g)         = nub $ concatMap agentsIn [f,g]
+  agentsIn (Forall _ f)       = agentsIn f
+  agentsIn (Exists _ f)       = agentsIn f
+  agentsIn (K i f)            = nub $ i : agentsIn f
+  agentsIn (Kw i f)           = nub $ i : agentsIn f
+  agentsIn (Ck is f)          = nub $ is ++ agentsIn f
+  agentsIn (Ckw is f)         = nub $ is ++ agentsIn f
+  agentsIn (Dk is f)          = nub $ is ++ agentsIn f
+  agentsIn (Dkw is f)         = nub $ is ++ agentsIn f
+  agentsIn (G f)              = agentsIn f
+  agentsIn (PubAnnounce f g)  = nub $ agentsIn f ++ agentsIn g
+  agentsIn (Dia op f)         = nub $ agentsIn op ++ agentsIn f -- this uses HasVocab DynamicOp
 
 -- * Simplification
 

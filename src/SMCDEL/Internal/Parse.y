@@ -103,10 +103,12 @@ Form : TOP { Top }
      | StringList DKNOWWHETHER Form { Dkw $1 $3 }
      | '(' StringList ')' DKNOWTHAT Form { Dk $2 $5 }
      | '(' StringList ')' DKNOWWHETHER Form { Dkw $2 $5 }
+     -- public announcements:
      | '[' '!' Form ']'     Form { PubAnnounce  $3 $5 }
      | '[' '?' '!' Form ']' Form { pubAnnounceW $4 $6 }
      | '<' '!' Form '>'     Form { Neg (PubAnnounce  $3 (Neg $5)) }
      | '<' '?' '!' Form '>' Form { Neg (pubAnnounceW $4 (Neg $6)) }
+     -- boolean quantifiers:
      | 'Forall' IntList Form { Forall (map P $2) $3 }
      | 'Exists' IntList Form { Exists (map P $2) $3 }
 FormList : Form { [$1] } | Form COMMA FormList { $1:$3 }
@@ -176,11 +178,11 @@ sanityCheck (CheckInput vocabInts lawform obsSpec jobs) =
   in
     [ "OBS contains atoms not in VARS!" | not (all (all (`elem` vocabInts) . snd) obsSpec) ]
     ++
-    [ "LAW uses atoms not in VARS!" | not $ all (`elem` vocab) (propsInForm lawform) ]
+    [ "LAW uses atoms not in VARS!" | not $ all (`elem` vocab) (propsIn lawform) ]
     ++
-    [ "Query formula contains atoms not in VARS!" | not $ all (all (`elem` vocab) . propsInForm) jobForms ]
+    [ "Query formula contains atoms not in VARS!" | not $ all (all (`elem` vocab) . propsIn) jobForms ]
     ++
-    [ "Query formula contains agents not in OBS!" | not $ all (all (`elem` agents) . agentsInForm) jobForms ]
+    [ "Query formula contains agents not in OBS!" | not $ all (all (`elem` agents) . agentsIn) jobForms ]
     ++
     [ "TRUE? query contains atoms not in VARS!" | not $ all (`elem` vocabInts) jobAtoms ]
 }

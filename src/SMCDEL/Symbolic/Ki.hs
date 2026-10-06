@@ -6,7 +6,7 @@ module SMCDEL.Symbolic.Ki where
 import Data.Tagged
 
 import Control.Arrow (first)
-import Data.Dynamic (fromDynamic)
+import Data.Typeable (cast)
 import Data.HasCacBDD hiding (Top,Bot)
 import Data.List (sort,intersect,(\\))
 import qualified Data.Map.Strict as M
@@ -148,11 +148,11 @@ bddOf bls (Dia (Dyn dynLabel d) f) =
     copyrelInverse  = zip copychangeProps changeProps
     (trf@(Trf addProps addLaw changeLaw _), shiftrel) = shiftPrepare bls trfUnshifted
     (preCon,trfUnshifted,simulateActualEvents) =
-      case fromDynamic d of
+      case cast d of
         -- 3. For a single pointed event, simulate actual event x outof V+
         Just ((t,x) :: Event) -> ( preOf (t,x), t, (`restrictSet` actualAss) )
           where actualAss = [(newK, P k `elem` x) | (P k, P newK) <- shiftrel]
-        Nothing -> case fromDynamic d of
+        Nothing -> case cast d of
           -- 3. For a multipointed event, simulate a set of actual events by ...
           Just ((t,xsBdd) :: MultipointedEvent) ->
               ( preOf (t,xsBdd), t
@@ -238,8 +238,12 @@ data Transformer = Trf
   (M.Map Agent Int, RelBDD) -- eventObs
   deriving (Eq,Show)
 
-instance HasAgents Transformer where
-  agentsOf (Trf _ _ _ (ags,_)) = M.keys ags
+instance UsesAgents Transformer where
+  agentsIn (Trf _ _ _ (ags,_)) = M.keys ags
+
+instance UsesVocab Transformer where
+  propsIn = error "Not implemented for Ki." -- TODO
+  replPsIn = error "Not implemented for Ki." -- TODO
 
 instance HasPrecondition Transformer where
   preOf _ = Top
@@ -250,7 +254,7 @@ type Event = (Transformer,State)
 instance HasPrecondition Event where
   preOf (Trf addprops addlaw _ _, x) = simplify $ substitOutOf x addprops addlaw
 
-instance Pointed Transformer [State]
+instance Pointed Transformer Bdd
 type MultipointedEvent = (Transformer,Bdd)
 
 instance HasPrecondition MultipointedEvent where
@@ -266,12 +270,14 @@ shiftPrepare (BlS props _ _) (Trf addprops addlaw changelaw (ags, eventObs)) =
     shiftrel = sort $ zip addprops [(freshp props)..]
     shiftaddprops = map snd shiftrel
     -- apply the shifting to addlaw, changelaw and eventObs:
-    addlawShifted    = replPsInF shiftrel addlaw
+    addlawShifted    = replPsIn shiftrel addlaw
     changelawShifted = M.map (relabelWith shiftrel) changelaw
     -- to shift addObs we need shiftrel in the double vocabulary:
     shiftrelMVCP = sort $ zip (mv (M.size ags) addprops) (mv (M.size ags) shiftaddprops)
                        ++ zip (cp (M.size ags) addprops) (cp (M.size ags) shiftaddprops)
     eventObsShifted  = foldl (\x y -> con <$> x <*> y) (Tagged top) [Tagged $ relabelWith shiftrelMVCP (restrict (untag eventObs) (ags ! i, True)) | i <- M.keys ags]
+
+instance DynOp Event
 
 instance Update BelScene Event where
   unsafeUpdate (bls@(BlS props law (ags, obdds)),s) (trf, eventFactsUnshifted) = (BlS newprops newlaw (ags, newobs), news) where
@@ -297,10 +303,14 @@ instance Update BelScene Event where
             , eventFacts
             , filter (\ p -> bddEval (s ++ eventFacts) (changelaw ! p)) changeprops ]
 
+instance DynOp Transformer
+
 instance Update BelStruct Transformer where
   checks = [haveSameAgents]
   unsafeUpdate bls ctrf = BlS newprops newlaw newobs where
     (BlS newprops newlaw newobs, _) = unsafeUpdate (bls,undefined::State) (ctrf,undefined::State) -- using laziness!
+
+instance DynOp MultipointedEvent
 
 instance Update BelScene MultipointedEvent where
   unsafeUpdate (bls,s) (trfUnshifted, eventFactsBddUnshifted) =

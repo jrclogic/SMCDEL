@@ -13,7 +13,6 @@ methods we implemented agree on the result.
 
 module Main (main) where
 
-import Data.Dynamic (toDyn)
 import Data.List (sort)
 import Test.Hspec
 import Test.Hspec.QuickCheck
@@ -120,11 +119,11 @@ pubAnnounceTest (SF f) (SF g) =
       not precon || Sym.evalViaBdd (unsafeUpdate (kripkeToKns mymodel) (pubAnnounceTrf (agentsOf mymodel) f)) g
   , Exp.eval mymodel
     (box (Dyn ("publicly announce " ++ show f)
-          (toDyn $ pubAnnounceAction (agentsOf mymodel) f))
+          (pubAnnounceAction (agentsOf mymodel) f))
       g)
   , Sym.evalViaBdd (kripkeToKns mymodel)
     (box (Dyn ("publicly announce " ++ show f)
-          (toDyn $ actionToEvent $ pubAnnounceAction (agentsOf mymodel) f))
+          (actionToEvent $ pubAnnounceAction (agentsOf mymodel) f))
       g)
   ]
 
@@ -139,7 +138,7 @@ groupAnnounceTest (SF f) (Group listeners) (SF g) =
     in not precon || Exp.eval newModel g
   , Exp.eval mymodel
     (box (Dyn ("announce " ++ show f ++ " to " ++ show listeners)
-           (toDyn $ groupAnnounceAction (agentsOf mymodel) listeners f))
+           (groupAnnounceAction (agentsOf mymodel) listeners f))
       g)
   , let -- apply equivalent transformer to equivalent kns
       precon  = Sym.evalViaBdd (kripkeToKns mymodel) f
@@ -148,15 +147,15 @@ groupAnnounceTest (SF f) (Group listeners) (SF g) =
     in not precon || Sym.evalViaBdd newKns g
   , Sym.evalViaBdd (kripkeToKns mymodel)
     (box (Dyn ("announce " ++ show f ++ " to " ++ show listeners)
-           (toDyn $ actionToEvent $ groupAnnounceAction (agentsOf mymodel) listeners f))
+           (actionToEvent $ groupAnnounceAction (agentsOf mymodel) listeners f))
       g)
   , Exp.eval mymodel
     (box (Dyn ("announce " ++ show f ++ " to " ++ show listeners)
-           (toDyn $ eventToAction $ groupAnnounceTrf (agentsOf mymodel) listeners f))
+           (eventToAction $ groupAnnounceTrf (agentsOf mymodel) listeners f))
       g)
   , Sym.evalViaBdd (kripkeToKns mymodel)
     (box (Dyn ("announce " ++ show f ++ " to " ++ show listeners)
-           (toDyn $ groupAnnounceTrf (agentsOf mymodel) listeners f))
+           (groupAnnounceTrf (agentsOf mymodel) listeners f))
       g)
   ]
 

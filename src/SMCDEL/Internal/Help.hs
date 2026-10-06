@@ -4,7 +4,7 @@ module SMCDEL.Internal.Help (
   apply,(!),set,applyPartial,(!=),
   powerset,restrict,rtc,tc,Rel,Erel,bl,fusion,intersection,seteq,subseteq,lfp
   ) where
-import Data.List ((\\),foldl',groupBy,sort,sortBy,union,intersect,nub)
+import Data.List ((\\),groupBy,sort,sortBy,union,intersect,nub)
 import Data.Containers.ListUtils (nubOrd)
 
 -- * Helper functions for Lists

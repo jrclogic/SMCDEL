@@ -4,7 +4,6 @@
 
 module Main (main) where
 
-import Data.Dynamic (toDyn)
 import Data.Map.Strict (fromList)
 import Data.List (sort)
 import Test.Hspec
@@ -126,8 +125,8 @@ singleChangeTest myact (SF f) =
   , not (SymK.evalViaBdd                      myScn  (preOf                (actionToEvent (myact,0))))
       || SymK.evalViaBdd (update              myScn                        (actionToEvent (myact,0)) ) f
   -- using dynamic operators:
-  , myMod |= box (Dyn "(myact,0)"               (toDyn                 (myact,0::Action))) f
-  , myScn |= box (Dyn "actionToEvent (myact,0)" (toDyn $ actionToEvent (myact,0::Action))) f
+  , myMod |= box (Dyn "(myact,0)"                              (myact,0::Action) ) f
+  , myScn |= box (Dyn "actionToEvent (myact,0)" (actionToEvent (myact,0::Action))) f
   ]
   ++ case SymK.reduce (actionToEvent (myact,0)) f of
       Nothing -> []

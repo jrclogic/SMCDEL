@@ -18,7 +18,7 @@ module SMCDEL.Symbolic.S5 where
 
 import Control.Arrow (first,second,(***))
 import Data.Char (isSpace)
-import Data.Dynamic
+import Data.Typeable (cast)
 import Data.HasCacBDD hiding (Top,Bot)
 import Data.HasCacBDD.Visuals
 import Data.List ((\\),delete,dropWhileEnd,intercalate,intersect,nub,sort)
@@ -68,6 +68,9 @@ size b = if sizeOf b == 0 then sizeOf b + 1 else sizeOf b + 2
 -- | Given a mapping between atomic propositions, relabel them inside a BDD.
 relabelWith :: [(Prp,Prp)] -> Bdd -> Bdd
 relabelWith r = relabel (sort $ map (fromEnum *** fromEnum) r)
+-- FIXME: `relabelWith` could be `instance UsesVocab Bdd` but that would be orphan.
+-- We also do not want it in Language.hs which does not know `Bdd`
+-- (and should stay neutral wrt. choice of BDD library).
 
 -- | BDD to say that exactly this subset of a given vocabulary is true.
 -- Similar to `booloutofForm`.
@@ -172,10 +175,10 @@ eval (kns@(KnS _ _ obs),s) (Dkw ags form) = alleqWith (\s' -> eval (kns,s') form
 eval (kns, _) (G form) = all (\s' -> eval (kns,s') form) (statesOf kns)
 eval scn (PubAnnounce form1 form2) =
   not (eval scn form1) || eval (update scn form1) form2
-eval scn (Dia (Dyn dynLabel d) f) = case fromDynamic d of
-  Just event -> eval scn (preOf (event :: Event))
-                && eval (scn `update` event) f
-  Nothing    -> error $ "cannot update knowledge structure with '" ++ dynLabel ++ "':\n  " ++ show d
+eval scn (Dia (Dyn dynLabel op) f) =
+  eval scn (preOf op) && case cast op of
+    Just (e :: Event) -> eval (scn `update` e) f
+    Nothing -> error $ "cannot update knowledge structure with '" ++ dynLabel ++ "':\n  " ++ show op
 
 
 -- ** Common Knowledge
@@ -260,11 +263,11 @@ bddOf kns (Dia (Dyn dynLabel d) f) =
     copyrelInverse  = zip copychangeProps changeProps
     (trf@(KnTrf addProps addLaw changeLaw _), shiftrel) = shiftPrepare kns trfUnshifted
     (preCon,trfUnshifted,simulateActualEvents) =
-      case fromDynamic d of
+      case cast d of
         -- 3. For a single event, simulate actual event x outof V+
         Just ((t,x) :: Event) -> ( preOf (t,x), t, (`restrictSet` actualAss) )
           where actualAss = [(newK, P k `elem` x) | (P k, P newK) <- shiftrel]
-        Nothing -> case fromDynamic d of
+        Nothing -> case cast d of
           -- 3. For a multipointed event, simulate a set of actual events by ...
           Just ((t,xsBdd) :: MultipointedEvent) ->
               ( preOf (t,xsBdd), t
@@ -274,7 +277,7 @@ bddOf kns (Dia (Dyn dynLabel d) f) =
               ) where actualsBdd = relabelWith shiftrel xsBdd
           Nothing -> error $ "cannot update knowledge structure with '" ++ dynLabel ++ "':\n " ++ show d
 
--- | Evaluate a formula on a scene byt first computing its BDD.
+-- | Evaluate a formula on a scene by first computing its BDD.
 -- This is the function to use for symbolic model checking.
 -- It has the same type as `eval` and is equivalent to it, but faster.
 -- For the equivalence proof, see Theorem 2.2.8 in [MG 2018].
@@ -461,8 +464,20 @@ noChange :: ([Prp] -> Form -> [(Prp,Bdd)] -> [(Agent,[Prp])] -> KnowTransformer)
           -> [Prp] -> Form                -> [(Agent,[Prp])] -> KnowTransformer
 noChange kntrf addprops addlaw = kntrf addprops addlaw []
 
-instance HasAgents KnowTransformer where
-  agentsOf (KnTrf _ _ _ obdds) = map fst obdds
+instance UsesAgents KnowTransformer where
+  agentsIn (KnTrf _ _ _ obdds) = map fst obdds
+
+instance UsesVocab KnowTransformer where
+  -- | The vocabulary used in the event law and the changelaw.
+  -- This does *not* include the event vocabulary.
+  propsIn (KnTrf addprops addlaw changelaw _) =
+    nub $ (propsIn addlaw \\ addprops) ++ map fst changelaw
+  replPsIn repl (KnTrf addprops addlaw changelaw obs) =
+    KnTrf
+      addprops -- not changing the addprops on purpose.
+      (replPsIn repl addlaw)
+      [ (replPsIn repl p, relabelWith repl b) | (p,b) <- changelaw ]
+      obs
 
 instance HasPrecondition KnowTransformer where
   preOf _ = Top
@@ -487,9 +502,11 @@ shiftPrepare (KnS props _ _) (KnTrf addprops addlaw changelaw eventObs) =
     shiftrel = sort $ zip addprops [(freshp props)..]
     shiftaddprops = map snd shiftrel
     -- apply the shifting to addlaw, changelaw and eventObs:
-    addlawShifted    = replPsInF shiftrel addlaw
+    addlawShifted    = replPsIn shiftrel addlaw
     changelawShifted = map (second (relabelWith shiftrel)) changelaw
     eventObsShifted  = map (second (map (apply shiftrel))) eventObs
+
+instance DynOp Event
 
 -- | S5 transformation with factual change.
 instance Update KnowScene Event where
@@ -509,11 +526,15 @@ instance Update KnowScene Event where
             , eventFacts
             , filter (\ p -> bddEval (s ++ eventFacts) (changelaw ! p)) changeprops ]
 
+instance DynOp KnowTransformer
+
 -- | Pointless update of a structure with a transformer. Uses laziness.
 instance Update KnowStruct KnowTransformer where
   checks = [haveSameAgents]
   unsafeUpdate kns ctrf = KnS newprops newlaw newobs where
     (KnS newprops newlaw newobs, _) = unsafeUpdate (kns,undefined::Bdd) (ctrf,undefined::Bdd) -- using laziness!
+
+instance DynOp MultipointedEvent
 
 instance Update MultipointedKnowScene MultipointedEvent where
   unsafeUpdate (kns@(KnS props law obs),statesBdd) (ctrf,eventsBddUnshifted)  =
@@ -689,5 +710,5 @@ pubAnnounceTrf agents f = (noChange KnTrf [] f myobs, []) where
 -- where \(O_i^+ = \{p_\varphi\}\) if \(i\in\Delta\) and \(O_i^+=\varnothing\) otherwise.
 groupAnnounceTrf :: [Agent] -> [Agent] -> Form -> Event
 groupAnnounceTrf everyone listeners f = (noChange KnTrf [fresh] (PrpF fresh `Equi` f) myobs, [fresh]) where
-  fresh = freshp $ propsInForm f
+  fresh = freshp $ propsIn f
   myobs = [ (i, [fresh | i `elem` listeners]) | i <- everyone ]

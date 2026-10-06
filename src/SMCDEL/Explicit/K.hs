@@ -1,5 +1,4 @@
-{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
-
+{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, ScopedTypeVariables #-}
 {- |
 
 Standard Kripke Models for the logic \(\mathsf{K}\).
@@ -20,7 +19,7 @@ module SMCDEL.Explicit.K where
 
 import Control.Arrow ((&&&),second)
 import Data.Containers.ListUtils (nubInt,nubOrd)
-import Data.Dynamic
+import Data.Typeable (cast)
 import Data.List (sort,(\\),delete,intercalate,intersect)
 import qualified Data.Map.Strict as M
 import Data.Map.Strict ((!))
@@ -144,9 +143,10 @@ eval (m,w) (Dk ags form) = all (\w' -> eval (m,w') form) (distRel m ags w)
 eval (m,w) (Dkw ags form) = alleqWith (\w' -> eval (m,w') form) (distRel m ags w)
 eval (KrM m, _) (G f) = all (\w' -> eval (KrM m, w') f) (M.keys m)
 eval (m,w) (PubAnnounce f g) = not (eval (m,w) f) || eval (update (m,w) f) g
-eval pm (Dia (Dyn dynLabel d) f) = case fromDynamic d of
-  Just pactm -> eval pm (preOf (pactm :: PointedActionModel)) && eval (pm `update` pactm) f
-  Nothing    -> error $ "cannot update Kripke model with '" ++ dynLabel ++ "':\n  " ++ show d
+eval pm (Dia (Dyn dynLabel d) f) =
+  eval pm (preOf d) && case cast d of
+    Just (pactm :: PointedActionModel) -> eval (pm `update` pactm) f
+    Nothing -> error $ "cannot update Kripke model with '" ++ dynLabel ++ "':\n  " ++ show d
 
 instance Semantics PointedModel where
   isTrue = eval
@@ -329,10 +329,16 @@ type MultipointedActionModel = (ActionModel, [Action])
 instance HasPrecondition MultipointedActionModel where
   preOf (ActM am, as) = Disj [ pre (am ! a) | a <- as ]
 
+instance DynOp ActionModel
+
 instance Update KripkeModel ActionModel where
   checks = [haveSameAgents]
   unsafeUpdate m (ActM am) =
     let (newModel,_) = unsafeUpdate (m, worldsOf m) (ActM am, M.keys am) in newModel
+
+instance DynOp PointedActionModel
+
+instance DynOp MultipointedActionModel
 
 instance Update PointedModel PointedActionModel where
   checks = [haveSameAgents,preCheck]
@@ -405,7 +411,7 @@ instance KripkeLike ActionModel where
       , "\\end{array}$" ]
     showPost (p,f) = tex p ++ " := " ++ tex f
   getEdges (ActM am) =
-    concat [ [ (i, show a, show b) | b <- rel (am ! a) ! i ] | a <- M.keys am, i <- agentsOf (ActM am) ]
+    concat [ [ (i, show a, show b) | b <- rel (am ! a) ! i ] | a <- M.keys am, i <- agentsIn (ActM am) ]
   getActuals = const [ ]
 
 instance TexAble ActionModel where

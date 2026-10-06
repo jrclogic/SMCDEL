@@ -120,7 +120,7 @@ instance IsPlan (Plan Form) where
 
 instance IsPlan (Plan Sym.MultipointedEvent) where
   reaches Stop goal = goal
-  reaches (Do actLabel action next) goal = dix (Dyn actLabel (toDyn action)) (reaches next goal)
+  reaches (Do actLabel action next) goal = dix (Dyn actLabel action) (reaches next goal)
   reaches (Check toBeChecked next) goal = Conj [toBeChecked, reaches next goal]
   reaches (IfThenElse check planA planB) goal =
     Conj [ check `Impl` reaches planA goal, Neg check `Impl` reaches planB goal ]
@@ -266,11 +266,11 @@ type Owned action = (Agent,Labelled action)
 -- Note: there is no check that the action is actually local for the agent!
 type ICPlan action = [Owned action]
 
-instance Typeable a => IsPlan (ICPlan a) where
+instance DynOp a => IsPlan (ICPlan a) where
   -- | A formula to say that the given IC plan reaches the given foal.
   reaches [] goal = goal
   reaches ((agent,(label,action)):rest) goal =
-    K agent (dix (Dyn label (toDyn action)) (reaches rest goal))
+    K agent (dix (Dyn label action) (reaches rest goal))
 
 -- | Pretty print an IC plan.
 ppICPlan :: ICPlan action -> String
@@ -279,7 +279,7 @@ ppICPlan [(agent,(label,_))] = agent ++ ":" ++ label ++ "."
 ppICPlan ((agent,(label,_)):rest) = agent ++ ":" ++ label ++ "; " ++ ppICPlan rest
 
 -- | Check that the given IC plan solves the given Coop task.
-icSolves :: (Typeable action, Semantics state) => ICPlan action -> CoopTask state action -> Bool
+icSolves :: (DynOp action, Semantics state) => ICPlan action -> CoopTask state action -> Bool
 icSolves plan (CoopTask start acts goal) =
   all ((`elem` map fst acts) . fst) plan && reachesOn plan goal start
 

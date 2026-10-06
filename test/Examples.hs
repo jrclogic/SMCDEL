@@ -37,7 +37,7 @@ main = hspec $ do
     prop "simplifying a boolean formula yields something equivalent" $
       \(BF bf) -> boolBddOf bf === boolBddOf (simplify bf)
     prop "simplifying a boolean formula only removes propositions" $
-      \(BF bf) -> all (`elem` propsInForm bf) (propsInForm (simplify bf))
+      \(BF bf) -> all (`elem` propsIn bf) (propsIn (simplify bf))
     prop "list of subformulas is already nubbed" $
       \f -> nub (subformulas f) === subformulas f
     prop "formulas are identical iff their show strings are" $

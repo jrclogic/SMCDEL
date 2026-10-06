@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, FlexibleContexts, ScopedTypeVariables #-}
 
 {- |
 This module defines the standard semantics of Dynamic Epistemic Logic ($\mathsf{S5}_n$) on Kripke models.
@@ -23,7 +23,7 @@ References used here:
 module SMCDEL.Explicit.S5 where
 
 import Control.Arrow (second,(&&&))
-import Data.Dynamic
+import Data.Typeable (cast)
 import Data.GraphViz
 import Data.List
 import Data.Tuple (swap)
@@ -181,11 +181,12 @@ eval (m@(KrMS5 worlds rel _),w) (Dkw ags form) = alleqWith (\w' -> eval (m,w') f
 eval (m@(KrMS5 worlds _ _),_) (G form) = all (\w' -> eval (m,w') form) worlds
 eval pm (PubAnnounce form1 form2) =
   not (eval pm form1) || eval (update pm form1) form2
-eval pm (Dia (Dyn dynLabel d) f) = case fromDynamic d of
-  Just pactm -> eval pm (preOf (pactm :: PointedActionModelS5)) && eval (pm `update` pactm) f
-  Nothing    -> case fromDynamic d of
-    Just mpactm -> eval pm (preOf (mpactm :: MultipointedActionModelS5)) && eval (pm `update` mpactm) f
-    Nothing     -> error $ "cannot update S5 Kripke model with '" ++ dynLabel ++ "':\n  " ++ show d
+eval pm (Dia (Dyn dynLabel d) f) =
+  eval pm (preOf d) && case cast d of
+    Just (pactm :: PointedActionModelS5) -> eval (pm `update` pactm) f
+    Nothing -> case cast d of
+      Just (mpactm :: MultipointedActionModelS5) -> eval (pm `update` mpactm) f
+      Nothing -> error $ "cannot update S5 Kripke model with '" ++ dynLabel ++ "':\n  " ++ show d
 
 -- | Is the given formula valid in the model, i.e. true at all worlds?
 valid :: KripkeModelS5 -> Form -> Bool
@@ -347,8 +348,20 @@ type PostCondition = [(Prp,Form)]
 data ActionModelS5 = ActMS5 [(Action,(Form,PostCondition))] [(Agent,Partition)]
   deriving (Eq,Ord,Show)
 
-instance HasAgents ActionModelS5 where
-  agentsOf (ActMS5 _ rel) = map fst rel
+instance UsesAgents ActionModelS5 where
+  agentsIn (ActMS5 _ rel) = map fst rel
+
+instance UsesVocab ActionModelS5 where
+  propsIn (ActMS5 acts _) = nub $ concatMap
+    ( \ (_,(pre,posts))
+      -> propsIn pre ++ concat [ p : propsIn f | (p,f) <- posts ]
+    ) acts
+  replPsIn repl (ActMS5 acts rel) = ActMS5
+    (map ( \ (a, (pre, posts))
+           -> (a, ( replPsIn repl pre
+                  , [ (replPsIn repl p, replPsIn repl f) | (p,f) <- posts ]))
+         ) acts)
+    rel
 
 -- | A safe way to `lookup` all postconditions
 safepost :: PostCondition -> Prp -> Form
@@ -378,7 +391,7 @@ instance KripkeLike ActionModelS5 where
       , "\\end{array}$" ])
     showPost (p,f) = tex p ++ " := " ++ tex f
   getEdges am@(ActMS5 _ rel) =
-    nub [ (a, show x, show y) | a <- agentsOf am, part <- rel ! a, x <- part, y <- part, x < y ]
+    nub [ (a, show x, show y) | a <- agentsIn am, part <- rel ! a, x <- part, y <- part, x < y ]
   getActuals _ = [ ]
   nodeAts _ True  = [shape BoxShape, style solid]
   nodeAts _ False = [shape BoxShape, style dashed]
@@ -428,14 +441,20 @@ instance Arbitrary ActionModelS5 where
         , (3,(h  ,[]))     ]
         ( ("0",[[0],[1],[2],[3]]):[(show k,[[0..3::Int]]) | k<-[1..5::Int] ])
 
+instance DynOp ActionModelS5
+
 instance Update KripkeModelS5 ActionModelS5 where
   checks = [haveSameAgents]
   unsafeUpdate m am@(ActMS5 acts _) =
     let (newModel,_) = unsafeUpdate (m, worldsOf m) (am, map fst acts) in newModel
 
+instance DynOp PointedActionModelS5
+
 instance Update PointedModelS5 PointedActionModelS5 where
   checks = [haveSameAgents,preCheck]
   unsafeUpdate (m, w) (actm, a) = head <$> unsafeUpdate (m, [w]) (actm, [a])
+
+instance DynOp MultipointedActionModelS5
 
 instance Update PointedModelS5 MultipointedActionModelS5 where
   checks = [haveSameAgents,preCheck]

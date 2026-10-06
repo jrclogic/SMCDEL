@@ -77,7 +77,7 @@ actionToEvent :: PointedActionModel -> Event
 actionToEvent (ActM am, faction) = (Trf addprops addlaw changelaw eventObs, efacts) where
   actions      = M.keys am
   (P fstnewp)  = freshp $ concatMap -- avoid props in pre and postconditions
-                 (\c -> propsInForms (pre c : M.elems (post c)) ++ M.keys (post c)) (M.elems am)
+                 (\c -> propsIn (pre c : M.elems (post c)) ++ M.keys (post c)) (M.elems am)
   addprops     = [P fstnewp..P maxactprop] -- new props to distinguish all actions
   maxactprop   = fstnewp + ceiling (logBase 2 (fromIntegral $ length actions) :: Float) - 1
   ell          = apply $ zip actions (powerset addprops) -- injectively label actions with sets of propositions
@@ -85,7 +85,7 @@ actionToEvent (ActM am, faction) = (Trf addprops addlaw changelaw eventObs, efac
   changeprops  = sort $ nub $ concatMap M.keys . M.elems $ M.map post am -- propositions to be changed
   changelaw    = M.fromList [ (p, changeFor p) | p <- changeprops ] -- encode postconditions
   changeFor p  = disSet [ booloutof (ell k) addprops `con` boolBddOf (safepost (am ! k) p) | k <- actions ]
-  eventObs     = M.fromList [ (i, obsLawFor i) | i <- agentsOf (ActM am) ]
+  eventObs     = M.fromList [ (i, obsLawFor i) | i <- agentsIn (ActM am) ]
   obsLawFor i  = pure $ disSet (M.elems $ M.mapWithKey (link i) am)
   link i k ch  = booloutof (mv $ ell k) (mv addprops) `con` -- encode relations
                  disSet [ booloutof (cp $ ell there) (cp addprops) | there <- rel ch ! i ]
@@ -99,7 +99,7 @@ eventToAction (t@(Trf addprops addlaw changelaw eventObs), efacts) = (ActM am, f
   am         = M.fromList [ (a, Act (preFor ps) (postFor ps) (relFor ps)) | (ps,a) <- actlist ]
   preFor ps  = simplify $ substitSet (map (, Top) ps ++ map (, Bot) (addprops \\ ps)) addlaw
   postFor ps = M.fromList [ (q, formOf $ (changelaw ! q) `restrictSet` [(p, P p `elem` ps) | (P p) <- addprops]) | q <- M.keys changelaw ]
-  relFor ps  = M.fromList [(i,rFor i) | i <- agentsOf t] where
+  relFor ps  = M.fromList [(i,rFor i) | i <- agentsIn t] where
     rFor i   = concatMap (\(qs,b) -> [ b | tagBddEval (mv ps ++ cp qs) (eventObs ! i), preFor qs /= Bot ]) actlist
   faction    = apply actlist efacts
 

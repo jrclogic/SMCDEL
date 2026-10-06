@@ -14,7 +14,7 @@ import Control.Arrow (first,second,(***))
 import Data.Char (isSpace)
 import Data.DecisionDiagram.BDD hiding (existsSet,restrict,restrictSet,lfp)
 import qualified Data.DecisionDiagram.BDD
-import Data.Dynamic
+import Data.Typeable (cast)
 import qualified Data.IntMap
 import qualified Data.IntSet
 import Data.List ((\\),delete,dropWhileEnd,intercalate,intersect,nub,sort)
@@ -200,10 +200,10 @@ eval (kns@(KnS _ _ obs),s) (Dkw ags form) = alleqWith (\s' -> eval (kns,s') form
 eval (kns, _) (G form)  = all (\s' -> eval (kns,s') form) (statesOf kns)
 eval scn (PubAnnounce form1 form2) =
   not (eval scn form1) || eval (update scn form1) form2
-eval scn (Dia (Dyn dynLabel d) f) = case fromDynamic d of
-  Just event -> eval scn (preOf (event :: Event))
-                && eval (scn `update` event) f
-  Nothing    -> error $ "cannot update knowledge structure with '" ++ dynLabel ++ "':\n  " ++ show d
+eval scn (Dia (Dyn dynLabel op) f) =
+  eval scn (preOf op) && case cast op of
+    Just (e :: Event) -> eval (scn `update` e) f
+    Nothing -> error $ "cannot update knowledge structure with '" ++ dynLabel ++ "':\n  " ++ show op
 
 announce :: KnowStruct -> [Agent] -> Form -> KnowStruct
 announce kns@(KnS props lawbdd obs) ags psi = KnS newprops newlawbdd newobs where
@@ -258,7 +258,7 @@ bddOf kns (Dia (Dyn dynLabel d) f) =
     . simulateActualEvents                    -- 3. Simulate actual event(s) [see below]
     . substitSimul [ (k, changeLaw ! p)       -- 2. Replace changeProps V_ with postcons
                    | p@(P k) <- changeProps]  --    (no "relabelWith copyrel", undone in 4)
-    . bddOf (kns `update` trf)                -- 1. boolean equivalent wrt new struct
+    . bddOf (kns `unsafeUpdate` trf)          -- 1. boolean equivalent wrt new struct
     $ f
   where
     changeProps = map fst changeLaw
@@ -266,11 +266,11 @@ bddOf kns (Dia (Dyn dynLabel d) f) =
     copyrelInverse  = zip copychangeProps changeProps
     (trf@(KnTrf addProps addLaw changeLaw _), shiftrel) = shiftPrepare kns trfUnshifted
     (preCon,trfUnshifted,simulateActualEvents) =
-      case fromDynamic d of
+      case cast d of
         -- 3. For a single event, simulate actual event x outof V+
         Just ((t,x) :: Event) -> ( preOf (t,x), t, (`restrictSet` actualAss) )
           where actualAss = [(newK, P k `elem` x) | (P k, P newK) <- shiftrel]
-        Nothing -> case fromDynamic d of
+        Nothing -> case cast d of
           -- 3. For a multipointed event, simulate a set of actual events by ...
           Just ((t,xsBdd) :: MultipointedEvent) ->
               ( preOf (t,xsBdd), t
@@ -383,8 +383,20 @@ noChange :: ([Prp] -> Form -> [(Prp,Bdd)] -> [(Agent,[Prp])] -> KnowTransformer)
           -> [Prp] -> Form                -> [(Agent,[Prp])] -> KnowTransformer
 noChange kntrf addprops addlaw = kntrf addprops addlaw []
 
-instance HasAgents KnowTransformer where
-  agentsOf (KnTrf _ _ _ obdds) = map fst obdds
+instance UsesAgents KnowTransformer where
+  agentsIn (KnTrf _ _ _ obdds) = map fst obdds
+
+instance UsesVocab KnowTransformer where
+  -- | The vocabulary used in the event law and the changelaw.
+  -- This does *not* include the event vocabulary.
+  propsIn (KnTrf addprops addlaw changelaw _) =
+    (propsIn addlaw \\ addprops) ++ map fst changelaw
+  replPsIn repl (KnTrf addprops addlaw changelaw obs) =
+    KnTrf
+      addprops -- not changing the addprops on purpose.
+      (replPsIn repl addlaw)
+      [ (replPsIn repl p, relabelWith repl b) | (p,b) <- changelaw ]
+      obs
 
 instance HasPrecondition KnowTransformer where
   preOf _ = Top
@@ -417,6 +429,9 @@ shiftPrepare (KnS props _ _) (KnTrf addprops addlaw changelaw eventObs) =
     changelawShifted = map (second (relabelWith shiftrel)) changelaw
     eventObsShifted  = map (second (map (apply shiftrel))) eventObs
 
+instance DynOp Event
+
+-- | S5 transformation with factual change.
 instance Update KnowScene Event where
   unsafeUpdate (kns@(KnS props _ _),s) (ctrf, eventFactsUnshifted) = (KnS newprops newlaw newobs, news) where
     -- PART 1: SHIFTING addprops to ensure props and newprops are disjoint
@@ -434,10 +449,15 @@ instance Update KnowScene Event where
             , eventFacts
             , filter (\ p -> bddEval (s ++ eventFacts) (changelaw ! p)) changeprops ]
 
+instance DynOp KnowTransformer
+
+-- | Pointless update of a structure with a transformer. Uses laziness.
 instance Update KnowStruct KnowTransformer where
   checks = [haveSameAgents]
   unsafeUpdate kns ctrf = KnS newprops newlaw newobs where
     (KnS newprops newlaw newobs, _) = unsafeUpdate (kns,undefined::Bdd) (ctrf,undefined::Bdd) -- using laziness!
+
+instance DynOp MultipointedEvent
 
 instance Update MultipointedKnowScene MultipointedEvent where
   unsafeUpdate (kns@(KnS props law obs),statesBdd) (ctrf,eventsBddUnshifted)  =

@@ -47,7 +47,7 @@ module SMCDEL.Symbolic.K where
 import Data.Tagged
 
 import Control.Arrow ((&&&),first)
-import Data.Dynamic (fromDynamic)
+import Data.Typeable (cast)
 import Data.HasCacBDD hiding (Top,Bot)
 import Data.List (delete,intercalate,sort,intersect,nub,(\\))
 import qualified Data.Map.Strict as M
@@ -416,11 +416,11 @@ bddOf bls (Dia (Dyn dynLabel d) f) =
     copyrelInverse  = zip copychangeProps changeProps
     (trf@(Trf addProps addLaw changeLaw _), shiftrel) = shiftPrepare bls trfUnshifted
     (preCon,trfUnshifted,simulateActualEvents) =
-      case fromDynamic d of
+      case cast d of
         -- 3. For a single pointed event, simulate actual event x outof V+
         Just ((t,x) :: Event) -> ( preOf (t,x), t, (`restrictSet` actualAss) )
           where actualAss = [(newK, P k `elem` x) | (P k, P newK) <- shiftrel]
-        Nothing -> case fromDynamic d of
+        Nothing -> case cast d of
           -- 3. For a multipointed event, simulate a set of actual events by ...
           Just ((t,xsBdd) :: MultipointedEvent) ->
               ( preOf (t,xsBdd), t
@@ -672,8 +672,22 @@ noChange :: ([Prp] -> Form -> M.Map Prp Bdd -> M.Map Agent RelBDD -> Transformer
           -> [Prp] -> Form                  -> M.Map Agent RelBDD -> Transformer
 noChange kntrf addprops addlaw = kntrf addprops addlaw M.empty
 
-instance HasAgents Transformer where
-  agentsOf (Trf _ _ _ obdds) = M.keys obdds
+instance UsesAgents Transformer where
+  agentsIn (Trf _ _ _ obdds) = M.keys obdds
+
+instance UsesVocab Transformer where
+  -- | The vocabulary used in the event law and the changelaw.
+  -- This does *not* include the event vocabulary.
+  propsIn (Trf addprops addlaw changelaw _) =
+    nub $ (propsIn addlaw \\ addprops) ++ M.keys changelaw
+  replPsIn repl (Trf addprops addlaw changelaw obdds) =
+    Trf
+      addprops -- not changing the addprops on purpose.
+      (replPsIn repl addlaw)
+      (M.foldrWithKey
+        (\ p b acc -> uncurry M.insert (replPsIn repl p, relabelWith repl b) acc)
+        M.empty changelaw)
+      obdds
 
 instance HasPrecondition Transformer where
   preOf _ = Top
@@ -730,12 +744,14 @@ shiftPrepare (BlS props _ _) (Trf addprops addlaw changelaw eventObs) =
     shiftrel = sort $ zip addprops [(freshp props)..]
     shiftaddprops = map snd shiftrel
     -- apply the shifting to addlaw, changelaw and eventObs:
-    addlawShifted    = replPsInF shiftrel addlaw
+    addlawShifted    = replPsIn shiftrel addlaw
     changelawShifted = M.map (relabelWith shiftrel) changelaw
     -- to shift addObs we need shiftrel in the double vocabulary:
     shiftrelMVCP = sort $ zip (mv addprops) (mv shiftaddprops)
                        ++ zip (cp addprops) (cp shiftaddprops)
     eventObsShifted  = M.map (fmap $ relabelWith shiftrelMVCP) eventObs
+
+instance DynOp Event
 
 instance Update BelScene Event where
   unsafeUpdate (bls@(BlS props law obdds),s) (trf, eventFactsUnshifted) = (BlS newprops newlaw newobs, news) where
@@ -760,6 +776,8 @@ instance Update BelScene Event where
             , eventFacts
             , filter (\ p -> bddEval (s ++ eventFacts) (changelaw ! p)) changeprops ]
 
+instance DynOp Transformer
+
 instance Update BelStruct Transformer where
   checks = [haveSameAgents]
   -- | Pointless update of a structure with a transformer, using laziness.
@@ -783,6 +801,8 @@ This is analogous to updating a singlepointed Kripke model with a multi-pointed 
 Also there the preconditions need to be mutually exclusive to get a single-pointed model again.
 
 -}
+
+instance DynOp MultipointedEvent
 
 instance Update BelScene MultipointedEvent where
   unsafeUpdate (bls,s) (trfUnshifted, eventFactsBddUnshifted) =
