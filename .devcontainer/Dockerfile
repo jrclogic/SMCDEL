@@ -15,7 +15,7 @@ RUN echo "export PATH=${PATH}" >> /home/vscode/.profile
 RUN curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | BOOTSTRAP_HASKELL_MINIMAL=1 BOOTSTRAP_HASKELL_NONINTERACTIVE=1 sh
 
 # Set up the environment. This will install the default versions of every tool.
-RUN /home/vscode/.ghcup/bin/ghcup install ghc 9.8.4
+RUN /home/vscode/.ghcup/bin/ghcup install ghc 9.10.3
 RUN /home/vscode/.ghcup/bin/ghcup install hls
 RUN /home/vscode/.ghcup/bin/ghcup install stack
 RUN /home/vscode/.ghcup/bin/ghcup install cabal

@@ -1,4 +1,4 @@
-resolver: lts-23.27
+resolver: lts-24.62
 
 packages:
 - '.'
@@ -8,3 +8,9 @@ extra-deps:
   commit: c5f0fd8446827b1473ef18ea5dcc5d32a256e57d
 - HasCacBDD-0.4.0.0
 - decision-diagrams-0.2.0.0
+
+allow-newer: true
+
+allow-newer-deps:
+- HasCacBDD
+- decision-diagrams

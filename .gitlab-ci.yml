@@ -1,4 +1,4 @@
-image: haskell:9.8.4
+image: haskell:9.10.3-bookworm
 
 variables:
   STACK_ROOT: "${CI_PROJECT_DIR}/.stack"
@@ -47,7 +47,7 @@ test-web:
   script:
     - apt-get update -y
     - apt-get install -y --no-install-recommends graphviz dot2tex python3-pkg-resources libtinfo5 texlive-latex-base texlive-latex-extra poppler-utils preview-latex-style texlive-pstricks ca-certificates-java pkg-config
-    - apt-get install -y --no-install-recommends openjdk-11-jre-headless firefox-esr wget
+    - apt-get install -y --no-install-recommends openjdk-17-jre-headless firefox-esr wget
     - stack --no-terminal test --flag smcdel:web smcdel:exe:smcdel-web smcdel:test:web --test-arguments "--headless"
   cache:
     <<: *global_cache
