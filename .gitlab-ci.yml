@@ -26,7 +26,7 @@ build:
 test:
   stage: test
   script:
-    - apt-get update -yqq
+    - apt-get update -y
     - apt-get install -y --no-install-recommends graphviz dot2tex python3-pkg-resources libtinfo5 texlive-latex-base texlive-latex-extra poppler-utils preview-latex-style texlive-pstricks poppler-utils
     - rm -rf .stack-work/install/*/*/*/hpc
     - stack --no-terminal test --coverage smcdel:test:examples smcdel:test:k smcdel:test:translations
@@ -45,7 +45,7 @@ test:
 test-web:
   stage: test
   script:
-    - apt-get update -yqq
+    - apt-get update -y
     - apt-get install -y --no-install-recommends graphviz dot2tex python3-pkg-resources libtinfo5 texlive-latex-base texlive-latex-extra poppler-utils preview-latex-style texlive-pstricks ca-certificates-java pkg-config
     - apt-get install -y --no-install-recommends openjdk-11-jre-headless firefox-esr wget
     - stack --no-terminal test --flag smcdel:web smcdel:exe:smcdel-web smcdel:test:web --test-arguments "--headless"
@@ -81,7 +81,7 @@ test-CUDD:
 hlint:
   image: debian:stable
   before_script:
-    - apt-get update -yqq
+    - apt-get update -y
     - apt-get install -y curl
   stage: build
   script:
@@ -92,7 +92,7 @@ hlint:
 doc:
   stage: test
   script:
-    - apt-get update -yqq
+    - apt-get update -y
     - apt-get install -y --no-install-recommends graphviz dot2tex python3-pkg-resources libtinfo5 texlive-latex-base texlive-latex-extra poppler-utils preview-latex-style texlive-pstricks poppler-utils ripgrep
     - stack build smcdel:lib smcdel:test:doctest --haddock
     - rm -rf ./doc
