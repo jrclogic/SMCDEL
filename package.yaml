@@ -14,7 +14,7 @@ custom-setup:
   - Cabal < 3.13
   - process
 
-ghc-options: -Wall
+ghc-options: -Wall -Wno-x-partial
 
 extra-source-files:
   - README.md

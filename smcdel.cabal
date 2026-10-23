@@ -98,7 +98,7 @@ library
       SMCDEL.Translations.S5
   hs-source-dirs:
       src
-  ghc-options: -Wall
+  ghc-options: -Wall -Wno-x-partial
   build-tools:
       alex
     , happy
@@ -136,7 +136,7 @@ executable smcdel
       Paths_smcdel
   hs-source-dirs:
       exec
-  ghc-options: -Wall
+  ghc-options: -Wall -Wno-x-partial
   build-tools:
       alex
     , happy
@@ -156,7 +156,7 @@ executable smcdel-web
   main-is: smcdel-web.hs
   hs-source-dirs:
       exec
-  ghc-options: -Wall -threaded
+  ghc-options: -Wall -Wno-x-partial -threaded
   build-tools:
       alex
     , happy
@@ -179,7 +179,7 @@ executable smcdel-web
 test-suite CUDD
   type: exitcode-stdio-1.0
   main-is: test/CUDD.hs
-  ghc-options: -Wall -with-rtsopts=-M8G
+  ghc-options: -Wall -Wno-x-partial -with-rtsopts=-M8G
   build-tools:
       alex
     , happy
@@ -198,7 +198,7 @@ test-suite CUDD
 test-suite doctest
   type: exitcode-stdio-1.0
   main-is: test/doctest.hs
-  ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -Wno-x-partial -threaded -rtsopts -with-rtsopts=-N
   build-tools:
       alex
     , happy
@@ -213,7 +213,7 @@ test-suite doctest
 test-suite examples
   type: exitcode-stdio-1.0
   main-is: test/Examples.hs
-  ghc-options: -Wall -with-rtsopts=-M8G
+  ghc-options: -Wall -Wno-x-partial -with-rtsopts=-M8G
   build-tools:
       alex
     , happy
@@ -228,7 +228,7 @@ test-suite examples
 test-suite k
   type: exitcode-stdio-1.0
   main-is: test/K.hs
-  ghc-options: -Wall -with-rtsopts=-M8G
+  ghc-options: -Wall -Wno-x-partial -with-rtsopts=-M8G
   build-tools:
       alex
     , happy
@@ -243,7 +243,7 @@ test-suite k
 test-suite translations
   type: exitcode-stdio-1.0
   main-is: test/Translations.hs
-  ghc-options: -Wall -with-rtsopts=-M8G
+  ghc-options: -Wall -Wno-x-partial -with-rtsopts=-M8G
   build-tools:
       alex
     , happy
@@ -256,7 +256,7 @@ test-suite translations
 test-suite web
   type: exitcode-stdio-1.0
   main-is: test/Web.hs
-  ghc-options: -Wall -with-rtsopts=-M8G
+  ghc-options: -Wall -Wno-x-partial -with-rtsopts=-M8G
   build-tools:
       alex
     , happy
@@ -277,7 +277,7 @@ benchmark bench-diningcrypto
   main-is: diningcrypto.hs
   hs-source-dirs:
       bench
-  ghc-options: -Wall
+  ghc-options: -Wall -Wno-x-partial
   build-tools:
       alex
     , happy
@@ -292,7 +292,7 @@ benchmark bench-muddychildren
   main-is: muddychildren.hs
   hs-source-dirs:
       bench
-  ghc-options: -Wall
+  ghc-options: -Wall -Wno-x-partial
   build-tools:
       alex
     , happy
@@ -316,7 +316,7 @@ benchmark bench-sumandproduct
   main-is: sumandproduct.hs
   hs-source-dirs:
       bench
-  ghc-options: -Wall
+  ghc-options: -Wall -Wno-x-partial
   build-tools:
       alex
     , happy
@@ -332,7 +332,7 @@ benchmark sizes-diningcryptographers
   main-is: diningcryptographers.hs
   hs-source-dirs:
       sizeExperiments
-  ghc-options: -Wall
+  ghc-options: -Wall -Wno-x-partial
   build-tools:
       alex
     , happy
@@ -356,7 +356,7 @@ benchmark sizes-muddychildren
   main-is: muddychildren.hs
   hs-source-dirs:
       sizeExperiments
-  ghc-options: -Wall
+  ghc-options: -Wall -Wno-x-partial
   build-tools:
       alex
     , happy
@@ -380,7 +380,7 @@ benchmark sizes-sumandproduct
   main-is: sumandproduct.hs
   hs-source-dirs:
       sizeExperiments
-  ghc-options: -Wall
+  ghc-options: -Wall -Wno-x-partial
   build-tools:
       alex
     , happy

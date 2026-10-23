@@ -13,6 +13,7 @@ main = do
     [ "-isrc"
     -- , "--verbose"
     , "--fast"
+    , "-Wno-x-partial"
     ] ++ (flist \\ exclude)
 
 exclude :: [FilePath]
