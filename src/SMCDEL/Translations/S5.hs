@@ -213,13 +213,13 @@ descableRels m@(KrMS5 ws rel val) = all (descable . fst) rel where
     factsAt w = map fst $ filter snd $ apply val w
 
 -- | Try to find an equivalent knowledge structure without adding fresh atomic propositions.
--- Will succeed iff valuations are unique and relations can be described using observariables.
--- Alternative to `kripkeToKnsMulti`.
-smartKripkeToKns :: PointedModelS5 -> Maybe KnowScene
+-- Will use `smartKripkeToKnsWithoutChecks` when valuations are unique and relations can be
+-- described using observariables. Otherwise falls back to using `kripkeToKnsMulti`.
+smartKripkeToKns :: PointedModelS5 -> KnowScene
 smartKripkeToKns (m, cur) =
   if uniqueVals m && descableRels m
-    then Just (smartKripkeToKnsWithoutChecks (m, cur))
-    else Nothing
+    then smartKripkeToKnsWithoutChecks (m, cur)
+    else kripkeToKns (m, cur)
 
 -- | Unsafe version of `smartKripkeToKns`.
 smartKripkeToKnsWithoutChecks :: PointedModelS5 -> KnowScene
@@ -231,8 +231,6 @@ smartKripkeToKnsWithoutChecks (m@(KrMS5 worlds rel val), cur) =
     obs = map (\(i,_) -> (i,obsOf i) ) rel
     obsOf = fst.obsnobs m
     curs = map fst $ filter snd $ apply val cur
-
--- TODO: add a translation that uses smart if if works, but normal translation otherwise?
 
 -- TODO: test the above on symmetric and random models, how does it perform?
 

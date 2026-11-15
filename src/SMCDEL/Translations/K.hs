@@ -19,8 +19,11 @@ import SMCDEL.Explicit.S5 (worldsOf)
 import SMCDEL.Explicit.K
 import SMCDEL.Internal.Help (apply,powerset,groupSortWith)
 import SMCDEL.Symbolic.K
-import SMCDEL.Symbolic.S5 (boolBddOf,booloutof)
+import SMCDEL.Symbolic.S5 (boolBddOf,booloutof,bddEval)
 import SMCDEL.Other.BDD2Form
+import SMCDEL.Translations.S5 (StateMap)
+
+-- * From Belief Structures to Kripke Models
 
 -- | Convert a belief scene to a pointed Kripke model.
 blsToKripke :: BelScene -> PointedModel
@@ -33,15 +36,42 @@ blsToKripke (f@(BlS _ _ obdds), curs) = (m, cur) where
   reachFromFor s a = filter (\t -> tagBddEval (mv s ++ cp t) (obdds ! a)) (statesOf f)
   cur = fromJust (lookup curs links)
 
+-- | Like `blsToKripke` but also return the function \(g\).
+blsToKripkeWithG :: BelStruct -> (KripkeModel, StateMap)
+blsToKripkeWithG f@(BlS _ _ obdds) = (m, g) where
+  links = zip (statesOf f) [0..]
+  m = KrM $ M.fromList
+    [ (w, ( M.fromList [(p, p `elem` s) | p <- vocabOf f]
+          , M.fromList [(a, map (apply links) $ reachFromFor s a) | a <- agentsOf f] ) )
+    | (s,w) <- links ]
+  reachFromFor s a = filter (\t -> tagBddEval (mv s ++ cp t) (obdds ! a)) (statesOf f)
+  g w    = statesOf f !! w
+
+-- | Like `blsToKripke` but for multipointed structures.
+blsToKripkeMulti :: MultipointedBelScene -> MultipointedModel
+blsToKripkeMulti (f, statesBdd) = (m, ws) where
+  (m, g) = blsToKripkeWithG f
+  ws = filter (\w -> evaluateFun statesBdd (\k -> P k `elem` g w)) (worldsOf m)
+
 -- * From Kripke Models to Belief Structures
 
+-- | Convert a pointed Kripke model to a belief scene.
 kripkeToBls :: PointedModel -> BelScene
-kripkeToBls pm@(m,_) | distinctVal m = kripkeToBlsUnsafe pm
-                     | otherwise     = kripkeToBlsUnsafe (ensureDistinctVal pm)
+kripkeToBls (m,w)
+  | distinctVal m = (kripkeToBlsUnsafe m, truthsInAt m w)
+  | otherwise     = let m' = ensureDistinctVal m
+                    in (kripkeToBlsUnsafe m', truthsInAt m' w)
 
--- | Unsafe version of `kripkeToBls`, assuming we already have distinct valuations.
-kripkeToBlsUnsafe :: PointedModel -> BelScene
-kripkeToBlsUnsafe (m, cur) = (BlS vocab lawbdd obdds, truthsInAt m cur) where
+-- | Convert a pointed Kripke model to a belief scene.
+kripkeToBlsMulti :: MultipointedModel -> MultipointedBelScene
+kripkeToBlsMulti (m, curWorlds) =
+  let m' = if distinctVal m then m else ensureDistinctVal m
+  in ( kripkeToBlsUnsafe m'
+     , disSet [ booloutof (truthsInAt m w) (vocabOf m) | w <- curWorlds ] )
+
+-- | Convert a Kripke model to a belief scene, assuming we already have distinct valuations.
+kripkeToBlsUnsafe :: KripkeModel -> BelStruct
+kripkeToBlsUnsafe m = BlS vocab lawbdd obdds where
   vocab  = vocabOf m
   lawbdd = disSet [ booloutof (truthsInAt m w) vocab | w <- worldsOf m ]
   obdds  :: M.Map Agent RelBDD
@@ -60,8 +90,9 @@ Alternatively, the output structure can be optimized after the conversion.
 
 -}
 
-ensureDistinctVal :: PointedModel -> PointedModel
-ensureDistinctVal (krm@(KrM m), cur) = if distinctVal krm then (krm,cur) else (KrM newM,cur) where
+-- | If necessary, use extra proposition letters to ensure distinct valuations.
+ensureDistinctVal :: KripkeModel -> KripkeModel
+ensureDistinctVal krm@(KrM m) = if distinctVal krm then krm else KrM newM where
   sameVals = groupSortWith (truthsInAt krm) (worldsOf krm)
   indexOf w = let k = fromJust $ elemIndex w (head $ filter (elem w) sameVals) in k
   numAddProps = ceiling $ logBase (2::Double) (fromIntegral $ maximum (map length sameVals) + 1)
@@ -71,10 +102,10 @@ ensureDistinctVal (krm@(KrM m), cur) = if distinctVal krm then (krm,cur) else (K
 
 -- * From Action Models to Transformers
 
--- | This generalizes `SMCDEL.Translations.S5.actionToEvent``
+-- | Convert an action model to a transformer, also returning the $$\ell$$ labelling.
 -- Note that we don't need extra propositions for the action relation any longer.
-actionToEvent :: PointedActionModel -> Event
-actionToEvent (ActM am, faction) = (Trf addprops addlaw changelaw eventObs, efacts) where
+actionToTrfWithEll :: ActionModel -> (Transformer, StateMap)
+actionToTrfWithEll (ActM am) = (Trf addprops addlaw changelaw eventObs, ell) where
   actions      = M.keys am
   (P fstnewp)  = freshp $ concatMap -- avoid props in pre and postconditions
                  (\c -> propsIn (pre c : M.elems (postmap c)) ++ M.keys (postmap c)) (M.elems am)
@@ -89,18 +120,47 @@ actionToEvent (ActM am, faction) = (Trf addprops addlaw changelaw eventObs, efac
   obsLawFor i  = pure $ disSet (M.elems $ M.mapWithKey (link i) am)
   link i k ch  = booloutof (mv $ ell k) (mv addprops) `con` -- encode relations
                  disSet [ booloutof (cp $ ell there) (cp addprops) | there <- rel ch ! i ]
-  efacts       = ell faction
+
+-- | Convert a pointed action model to a symbolic event.
+actionToEvent :: PointedActionModel -> Event
+actionToEvent (am, faction) = (trf, efacts) where
+  (trf, ell) = actionToTrfWithEll am
+  efacts     = ell faction
+
+-- | Convert a pointed action model to a symbolic event.
+actionToEventMulti :: MultipointedActionModel -> MultipointedEvent
+actionToEventMulti (am, curActions) = (trf, curActionsLaw) where
+  (trf@(Trf addprops _ _ _), ell) = actionToTrfWithEll am
+  curActionsLaw = disSet [ booloutof (ell w) addprops | w <- curActions ]
 
 -- * From Transformers to Action Models
 
-eventToAction :: Event -> PointedActionModel
-eventToAction (t@(Trf addprops addlaw changelaw eventObs), efacts) = (ActM am, faction) where
+trfToActionWithG :: Transformer -> (ActionModel, StateMap)
+trfToActionWithG t@(Trf addprops addlaw changelaw eventObs) = (ActM am, g) where
   actlist    = zip (powerset addprops) [0..]
   am         = M.fromList [ (a, Act (preFor ps) (PC $ postFor ps) (relFor ps)) | (ps,a) <- actlist ]
   preFor ps  = simplify $ substitSet (map (, Top) ps ++ map (, Bot) (addprops \\ ps)) addlaw
   postFor ps = M.fromList [ (q, formOf $ (changelaw ! q) `restrictSet` [(p, P p `elem` ps) | (P p) <- addprops]) | q <- M.keys changelaw ]
   relFor ps  = M.fromList [(i,rFor i) | i <- agentsIn t] where
     rFor i   = concatMap (\(qs,b) -> [ b | tagBddEval (mv ps ++ cp qs) (eventObs ! i), preFor qs /= Bot ]) actlist
-  faction    = apply actlist efacts
+  g :: StateMap
+  g a = head [ x | (x, a') <- actlist, a' == a ]
 
--- TODO unpointed and multipointed translations
+eventToAction :: Event -> PointedActionModel
+eventToAction (trf, event) = (ActM am, faction) where
+  (ActM am, g) = trfToActionWithG trf
+  acts = M.keys am
+  faction = case [ a | a <- acts, g a == event ] of
+    [fct] -> fct
+    _ -> error $ unlines
+      [ "Could not find faction:"
+      , "  acts = " ++ show am
+      , "  map g acts = " ++ show (map g acts)
+      , "  event = " ++ show event
+      , "  trf = " ++ show trf
+      ]
+
+eventToActionMulti :: MultipointedEvent -> MultipointedActionModel
+eventToActionMulti (trf, actualEventLaw) = (ActM am, factions) where
+  (ActM am, g) = trfToActionWithG trf
+  factions = [ a | a <- M.keys am, bddEval (g a) actualEventLaw ]
