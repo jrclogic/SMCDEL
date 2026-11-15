@@ -685,7 +685,7 @@ instance UsesVocab Transformer where
       addprops -- not changing the addprops on purpose.
       (replPsIn repl addlaw)
       (M.foldrWithKey
-        (\ p b acc -> uncurry M.insert (replPsIn repl p, relabelWith repl b) acc)
+        (\ p b acc -> M.insert (replPsIn repl p) (relabelWith repl b) acc)
         M.empty changelaw)
       obdds
 
