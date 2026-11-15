@@ -78,9 +78,9 @@ myScn = (SymK.BlS defaultVocabulary
 -- | An example Non-S5 action model with 3 events.
 myAct :: ExpK.MultipointedActionModel
 myAct = (ActM $ fromList
-          [ (0, Act Top          (fromList [(P 1, PrpF (P 2))]) (fromList [("1",[0]),("2",[2]),("3",[2]),("4",[0,1]),("5",[0,1,2])]))
-          , (1, Act (PrpF (P 1)) (fromList [(P 3, PrpF (P 4))]) (fromList [("1",[1]),("2",[2]),("3",[2]),("4",[0,1]),("5",[0,1,2])]))
-          , (2, Act (PrpF (P 2)) (fromList mempty             ) (fromList [("1",[2]),("2",[2]),("3",[2]),("4",[2]  ),("5",[0,1,2])])) ]
+          [ (0, Act Top          (PC $ fromList [(P 1, PrpF (P 2))]) (fromList [("1",[0]),("2",[2]),("3",[2]),("4",[0,1]),("5",[0,1,2])]))
+          , (1, Act (PrpF (P 1)) (PC $ fromList [(P 3, PrpF (P 4))]) (fromList [("1",[1]),("2",[2]),("3",[2]),("4",[0,1]),("5",[0,1,2])]))
+          , (2, Act (PrpF (P 2)) (PC $ fromList mempty             ) (fromList [("1",[2]),("2",[2]),("3",[2]),("4",[2]  ),("5",[0,1,2])])) ]
         , [0] )
 
 -- | A transformer which is equivalent to myAct.

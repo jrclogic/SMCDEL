@@ -77,12 +77,12 @@ actionToEvent :: PointedActionModel -> Event
 actionToEvent (ActM am, faction) = (Trf addprops addlaw changelaw eventObs, efacts) where
   actions      = M.keys am
   (P fstnewp)  = freshp $ concatMap -- avoid props in pre and postconditions
-                 (\c -> propsIn (pre c : M.elems (post c)) ++ M.keys (post c)) (M.elems am)
+                 (\c -> propsIn (pre c : M.elems (postmap c)) ++ M.keys (postmap c)) (M.elems am)
   addprops     = [P fstnewp..P maxactprop] -- new props to distinguish all actions
   maxactprop   = fstnewp + ceiling (logBase 2 (fromIntegral $ length actions) :: Float) - 1
   ell          = apply $ zip actions (powerset addprops) -- injectively label actions with sets of propositions
   addlaw       = simplify $ Disj [ Conj [ booloutofForm (ell a) addprops, pre $ am ! a ] | a <- actions ]
-  changeprops  = sort $ nub $ concatMap M.keys . M.elems $ M.map post am -- propositions to be changed
+  changeprops  = sort $ nub $ concatMap M.keys . M.elems $ M.map postmap am -- propositions to be changed
   changelaw    = M.fromList [ (p, changeFor p) | p <- changeprops ] -- encode postconditions
   changeFor p  = disSet [ booloutof (ell k) addprops `con` boolBddOf (safepost (am ! k) p) | k <- actions ]
   eventObs     = M.fromList [ (i, obsLawFor i) | i <- agentsIn (ActM am) ]
@@ -96,7 +96,7 @@ actionToEvent (ActM am, faction) = (Trf addprops addlaw changelaw eventObs, efac
 eventToAction :: Event -> PointedActionModel
 eventToAction (t@(Trf addprops addlaw changelaw eventObs), efacts) = (ActM am, faction) where
   actlist    = zip (powerset addprops) [0..]
-  am         = M.fromList [ (a, Act (preFor ps) (postFor ps) (relFor ps)) | (ps,a) <- actlist ]
+  am         = M.fromList [ (a, Act (preFor ps) (PC $ postFor ps) (relFor ps)) | (ps,a) <- actlist ]
   preFor ps  = simplify $ substitSet (map (, Top) ps ++ map (, Bot) (addprops \\ ps)) addlaw
   postFor ps = M.fromList [ (q, formOf $ (changelaw ! q) `restrictSet` [(p, P p `elem` ps) | (P p) <- addprops]) | q <- M.keys changelaw ]
   relFor ps  = M.fromList [(i,rFor i) | i <- agentsIn t] where

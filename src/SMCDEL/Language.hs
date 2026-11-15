@@ -51,6 +51,10 @@ class UsesVocab a where
   -- | Replace/substitute the propositions in the given object.
   replPsIn :: [(Prp,Prp)] -> a -> a
 
+instance UsesVocab Prp where
+  propsIn p = [p]
+  replPsIn repl p = fromMaybe p (lookup p repl)
+
 instance UsesVocab a => UsesVocab [a] where
   propsIn xs = nub $ concatMap propsIn xs
   replPsIn repl = map (replPsIn repl)
@@ -289,9 +293,9 @@ updateSequence :: Update a b => a -> [b] -> [a]
 updateSequence x []    = [x]
 updateSequence x (y:ys) = let next = x `update` y in x : updateSequence next ys
 
--- | Check that two models/actions/etc. have the same agents.
-haveSameAgents :: (HasAgents a, HasAgents b) => a -> b -> Bool
-haveSameAgents x y = agentsOf x == agentsOf y
+-- | All agents used in the second argument exist in the first. -- TODO rename this!
+haveSameAgents :: (HasAgents a, UsesAgents b) => a -> b -> Bool
+haveSameAgents x y = agentsIn y `subseteq` agentsOf x
 
 -- * Pretty-printing
 
@@ -456,9 +460,6 @@ substitSet ((q,psi):rest) f = substitSet rest (substit q psi f)
 substitOutOf :: [Prp] -> [Prp] -> Form -> Form
 substitOutOf truths allps = substitSet [(p, if p `elem` truths then Top else Bot) | p <- allps]
 
-replPsInP :: [(Prp,Prp)] -> Prp -> Prp
-replPsInP repl p = fromMaybe p (lookup p repl)
-
 -- * Vocabulary of a formula
 
 instance UsesVocab Form where
@@ -489,15 +490,15 @@ instance UsesVocab Form where
   replPsIn :: [(Prp,Prp)] -> Form -> Form
   replPsIn _       Top      = Top
   replPsIn _       Bot      = Bot
-  replPsIn repl (PrpF p)    = PrpF $ replPsInP repl p
+  replPsIn repl (PrpF p)    = PrpF $ replPsIn repl p
   replPsIn repl (Neg f)     = Neg $ replPsIn repl f
   replPsIn repl (Conj fs)   = Conj $ map (replPsIn repl) fs
   replPsIn repl (Disj fs)   = Disj $ map (replPsIn repl) fs
   replPsIn repl (Xor  fs)   = Xor  $ map (replPsIn repl) fs
   replPsIn repl (Impl f g)  = Impl (replPsIn repl f) (replPsIn repl g)
   replPsIn repl (Equi f g)  = Equi (replPsIn repl f) (replPsIn repl g)
-  replPsIn repl (Forall ps f) = Forall (map (replPsInP repl) ps) (replPsIn repl f)
-  replPsIn repl (Exists ps f) = Exists (map (replPsInP repl) ps) (replPsIn repl f)
+  replPsIn repl (Forall ps f) = Forall (map (replPsIn repl) ps) (replPsIn repl f)
+  replPsIn repl (Exists ps f) = Exists (map (replPsIn repl) ps) (replPsIn repl f)
   replPsIn repl (K i f)     = K i (replPsIn repl f)
   replPsIn repl (Kw i f)    = Kw i (replPsIn repl f)
   replPsIn repl (Ck ags f)  = Ck ags (replPsIn repl f)

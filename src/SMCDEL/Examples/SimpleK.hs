@@ -38,8 +38,8 @@ aliceBdd, bobBdd :: Bdd
 -- | Action model to privately tell alice that \(p_0\), while bob thinks nothing happens.
 exampleGenActM :: ActionModel
 exampleGenActM = ActM $ M.fromList
-  [ (1, Act { pre = PrpF (P 0), post = M.empty, rel = M.fromList [(alice,[1]), (bob,[2])] } )
-  , (2, Act { pre = Top       , post = M.empty, rel = M.fromList [(alice,[2]), (bob,[2])] } )
+  [ (1, Act { pre = PrpF (P 0), post = PC M.empty, rel = M.fromList [(alice,[1]), (bob,[2])] } )
+  , (2, Act { pre = Top       , post = PC M.empty, rel = M.fromList [(alice,[2]), (bob,[2])] } )
   ]
 
 -- | Pointing `exampleGenActM` at actual event `1`.
@@ -79,7 +79,7 @@ publicMakeFalseActM :: [Agent] -> Prp -> PointedActionModel
 publicMakeFalseActM ags p =
   (ActM $ M.fromList [ (1::Int, Act myPre myPost myRel) ], 0) where
     myPre  = Top
-    myPost = M.fromList [(p,Bot)]
+    myPost = PC $ M.fromList [(p,Bot)]
     myRel  = M.fromList [(i,[1]) | i <- ags]
 
 publicMakeFalseTrf :: [Agent] -> Prp -> Event

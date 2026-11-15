@@ -418,14 +418,14 @@ publicAnnounce :: [Agent] -> Form -> Event
 publicAnnounce agents f = (noChange KnTrf [] f myobs, []) where
   myobs = [ (i,[]) | i <- agents ]
 
--- | shift addprops to ensure that props and newprops are disjoint:
+-- | Shift addprops to ensure that props and newprops are disjoint:
 shiftPrepare :: KnowStruct -> KnowTransformer -> (KnowTransformer, [(Prp,Prp)])
 shiftPrepare (KnS props _ _) (KnTrf addprops addlaw changelaw eventObs) =
   (KnTrf shiftaddprops addlawShifted changelawShifted eventObsShifted, shiftrel) where
     shiftrel = sort $ zip addprops [(freshp props)..]
     shiftaddprops = map snd shiftrel
     -- apply the shifting to addlaw, changelaw and eventObs:
-    addlawShifted    = replPsInF shiftrel addlaw
+    addlawShifted    = replPsIn shiftrel addlaw
     changelawShifted = map (second (relabelWith shiftrel)) changelaw
     eventObsShifted  = map (second (map (apply shiftrel))) eventObs
 

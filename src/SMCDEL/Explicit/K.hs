@@ -20,7 +20,7 @@ module SMCDEL.Explicit.K where
 import Control.Arrow ((&&&),second)
 import Data.Containers.ListUtils (nubInt,nubOrd)
 import Data.Typeable (cast)
-import Data.List (sort,(\\),delete,intercalate,intersect)
+import Data.List (sort,(\\),delete,intercalate,intersect,nub)
 import qualified Data.Map.Strict as M
 import Data.Map.Strict ((!))
 import Data.Maybe (isJust,isNothing,fromJust)
@@ -187,8 +187,8 @@ instance Update MultipointedModel Form where
 groupAnnounceAction :: [Agent] -> [Agent] -> Form -> PointedActionModel
 groupAnnounceAction everyone listeners f = (ActM am, 1) where
   am = M.fromList
-    [ (1, Act { pre = f,   post = M.empty, rel = M.fromList $ [(i,[1]) | i <- listeners] ++ [(i,[2]) | i <- everyone \\ listeners] } )
-    , (2, Act { pre = Top, post = M.empty, rel = M.fromList [(i,[2]) | i <- everyone] } )
+    [ (1, Act { pre = f,   post = PC M.empty, rel = M.fromList $ [(i,[1]) | i <- listeners] ++ [(i,[2]) | i <- everyone \\ listeners] } )
+    , (2, Act { pre = Top, post = PC M.empty, rel = M.fromList [(i,[2]) | i <- everyone] } )
     ]
 
 -- * Bisimulations
@@ -296,23 +296,45 @@ Hence we use a `Map` type which captures partial functions.
 -}
 
 -- | Postconditions given as a map from `Prp` to `Form`.
-type PostCondition = M.Map Prp Form
+newtype PostCondition = PC (M.Map Prp Form)
+  deriving (Eq,Ord,Show)
+
+instance UsesVocab PostCondition where
+  propsIn (PC pc) = nub $ M.keys pc ++ concat (M.elems (M.map propsIn pc))
+  replPsIn repl (PC pc) = PC $ M.map (replPsIn repl) (M.mapKeys (replPsIn repl) pc)
 
 -- | A single action has a `pre`condition, `post`conditions and `rel`ation edges.
 data Act = Act {pre :: Form, post :: PostCondition, rel :: M.Map Agent [Action]}
   deriving (Eq,Ord,Show)
 
+-- | The postcondition map, akready unwrapping the `PostCondition` newtype.
+postmap :: Act -> M.Map Prp Form
+postmap (Act _ (PC pc) _) = pc
+
 -- | Extend `post` to all propositions
 safepost :: Act -> Prp -> Form
-safepost ch p | p `elem` M.keys (post ch) = post ch ! p
+safepost ch p | p `elem` M.keys (postmap ch) = postmap ch ! p
               | otherwise = PrpF p
 
 -- | An action model is a map from `Action` to `Act`.
 newtype ActionModel = ActM (M.Map Action Act)
   deriving (Eq,Ord,Show)
 
-instance HasAgents ActionModel where
-  agentsOf (ActM am) = M.keys $ rel (head (M.elems am))
+instance UsesAgents ActionModel where
+  agentsIn (ActM am) = M.keys $ rel (head (M.elems am))
+  -- FIXME also mention agents in pre/postconditions?
+
+instance UsesVocab Act where
+  propsIn act = nub $ propsIn (pre act) ++ propsIn (post act)
+  replPsIn repl act = Act
+    (replPsIn repl (pre act))
+    (replPsIn repl (post act))
+    (rel act) -- unchanged
+
+instance UsesVocab ActionModel where
+  propsIn (ActM am) = nub $ concat $ M.map propsIn am
+
+  replPsIn repl (ActM am) = ActM $ M.map (replPsIn repl) am
 
 instance HasPrecondition ActionModel where
   preOf _ = Top
@@ -361,7 +383,7 @@ instance Update MultipointedModel MultipointedActionModel where
       annotate ((s,a),news) = (news , (newval, M.fromList (map reachFor (agentsOf (KrM m))))) where
         newval = M.mapWithKey applyPC (fst $ m ! s)
         applyPC p oldbit
-          | p `elem` M.keys (post (am ! a)) = eval (KrM m,s) (post (am ! a) ! p)
+          | p `elem` M.keys (postmap (am ! a)) = eval (KrM m,s) (postmap (am ! a) ! p)
           | otherwise = oldbit
         reachFor i = (i, [ news' | ((s',a'),news') <- worldPairs, s' `elem` snd (m !  s) ! i, a' `elem` rel (am ! a) ! i ])
 
@@ -395,7 +417,7 @@ instance Arbitrary ActionModel where
       return $ M.fromList $ ("1",[k]) : [ (ag,reachList) | ag <- tail defaultAgents ]
       ) allactions
     return $ ActM $ M.fromList
-      [ (k::Action, Act (myPres !! k) (myPosts !! k) (myRels !! k)) | k <- allactions ]
+      [ (k::Action, Act (myPres !! k) (PC (myPosts !! k)) (myRels !! k)) | k <- allactions ]
   shrink (ActM am) = [ ActM $ removeFromRels k $ M.delete k am | k <- M.keys am, k /= 0 ] where
     removeFromRels = M.map . removeFrom where
       removeFrom k c = c { rel = M.map (delete k) (rel c) }
@@ -407,7 +429,7 @@ instance KripkeLike ActionModel where
   getNodes (ActM am) = map (show &&& labelOf) (M.keys am) where
     labelOf a = concat
       [ "$\\begin{array}{c} ? " , tex (pre (am ! a)) , "\\\\"
-      , intercalate "\\\\" (map showPost (M.toList $ post (am ! a)))
+      , intercalate "\\\\" (map showPost (M.toList $ postmap (am ! a)))
       , "\\end{array}$" ]
     showPost (p,f) = tex p ++ " := " ++ tex f
   getEdges (ActM am) =
