@@ -1,23 +1,26 @@
 # SMCDEL Changelog
 
-## upcoming
+## v1.4.0 (2026-11-26)
 
 New:
 
 - Language: add global modality `G`
 - Add `UPDATE!` command for in web and cli interface (by @MitchBoontjes)
 - Solving Cheryl's Sudoku using DEMO-S5
+- new type classes `UsesVocab` and `UsesAgents`
 
 Changed:
 
 - More haddock documentation
 - Language: Remove `PubAnnounceW`, `Announce` and `AnnounceW`
+- Language: use Data.Typeable and new `DynOp` class for diamonds
 - Improve `pubAnnounceTest` and `groupAnnounceTest`
 - Bug fix: in `transformerToActionModelWithG` do not filter
 - Bug fix: in `bddOf` for `Dia` use `unsafeUpdate`
 - Bug fix in HasCacBDD-0.3.0.0: segfault on Apple M1 and ARM
 - Bug fix in HasCacBDD-0.4.0.0: lawful Show and Read instances
 - Web: use `WEBPATH` for running behind non-rewriting proxy
+- Web: match -- but not - for comment syntax highlighting
 - CLI: only use colored text when stdout is a terminal
 
 ## v1.3.0 (2024-04-24)
