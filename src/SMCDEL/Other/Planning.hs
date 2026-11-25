@@ -46,7 +46,7 @@ class IsPlan a where
 {- $
 We first consider /sequential/ plans which are list of formulas to be publicly and truthfully announced, one after each other.
 These are also called /offline/ plans.
-We write \(\sigma\) for any sqeuential plan and \(\epsilon\) for the empty plan which does nothing.
+We write \(\sigma\) for any sequential plan and \(\epsilon\) for the empty plan which does nothing.
 The following then defines a formula which says that the given plan reaches a given goal \(\gamma\):
 
 \[
@@ -157,7 +157,7 @@ class Eq o => HasPerspective o where
   isLocalFor :: o -> Agent -> Bool
   isLocalFor state i = state `asSeenBy` i == state
 
--- ** Perspective Shits in S5
+-- ** Perspective Shifts in S5
 
 -- $
 -- Given a multipointed S5 model \((\M,s)\), the local state of an agent \(i\) is given by
@@ -193,7 +193,7 @@ instance HasPerspective Sym.MultipointedKnowScene where
       seenStatesBdd = existsSet otherps statesBdd
       otherps = map fromEnum (props \\ apply obs agent)
 
--- ** Perspective Shits in K
+-- ** Perspective Shifts in K
 
 {- $
 Note that in S5 we always have \(s \subseteq s^i\), but this is not the case in general for K.
@@ -267,7 +267,7 @@ type Owned action = (Agent,Labelled action)
 type ICPlan action = [Owned action]
 
 instance DynOp a => IsPlan (ICPlan a) where
-  -- | A formula to say that the given IC plan reaches the given foal.
+  -- | A formula to say that the given IC plan reaches the given goal.
   reaches [] goal = goal
   reaches ((agent,(label,action)):rest) goal =
     K agent (dix (Dyn label action) (reaches rest goal))

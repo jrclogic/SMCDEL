@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, ScopedTypeVariables #-}
 
-{- | In this module we define a symbolic represenation of Kripke models, called knoweldge structures.
+{- | In this module we define a symbolic representation of Kripke models, called knowledge structures.
 To represent Boolean functions we use the CacBDD library via the Haskell bindings HasCacBDD.
 
 Alternatives to this module here that use other BDD packages are "SMCDEL.Symbolic.S5_DD" and "SMCDEL.Symbolic.S5_CUDD".
@@ -137,7 +137,7 @@ numberOfStates (KnS props lawbdd _) = satCountWith (map fromEnum props) lawbdd
 -- * Semantics
 
 -- | Evaluate a formula on a scene following the inductively defined semantics.
--- Warning: This function is __not__ the efficent symbolic model checking algorithm!
+-- Warning: This function is __not__ the efficient symbolic model checking algorithm!
 -- Almost always you should use the faster `evalViaBdd` instead.
 --
 -- The function here is a direct translation of Definition 2.23 in [MG 2018].
@@ -271,7 +271,7 @@ bddOf kns (Dia (Dyn dynLabel d) f) =
           -- 3. For a multipointed event, simulate a set of actual events by ...
           Just ((t,xsBdd) :: MultipointedEvent) ->
               ( preOf (t,xsBdd), t
-              , existsSet (map fromEnum addProps)  -- ... replacing addProps with assigments
+              , existsSet (map fromEnum addProps)  -- ... replacing addProps with assignments
                 . con actualsBdd                   -- ... that satisfy actualsBdd
                 . con (bddOf kns addLaw)           -- ... and a precondition.
               ) where actualsBdd = relabelWith shiftrel xsBdd

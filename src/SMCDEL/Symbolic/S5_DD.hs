@@ -274,7 +274,7 @@ bddOf kns (Dia (Dyn dynLabel d) f) =
           -- 3. For a multipointed event, simulate a set of actual events by ...
           Just ((t,xsBdd) :: MultipointedEvent) ->
               ( preOf (t,xsBdd), t
-              , existsSet (map fromEnum addProps)  -- ... replacing addProps with assigments
+              , existsSet (map fromEnum addProps)  -- ... replacing addProps with assignments
                 . con actualsBdd                   -- ... that satisfy actualsBdd
                 . con (bddOf kns addLaw)           -- ... and a precondition.
               ) where actualsBdd = relabelWith shiftrel xsBdd

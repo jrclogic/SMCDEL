@@ -307,7 +307,7 @@ instance UsesVocab PostCondition where
 data Act = Act {pre :: Form, post :: PostCondition, rel :: M.Map Agent [Action]}
   deriving (Eq,Ord,Show)
 
--- | The postcondition map, akready unwrapping the `PostCondition` newtype.
+-- | The postcondition map, already unwrapping the `PostCondition` newtype.
 postmap :: Act -> M.Map Prp Form
 postmap (Act _ (PC pc) _) = pc
 

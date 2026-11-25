@@ -180,7 +180,7 @@ kripkeToKnsWithG m@(KrMS5 worlds rel val) = (KnS ps law obs, g) where
   law       = disSet [ booloutof (g w) ps | w <- worlds ]
   obs       = [ (i,newps i) | i<- ags ]
 
--- | Convert a multipointed S5 Kripke model to a knoweldge structure.
+-- | Convert a multipointed S5 Kripke model to a knowledge structure.
 -- See also `smartKripkeToKns`.
 kripkeToKnsMulti :: MultipointedModelS5 -> MultipointedKnowScene
 kripkeToKnsMulti (model, curWorlds) = (kns, curStatesLaw) where
@@ -200,7 +200,7 @@ obsnobs m@(KrMS5 _ rel val) i = (obs,nobs) where
   obs = filter (\p -> all (alleqWith (elem p)) propsets) (vocabOf m)
   nobs = filter (\p -> any (anydiffWith (elem p)) propsets) (vocabOf m)
 
--- | Test if all relations can be described using observariables.
+-- | Test if all relations can be described using observational variables.
 descableRels :: KripkeModelS5 -> Bool
 descableRels m@(KrMS5 ws rel val) = all (descable . fst) rel where
   wpairs = [ (v,w) | v <- ws, w <- ws ]
@@ -214,7 +214,7 @@ descableRels m@(KrMS5 ws rel val) = all (descable . fst) rel where
 
 -- | Try to find an equivalent knowledge structure without adding fresh atomic propositions.
 -- Will use `smartKripkeToKnsWithoutChecks` when valuations are unique and relations can be
--- described using observariables. Otherwise falls back to using `kripkeToKnsMulti`.
+-- described using observational variables. Otherwise falls back to using `kripkeToKnsMulti`.
 smartKripkeToKns :: PointedModelS5 -> KnowScene
 smartKripkeToKns (m, cur) =
   if uniqueVals m && descableRels m
@@ -254,7 +254,7 @@ Then for all (\mathcal{F},s) we have:
   \]
 
 Note: this function can yield action models with contradictions as preconditions.
-We do /not/ remove those as it might very well be that a transformar and thus an action model can never be applied.
+We do /not/ remove those as it might very well be that a transformer and thus an action model can never be applied.
 -}
 transformerToActionModelWithG :: KnowTransformer -> (ActionModelS5, StateMap)
 transformerToActionModelWithG trf@(KnTrf addprops addlaw changelaw addobs) = (ActMS5 acts actrel, g) where

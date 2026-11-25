@@ -84,7 +84,7 @@ If valuations are not unique, we need to add propositions.
 This can be done in different ways, leading to different numbers of propositions to be added.
 In the method below, if there maximally \(k\) many worlds with the same valuation, then we add \(\log_2 k\) many new atomic propositions.
 This is optimal in the sense that less propositions will not be enough to distinguish all worlds.
-However, this also includes bisimilar worlds which we would not want to be distignuished anyway.
+However, this also includes bisimilar worlds which we would not want to be distinguished anyway.
 Hence the input model should first be minimized and then converted.
 Alternatively, the output structure can be optimized after the conversion.
 

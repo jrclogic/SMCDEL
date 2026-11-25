@@ -70,7 +70,7 @@ call :: (Int,Int) -> [Int] -> Event
 call (a,b) secSetT = (callTrf,actualSet) where
   actualSet = [inCall a, inCall b] ++ map inSecT secSetT
 
--- | Knowledeg Transformer to make a call.
+-- | Knowledge Transformer to make a call.
 callTrf :: Transformer
 callTrf = Trf vocplus lawplus empty obsplus where
   vocplus = sort $ map inCall [1..n] ++ map inSecT [1..n]

@@ -91,7 +91,7 @@ sallyIntermediate2 = sallyIntermediate1 `update` sallyLeaves
 $(addSvg 'sallyIntermediate2)
 
 -- | Anne puts the marble in the box, not observed by Sally.
--- We use use `P 5` to distinguish the two possible events here.
+-- We use `P 5` to distinguish the two possible events here.
 annePutsMarbleInBox :: Event
 annePutsMarbleInBox = (Trf [P 5] Top
   (fromList [ (tt,boolBddOf $ Conj [Neg (PrpF $ P 5) `Impl` PrpF tt, PrpF (P 5) `Impl` Bot]) ])

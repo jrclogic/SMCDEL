@@ -88,7 +88,7 @@ relDdOfIn mgr ag i (KrM m)
         here = M.keys (M.filter id mapPropBool)
         theres = map (truthsInAt (KrM m)) (mapAgentReach ! i)
 
-data BelStruct a b c = BlS Cudd.Cudd.DdManager      -- Cudd manager for removing/reseting variables
+data BelStruct a b c = BlS Cudd.Cudd.DdManager      -- Cudd manager for removing/resetting variables
                      [Prp]                          -- vocabulary
                      (Dd a b c)                     -- state law
                      (M.Map Agent Int,RelDD a b c)  -- observation laws
@@ -210,7 +210,9 @@ instance (DdCtx a b c) => Update (BelScene a b c) Form where
 whereViaDd :: DdCtx a b c => BelStruct a b c -> Form -> [KnState]
 whereViaDd kns f = statesOf (kns `update` f)
 
---Somewhat fast statesOf, faster woud be to use primitive construction of all Satifying Assignments (e.i. explicitly looping through the dd instead of using restrict).
+-- | This is somewhat fast. Faster would be to use a primitive
+-- construction of all satisfying assignments, i.e. explicitly
+-- looping through the DD instead of using restrict.
 statesOf :: DdCtx a b c => BelStruct a b c -> [KnState]
 statesOf (BlS mgr allprops lawdd _) = loop allprops lawdd where
   loop [] _ = []
@@ -271,7 +273,7 @@ agentBelief :: (DdCtx a b c) => Cudd.Cudd.DdManager -> RelDD a b c -> Int -> Rel
 agentBelief mgr (Tagged b) n = Tagged $ restrict mgr b (n, True)
 
 data Transformer a b c = Trf
-  Cudd.Cudd.DdManager -- Cudd manager needed for reseting/removing variables
+  Cudd.Cudd.DdManager -- Cudd manager needed for resetting/removing variables
   [Prp] -- addprops
   Form  -- event law
   (M.Map Prp (Dd a b c)) -- changelaw

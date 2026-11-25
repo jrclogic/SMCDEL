@@ -112,7 +112,7 @@ We extend our language with abbreviations for "knowing whether", "commonly knowi
 
 \[ K^?_i \phi := \bigvee \{ K_i \phi , K_i (\lnot \phi) \} \]
 
-\[ D^?_\Delta \phi := \bigvee \{ D_\Delta \phi , D_\Delta (\lnot \phi) \} \]
+\[ C^?_\Delta \phi := \bigvee \{ C_\Delta \phi , C_\Delta (\lnot \phi) \} \]
 
 \[ D^?_\Delta \phi := \bigvee \{ D_\Delta \phi , D_\Delta (\lnot \phi) \} \]
 
@@ -188,7 +188,7 @@ oneOf fs = Conj [ Disj fs, Conj [ Neg $ Conj [f1, f2] | f1 <- fs, f2 <- fs \\ [f
 -- | The values of a type can be used as a dynamic operator in formulas
 -- whenever we know how to show them, what agents occur in them and we
 -- what the precondition of this operator is.
--- This does /not/ yet guarantee we can actually evaluate thos formulas, as
+-- This does /not/ yet guarantee we can actually evaluate those formulas, as
 -- this will depend on the semantics used. See also @Update@.
 class (Typeable b, Show b, UsesAgents b, UsesVocab b, HasPrecondition b) => DynOp b
 

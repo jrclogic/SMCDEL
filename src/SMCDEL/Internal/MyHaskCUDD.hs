@@ -49,7 +49,7 @@ newtype Dd x y z = ToDd Cudd.Cudd.DdNode deriving stock (Eq,Show)
 data B
 data Z
 -- | The second field represents whether the 1 set (O1) of a given boolean function is represented or its complement, the 0 set (O0).
--- Because the traditional BDD rule is symetric, complementing it does not change the size of the structure.
+-- Because the traditional BDD rule is symmetric, complementing it does not change the size of the structure.
 -- Because the traditional ZDD rule is asymmetric towards the leaf nodes (and the edge types), complementing it can change the structure drastically.
 -- Applying (output) negation on a traditional ZDD structure corresponds to changing the elimination rule from Then 0 to Then 1.
 -- When representing a model (not) complementing the stored information is similar to either storing all possible states or all impossible states.
@@ -58,14 +58,14 @@ data O0
 -- | The third field represents whether each variable is interpreted as its complement (I0) or not (I1).
 -- Conversion between I1 and I0 is done by swapping the children of all nodes.
 -- This changes the result of any Input assignment to the result of the complement Input assignment, and vice versa.
--- Because the traditional BDD rule is symetric, flipping its child edges does not change the size of the structure.
+-- Because the traditional BDD rule is symmetric, flipping its child edges does not change the size of the structure.
 -- Because the traditional ZDD rule is asymmetric towards the edge types (and the leaf nodes), complementing it can change the structure drastically.
 -- Applying input negation on a traditional ZDD structure corresponds to changing the elimination Then 0 to Else 0.
 -- Applying both output and input negation results in the dual of the original stored boolean function.
 data I1
 data I0
 
--- | Collection of all contraints, in order to easily apply them when needed.
+-- | Collection of all constraints, in order to easily apply them when needed.
 type DdCtx a b c = (DdTOI a b c, DdTO a b, DdT a, DdO a b, DdI a b c)
 
 type Manager = Cudd.Cudd.DdManager

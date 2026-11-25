@@ -125,7 +125,7 @@ ddEval mgr truths querybdd = evalAssDD mgr querybdd (\n -> P n `elem` truths)
 
 -- | Get all states of a structure.
 -- This can be quite slow due to its naive implementation.
--- Faster woud be to directly construct all satifying assignments
+-- Faster would be to directly construct all satisfying assignments
 -- by explicitly looping through the DD instead of using `restrict`.
 statesOf :: DdCtx a b c => KnowStruct a b c -> [KnState]
 statesOf (KnS mgr allprops lawdd _) = loop allprops lawdd where
@@ -250,7 +250,7 @@ renameNode dn myShow = case lookup (DotGen.nodeID dn) myShow of
   (Just v) -> dn { nodeID = v } --nodeID is in myShow, thus replace the Int with the proposition
   Nothing -> dn --otherwise do nothing
 
--- | Replace also the node name occurences in the edge statements.
+-- | Replace also the node name occurrences in the edge statements.
 renameEdge :: DotGen.DotEdge String -> [(String, String)] -> DotGen.DotEdge String
 renameEdge de myShow = changeFromNode (changeToNode de) where
   changeToNode edge = case lookup (DotGen.toNode edge) myShow of

@@ -3,7 +3,7 @@
 {- |
 This module defines the standard semantics of Dynamic Epistemic Logic ($\mathsf{S5}_n$) on Kripke models.
 The result is a simple explicit model checker, similar to "SMCDEL.Explicit.DEMO_S5" from [vE2014].
-The module her is also used for the translations given in "SMCDEL.Translations.S5".
+The module here is also used for the translations given in "SMCDEL.Translations.S5".
 
 References used here:
 
@@ -48,7 +48,7 @@ By convention, \(W^{\cal M}\), \({\cal K}_i^{\cal M}\) and \(\pi^{\cal M}\) are 
 We omit the superscript \(\cal M\) if it is clear from context.
 Finally, let \({\cal C}_\Delta^{\cal M}\) be the transitive closure of \(\bigcup_{i\in\Delta}{\cal K}_i^{\cal M}\).
 
-A /pointed Kripke model/ is a pair \(({\cal M},w)\) consisting of a Kripke model and a world \(w \in W^{\cal M}\.
+A /pointed Kripke model/ is a pair \(({\cal M},w)\) consisting of a Kripke model and a world \(w \in W^{\cal M}\).
 A model \(\cal M\) is called an /S5 Kripke model/ iff, for every \(i\), \({\cal K}_i^{\cal M}\) is an equivalence relation.
 
 In the module here we only implement S5 models. For the more general models, use "SMCDEL.Explicit.K" instead.
@@ -68,7 +68,7 @@ instance (HasWorlds a, Pointed a b) => HasWorlds (a,b) where worldsOf = worldsOf
 -- | A partition to encode an equivalence relation.
 type Partition = [[World]]
 
--- | An assignment, given explicitly by listing the truth value for each atomic propostion.
+-- | An assignment, given explicitly by listing the truth value for each atomic proposition.
 type Assignment = [(Prp,Bool)]
 
 -- | S5 Kripke Model.
@@ -218,7 +218,7 @@ instance Update MultipointedModelS5 Form where
   unsafeUpdate (m,ws) f =
     let newm = unsafeUpdate m f in (newm, ws `intersect` worldsOf newm)
 
--- * Visualization
+-- * Visualisation
 
 -- $
 -- We visualize models using "SMCDEL.Internal.TexDisplay".
@@ -280,7 +280,7 @@ checkBisimPointed z (m1,w1) (m2,w2) = (w1,w2) `elem` z && checkBisim z m1 m2
 
 -- * Minimization and Optimization
 
--- | Fenerated submodel of a pointed model.
+-- | Generated submodel of a pointed model.
 -- This is the smallest submodel closed under the epistemic relations
 generatedSubmodel :: PointedModelS5 -> PointedModelS5
 generatedSubmodel (KrMS5 oldWorlds rel val, cur) =

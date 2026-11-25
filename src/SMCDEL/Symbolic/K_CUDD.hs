@@ -91,7 +91,7 @@ relDdOfIn mgr i (KrM m)
         here = M.keys (M.filter id mapPropBool)
         theres = map (truthsInAt (KrM m)) (mapAgentReach ! i)
 
-data BelStruct a b c = BlS Cudd.Cudd.DdManager  -- Cudd manager for removing/reseting variables
+data BelStruct a b c = BlS Cudd.Cudd.DdManager  -- Cudd manager for removing/resetting variables
                      [Prp]                -- vocabulary
                      (Dd a b c)               -- state law
                      (M.Map Agent (RelDD a b c)) -- observation laws
@@ -304,7 +304,7 @@ withoutProps propsToDel (BlS mgr oldProps oldLawDd oldObs) =
     (M.map (fmap $ existsSet mgr (map fromEnum propsToDel)) oldObs)
 
 data Transformer a b c = Trf
-  Cudd.Cudd.DdManager -- Cudd manager needed for reseting/removing variables
+  Cudd.Cudd.DdManager -- Cudd manager needed for resetting/removing variables
   [Prp] -- addprops
   Form  -- event law
   (M.Map Prp (Dd a b c)) -- changelaw
