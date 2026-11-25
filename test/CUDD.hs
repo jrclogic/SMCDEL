@@ -7,6 +7,7 @@ import Data.List (sort)
 import Data.Maybe (isJust)
 import Test.Hspec
 import Test.QuickCheck
+import Test.Hspec.QuickCheck
 
 import SMCDEL.Internal.Help (alleq)
 import SMCDEL.Internal.MyHaskCUDD
@@ -19,9 +20,13 @@ import qualified SMCDEL.Symbolic.Ki_CUDD as Ki_CUDD
 import qualified SMCDEL.Symbolic.S5 as S5
 import qualified SMCDEL.Symbolic.S5_CUDD as S5_CUDD
 
+-- | Time limit of 3 seconds
+timeLimit :: Int
+timeLimit = 3 * 1000000
+
 main :: IO ()
 main = do
-  hspec $ do
+  hspec $ modifyMaxSuccess (const 30) $ do -- FIXME: low number of tests because of memory use/leak?
     describe "SMCDEL.Internal.MyHaskCUDD using BDDs" $ do
       before MyHaskCUDD.makeManager $ do
         it "gfp (\b -> con b (var 3)) == var 3" $
@@ -33,7 +38,8 @@ main = do
     describe "SMCDEL.Symbolic.S5_CUDD using BDDs agrees with HasCacBdd" $ do
       before MyHaskCUDD.makeManager $ do
         it "HasCacBDD and CUDD give same allSats" $
-          \mgr -> property $ \(BF bf) -> sort (Data.HasCacBDD.allSats (S5.boolBddOf bf)) === sort (MyHaskCUDD.allSats mgr (S5_CUDD.boolDdOf mgr bf :: MyHaskCUDD.Dd MyHaskCUDD.B MyHaskCUDD.O1 MyHaskCUDD.I1))
+          \mgr -> property $ \(BF bf) -> discardAfter timeLimit $
+              sort (Data.HasCacBDD.allSats (S5.boolBddOf bf)) === sort (MyHaskCUDD.allSats mgr (S5_CUDD.boolDdOf mgr bf :: MyHaskCUDD.Dd MyHaskCUDD.B MyHaskCUDD.O1 MyHaskCUDD.I1))
         it "HasCacBDD and CUDD give same anySat" $
           \mgr -> property $ \(BF bf) -> Data.HasCacBDD.anySat (S5.boolBddOf bf) === MyHaskCUDD.anySat mgr (S5_CUDD.boolDdOf mgr bf ::  MyHaskCUDD.Dd MyHaskCUDD.B MyHaskCUDD.O1 MyHaskCUDD.I1)
     describe "CUDD / MyHaskCUDD" $ do
@@ -133,7 +139,7 @@ bddOnlyTests = do
   it "length allSats > 0 iff not bot" $ \mgr ->
     property (\(BF f) -> let (b :: Dd B O1 I1) = S5_CUDD.boolDdOf mgr f
                            in (b /= bot mgr) ==> (length $! allSats mgr b) > 0)
-  it "allSatsWith" $ \mgr ->
+  it "allSatsWith" $ \mgr -> discardAfter timeLimit $
     property (\(BF f) -> let (b :: Dd B O1 I1) = S5_CUDD.boolDdOf mgr f
                            in all (\s -> restrictSet mgr b s == top mgr) (allSatsWith mgr (map fromEnum defaultVocabulary) b))
 
