@@ -6,11 +6,11 @@ module SMCDEL.Symbolic.Ki_CUDD where
 import Data.Bifunctor
 import Data.Tagged
 
-import Control.Arrow (Arrow ((&&&)))
--- import Data.Dynamic (fromDynamic)
+import Control.Arrow (Arrow ((&&&),(***)))
+import Data.Typeable (Typeable)
 
 import SMCDEL.Internal.MyHaskCUDD
-import Data.List (sort,intersect,(\\), intercalate)
+import Data.List (sort,intersect,(\\),intercalate,nub)
 import qualified Data.Map.Strict as M
 import Data.Map.Strict ((!))
 import SMCDEL.Explicit.K
@@ -19,7 +19,6 @@ import SMCDEL.Language
 import SMCDEL.Symbolic.S5_CUDD (KnState,boolDdOf, boolDDoutof, ddEval, ddToForm, evalAssDD, texDd, texDdFun)
 import Cudd.Cudd ( DdManager )
 import SMCDEL.Internal.TexDisplay
-
 mvP, cpP :: Int -> Prp -> Prp
 mvP m (P n) = P  ((2*n) + m)           -- represent p  in the double vocabulary
 cpP m (P n) = P  ((2*n) + 1 + m)       -- represent p' in the double vocabulary
@@ -280,8 +279,24 @@ data Transformer a b c = Trf
   (M.Map Agent Int, RelDD a b c) -- eventObs
   deriving (Eq,Show)
 
-instance HasAgents (Transformer a b c) where
-  agentsOf (Trf _ _ _ _ (ag, _)) = M.keys ag
+instance UsesAgents (Transformer a b c) where
+  agentsIn (Trf _ _ _ _ (ag, _)) = M.keys ag
+
+instance DdCtx a b c => UsesVocab (Transformer a b c) where
+  -- | The vocabulary used in the event law and the changelaw.
+  -- This does *not* include the event vocabulary.
+  propsIn (Trf _ addprops addlaw changelaw _) =
+    nub $ (propsIn addlaw \\ addprops) ++ M.keys changelaw
+  replPsIn repl (Trf mgr addprops addlaw changelaw obdds) =
+    let repl_raw = map (fromEnum *** fromEnum) repl in
+    Trf
+      mgr
+      addprops -- not changing the addprops on purpose.
+      (replPsIn repl addlaw)
+      (M.foldrWithKey
+        (\ p b acc -> M.insert (replPsIn repl p) (relabelWith mgr repl_raw b) acc)
+        M.empty changelaw)
+      obdds
 
 instance HasPrecondition (Transformer a b c) where
   preOf _ = Top
@@ -337,7 +352,7 @@ shiftPrepare (BlS mgr props _ _) (Trf _ addprops addlaw changelaw (ag, eventObs)
     shiftrel = sort $ zip addprops [(freshp props)..]
     shiftaddprops = map snd shiftrel
     -- apply the shifting to addlaw, changelaw and eventObs:
-    addlawShifted    = replPsInF shiftrel addlaw
+    addlawShifted    = replPsIn shiftrel addlaw
     changelawShifted = M.map (relabelWith mgr (map (bimap fromEnum fromEnum) shiftrel)) changelaw
     -- to shift addObs we need shiftrel in the double vocabulary:
     shiftrelMVCP = map (bimap fromEnum fromEnum) $
@@ -345,7 +360,9 @@ shiftPrepare (BlS mgr props _ _) (Trf _ addprops addlaw changelaw (ag, eventObs)
                        ++ zip (cp (M.size ag) addprops) (cp (M.size ag) shiftaddprops)
     eventObsShifted  = foldl (\x y -> con mgr <$> x <*> y) (Tagged $ top mgr) [Tagged $ relabelWith mgr shiftrelMVCP (restrict mgr (untag eventObs) (ag ! i, True)) | i <- M.keys ag]
 
-instance (DdCtx a b c) => Update (BelScene a b c) (Event a b c) where
+instance (DdCtx a b c, Typeable a, Typeable b, Typeable c) => DynOp (Event a b c)
+
+instance (DdCtx a b c, Typeable a, Typeable b, Typeable c) => Update (BelScene a b c) (Event a b c) where
   checks = [haveSameAgents, sameManager, preCheck] where
     -- Check that BelScene and Event use the same manager:
     sameManager (BlS mgr _ _ _, _) (Trf mgr' _ _ _ _ , _) = mgr == mgr'
@@ -374,12 +391,16 @@ instance (DdCtx a b c) => Update (BelScene a b c) (Event a b c) where
             , eventFacts
             , filter (\ p -> ddEval mgr (s ++ eventFacts) (changelaw ! p)) changeprops ]
 
-instance (DdCtx a b c) => Update (BelStruct a b c) (Transformer a b c) where
+instance (DdCtx a b c, Typeable a, Typeable b, Typeable c) => DynOp (Transformer a b c)
+
+instance (DdCtx a b c, Typeable a, Typeable b, Typeable c) => Update (BelStruct a b c) (Transformer a b c) where
   checks = [haveSameAgents]
   unsafeUpdate bls ctrf = BlS mgr newprops newlaw newobs where
     (BlS mgr newprops newlaw newobs, _) = unsafeUpdate (bls,undefined::KnState) (ctrf,undefined::KnState) -- using laziness!
 
-instance (DdCtx a b c, DdTOI a O1 I1, DdTO a O1, DdTOI a b I1) => Update (BelScene a b c) (MultipointedEvent a b c) where
+instance (DdCtx a b c, Typeable a, Typeable b, Typeable c ) => DynOp (MultipointedEvent a b c)
+
+instance (DdCtx a b c, Typeable a, Typeable b, Typeable c, DdTOI a O1 I1, DdTO a O1, DdTOI a b I1) => Update (BelScene a b c) (MultipointedEvent a b c) where
   checks = [haveSameAgents, sameManager, preCheck] where
     -- Check that BelScene and MultipointedEvent use the same manager:
     sameManager (BlS mgr _ _ _, _) (Trf mgr' _ _ _ _ , _) = mgr == mgr'
@@ -440,7 +461,7 @@ reduce _ (G _)           = Nothing
 reduce _ PubAnnounce  {} = Nothing
 reduce _ Dia          {} = Nothing
 
-ddReduce :: (DdCtx a b c) => BelScene a b c -> Event a b c -> Form -> Dd a b c
+ddReduce :: (DdCtx a b c, Typeable a, Typeable b, Typeable c) => BelScene a b c -> Event a b c -> Form -> Dd a b c
 ddReduce scn@(oldBls,_) event@(Trf mgr addprops _ changelaw _, eventFacts) f =
   let
     changeprops = M.keys changelaw
@@ -464,5 +485,5 @@ ddReduce scn@(oldBls,_) event@(Trf mgr addprops _ changelaw _, eventFacts) f =
           substitSimul mgr postconrel $    -- 2. replace changeprops with postconditions
             ddOf  newBlS f             -- 1. boolean equivalent wrt new structure
 
-evalViaDdReduce :: (DdCtx a b c) => BelScene a b c -> Event a b c -> Form -> Bool
+evalViaDdReduce :: (DdCtx a b c, Typeable a, Typeable b, Typeable c) => BelScene a b c -> Event a b c -> Form -> Bool
 evalViaDdReduce (bls@(BlS mgr _ _ _),s) event f = evalAssDD mgr (ddReduce (bls,s) event f) (\n -> P n `elem` s)
