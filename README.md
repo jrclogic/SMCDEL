@@ -59,6 +59,11 @@ You can try SMCDEL online here: https://w4eg.de/malvin/illc/smcdelweb/
 4) To also build and install the web interface, run `stack install --flag smcdel:web`
    Then you can run `smcdel-web` and open <http://localhost:3000>.
 
+## How to let an LLM run SMCDEL
+
+See <https://github.com/jrclogic/smcdel-mcp>.
+
+
 ## Input Format
 
 The first part of the input describes a *knowledge structure* (that encodes an S5 Kripke model).
@@ -109,7 +114,8 @@ The second part of the input then consists of any number of *queries*, each usin
 
   Example: `UPDATE! bob knows that alice know whether 1`.
 
-The syntax for formulas is defined in `src/SMCDEL/Internal/Lex.x` and `src/SMCDEL/Internal/Parse.y`. 
+The syntax for formulas is defined in `src/SMCDEL/Internal/Lex.x` and `src/SMCDEL/Internal/Parse.y`.
+
 
 ## Advanced usage
 
