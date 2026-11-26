@@ -78,6 +78,12 @@ makeManagerZ vocabCap = Cudd.Cudd.cuddInitZ (vocabCap +1)
 makeManager :: IO Cudd.Cudd.DdManager
 makeManager = Cudd.Cudd.cuddInit
 
+-- | Shannon cofactor on a raw CUDD node; v is the CUDD-level value of variable n
+rawCofactor :: Cudd.Cudd.DdManager -> Cudd.Cudd.DdNode -> Int -> Bool -> Cudd.Cudd.DdNode
+rawCofactor mgr f n v =
+  let x   = Cudd.Cudd.cuddBddIthVar mgr n
+      lit = if v then x else Cudd.Cudd.cuddNot mgr x
+  in Cudd.Cudd.cuddBddExistAbstract mgr (Cudd.Cudd.cuddBddAnd mgr f lit) (Cudd.Cudd.cuddIndicesToCube mgr [n])
 
 -- | functions that require the dd to be completely specified
 class DdTOI a b c  where
@@ -90,29 +96,25 @@ instance DdTOI B O1 I1 where
   bot mgr = ToDd (Cudd.Cudd.cuddReadLogicZero mgr)
   top mgr = ToDd (Cudd.Cudd.cuddReadOne mgr)
   var mgr n = ToDd (Cudd.Cudd.cuddBddIthVar mgr n)
-  restrict mgr bz@(ToDd zb) (n,bit) = ToDd $ Cudd.Cudd.cuddBddLICompaction mgr zb res where
-    ToDd res = if bit then var mgr n `asTypeOf` bz else neg mgr (var mgr n `asTypeOf` bz)
+  restrict mgr (ToDd f) (n,bit) = ToDd $ rawCofactor mgr f n bit
 
 instance DdTOI B O1 I0 where
   bot mgr = ToDd (Cudd.Cudd.cuddReadLogicZero mgr)
   top mgr = ToDd (Cudd.Cudd.cuddReadOne mgr)
   var mgr n = neg mgr $ ToDd (Cudd.Cudd.cuddBddIthVar mgr n)
-  restrict mgr bz@(ToDd zb) (n,bit) = ToDd $ Cudd.Cudd.cuddBddLICompaction mgr zb res where
-    ToDd res = if bit then var mgr n `asTypeOf` bz else neg mgr (var mgr n `asTypeOf` bz) --double negation to make the restrict S independent
+  restrict mgr (ToDd f) (n,bit) = ToDd $ rawCofactor mgr f n (not bit)
 
 instance DdTOI B O0 I1 where
   bot mgr = ToDd (Cudd.Cudd.cuddReadOne mgr)
   top mgr = ToDd (Cudd.Cudd.cuddReadLogicZero mgr)
   var mgr n = neg mgr $ ToDd (Cudd.Cudd.cuddBddIthVar mgr n)
-  restrict mgr bz@(ToDd zb) (n,bit) = ToDd $ Cudd.Cudd.cuddBddLICompaction mgr zb res where
-    ToDd res = if bit then neg mgr (var mgr n `asTypeOf` bz) else var mgr n `asTypeOf` bz
+  restrict mgr (ToDd f) (n,bit) = ToDd $ rawCofactor mgr f n bit
 
 instance DdTOI B O0 I0 where
   bot mgr = ToDd (Cudd.Cudd.cuddReadOne mgr)
   top mgr = ToDd (Cudd.Cudd.cuddReadLogicZero mgr)
-  var mgr n = neg mgr $ ToDd (Cudd.Cudd.cuddBddIthVar mgr n)
-  restrict mgr bz@(ToDd zb) (n,bit) = ToDd $ Cudd.Cudd.cuddBddLICompaction mgr zb res where
-    ToDd res = if bit then neg mgr (var mgr n `asTypeOf` bz) else var mgr n `asTypeOf` bz
+  var mgr n = ToDd (Cudd.Cudd.cuddBddIthVar mgr n) -- output and input negation cancel out
+  restrict mgr (ToDd f) (n,bit) = ToDd $ rawCofactor mgr f n (not bit)
 
 instance DdTOI Z O1 I1 where
   bot mgr = ToDd (Cudd.Cudd.cuddZddReadZero mgr)
