@@ -123,25 +123,33 @@ cuddTests = do
     it "getSupport" $ \mgr ->
       getSupport mgr (var mgr 2 :: Dd a b c) `shouldSatisfy` flip elem [ [], [2] ] -- TODO: is this correct?
   describe "random tests" $ do
+    let genBF = sized (randomboolformWith defaultVocabulary)
     it "forall_ exists_" $ \mgr ->
-      property (\(BF f) -> let (b :: Dd a b c) = S5_CUDD.boolDdOf mgr f
-                           in forAll (elements [0..5]) (\n -> forall_ mgr n b == neg mgr (exists_ mgr n (neg mgr b))))
+      forAll genBF $ \(BF f) ->
+        let (b :: Dd a b c) = S5_CUDD.boolDdOf mgr f
+        in forAll (elements [0..5]) (\n -> forall_ mgr n b == neg mgr (exists_ mgr n (neg mgr b)))
     it "restrictLaw" $ \mgr ->
-      property (\(BF f) (BF g) -> let (a :: Dd a b c, b :: Dd a b c) = (S5_CUDD.boolDdOf mgr f, S5_CUDD.boolDdOf mgr g)
-                                  in imp mgr b (equ mgr (restrictLaw mgr v a b) a) == (top mgr :: Dd a b c))
+      -- formulas must only use variables from v, otherwise getDependentVars misses them
+      forAll genBF $ \(BF f) -> forAll genBF $ \(BF g) ->
+        let (a :: Dd a b c, b :: Dd a b c) = (S5_CUDD.boolDdOf mgr f, S5_CUDD.boolDdOf mgr g)
+        in imp mgr b (equ mgr (restrictLaw mgr v a b) a) == (top mgr :: Dd a b c)
 
 bddOnlyTests :: SpecWith MyHaskCUDD.Manager
 bddOnlyTests = do
+  let genBF = sized (randomboolformWith defaultVocabulary)
   it "allSats top `==` [[]]" $ \mgr -> allSats mgr (top mgr :: Dd B O1 I1) `shouldBe` [[]]
   it "anySat iff not bot" $ \mgr ->
-    property (\(BF f) -> let (b :: Dd B O1 I1) = S5_CUDD.boolDdOf mgr f
-                           in (b /= bot mgr) === isJust (anySat mgr b))
+    forAll genBF $ \(BF f) ->
+      let (b :: Dd B O1 I1) = S5_CUDD.boolDdOf mgr f
+      in (b /= bot mgr) === isJust (anySat mgr b)
   it "length allSats > 0 iff not bot" $ \mgr ->
-    property (\(BF f) -> let (b :: Dd B O1 I1) = S5_CUDD.boolDdOf mgr f
-                           in (b /= bot mgr) ==> (length $! allSats mgr b) > 0)
+    forAll genBF $ \(BF f) ->
+      let (b :: Dd B O1 I1) = S5_CUDD.boolDdOf mgr f
+      in (b /= bot mgr) ==> (length $! allSats mgr b) > 0
   it "allSatsWith" $ \mgr -> discardAfter timeLimit $
-    property (\(BF f) -> let (b :: Dd B O1 I1) = S5_CUDD.boolDdOf mgr f
-                           in all (\s -> restrictSet mgr b s == top mgr) (allSatsWith mgr (map fromEnum defaultVocabulary) b))
+    forAll genBF $ \(BF f) ->
+      let (b :: Dd B O1 I1) = S5_CUDD.boolDdOf mgr f
+      in all (\s -> restrictSet mgr b s == top mgr) (allSatsWith mgr (map fromEnum defaultVocabulary) b)
 
 -- * S5_CUDD
 
