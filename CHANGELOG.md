@@ -22,6 +22,7 @@ Changed:
 - Web: use `WEBPATH` for running behind non-rewriting proxy
 - Web: match -- but not - for comment syntax highlighting
 - CLI: only use colored text when stdout is a terminal
+- Tests for optional CUDD: fix memory leak using cuddQuit
 
 ## v1.3.0 (2024-04-24)
 

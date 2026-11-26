@@ -7,7 +7,6 @@ import Data.List (sort)
 import Data.Maybe (isJust)
 import Test.Hspec
 import Test.QuickCheck
-import Test.Hspec.QuickCheck
 
 import SMCDEL.Internal.Help (alleq)
 import SMCDEL.Internal.MyHaskCUDD
@@ -26,9 +25,9 @@ timeLimit = 3 * 1000000
 
 main :: IO ()
 main = do
-  hspec $ modifyMaxSuccess (const 30) $ do -- FIXME: low number of tests because of memory use/leak?
+  hspec $ do
     describe "SMCDEL.Internal.MyHaskCUDD using BDDs" $ do
-      before MyHaskCUDD.makeManager $ do
+      around MyHaskCUDD.withManager $ do
         it "gfp (\b -> con b (var 3)) == var 3" $
           \mgr -> MyHaskCUDD.gfp mgr (\b -> MyHaskCUDD.con mgr b (MyHaskCUDD.var mgr 3)) `shouldBe` (MyHaskCUDD.var mgr 3 :: MyHaskCUDD.Dd MyHaskCUDD.B MyHaskCUDD.O1 MyHaskCUDD.I1)
         it "exists_ 1 (neg $ var 1) == top" $ \mgr -> MyHaskCUDD.exists_ mgr 1 (MyHaskCUDD.neg mgr $ MyHaskCUDD.var mgr 1) `shouldBe` (MyHaskCUDD.top mgr :: MyHaskCUDD.Dd MyHaskCUDD.B MyHaskCUDD.O1 MyHaskCUDD.I1)
@@ -36,16 +35,16 @@ main = do
         it "forall_ 1 (neg $ var 1) == bot" $ \mgr -> MyHaskCUDD.forall_ mgr 1 (MyHaskCUDD.neg mgr $ MyHaskCUDD.var mgr 1) `shouldBe` (MyHaskCUDD.bot mgr :: MyHaskCUDD.Dd MyHaskCUDD.B MyHaskCUDD.O1 MyHaskCUDD.I1)
         it "forall_ 1 (neg $ var 2) /= bot" $ \mgr -> MyHaskCUDD.forall_ mgr 1 (MyHaskCUDD.neg mgr $ MyHaskCUDD.var mgr 2) `shouldNotBe` (MyHaskCUDD.bot mgr :: MyHaskCUDD.Dd MyHaskCUDD.B MyHaskCUDD.O1 MyHaskCUDD.I1)
     describe "SMCDEL.Symbolic.S5_CUDD using BDDs agrees with HasCacBdd" $ do
-      before MyHaskCUDD.makeManager $ do
+      around MyHaskCUDD.withManager $ do
         it "HasCacBDD and CUDD give same allSats" $
           \mgr -> property $ \(BF bf) -> discardAfter timeLimit $
               sort (Data.HasCacBDD.allSats (S5.boolBddOf bf)) === sort (MyHaskCUDD.allSats mgr (S5_CUDD.boolDdOf mgr bf :: MyHaskCUDD.Dd MyHaskCUDD.B MyHaskCUDD.O1 MyHaskCUDD.I1))
         it "HasCacBDD and CUDD give same anySat" $
           \mgr -> property $ \(BF bf) -> Data.HasCacBDD.anySat (S5.boolBddOf bf) === MyHaskCUDD.anySat mgr (S5_CUDD.boolDdOf mgr bf ::  MyHaskCUDD.Dd MyHaskCUDD.B MyHaskCUDD.O1 MyHaskCUDD.I1)
     describe "CUDD / MyHaskCUDD" $ do
-      before MyHaskCUDD.makeManager $
+      around MyHaskCUDD.withManager $
         describe "bddOnlyTests" bddOnlyTests
-      before (MyHaskCUDD.makeManagerZ (length defaultVocabulary)) $ do
+      around (MyHaskCUDD.withManagerZ (length defaultVocabulary)) $ do
         describe "B O1 I1" $ cuddTests @B @O1 @I1
         describe "B O0 I1" $ cuddTests @B @O0 @I1
         describe "B O1 I0" $ cuddTests @B @O1 @I0
@@ -55,15 +54,15 @@ main = do
         describe "Z O1 I0" $ cuddTests @Z @O1 @I0
         describe "Z O0 I0" $ cuddTests @Z @O0 @I0
     describe "S5: hardcoded myKns and myKnScac" $ do
-      before (MyHaskCUDD.makeManagerZ (length defaultVocabulary + 1)) $ do
+      around (MyHaskCUDD.withManagerZ (length defaultVocabulary + 1)) $ do
         it "evalViaDd agrees for all variants" $ \mgr -> property (alleq . evalViaDdTest mgr)
         it "validViaDD agrees for all variants" $ \mgr -> property (alleq . validViaDdTest mgr)
     describe "K_CUDD: hardcoded myBlS and myBlScac" $ do
-      before (MyHaskCUDD.makeManagerZ 15) $ do
+      around (MyHaskCUDD.withManagerZ 15) $ do
         it "evalViaDd agrees for all variants" $ \mgr -> property (alleq . evalViaDdTestK mgr)
         it "validViaDD agrees for all variants" $ \mgr -> property (alleq . validViaDdTestK mgr)
     describe "Ki_CUDD: hardcoded myBlSKi" $ do
-      before (MyHaskCUDD.makeManagerZ 20) $ do
+      around (MyHaskCUDD.withManagerZ 20) $ do
         it "evalViaDd agrees for all variants" $ \mgr -> property (alleq . evalViaDdTestKi mgr)
         it "validVidaDD agrees for all variants" $ \mgr -> property (alleq . validViaDdTestKi mgr)
 

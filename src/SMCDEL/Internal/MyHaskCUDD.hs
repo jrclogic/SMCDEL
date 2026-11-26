@@ -27,7 +27,7 @@ module SMCDEL.Internal.MyHaskCUDD (
   sub0, sub1,
   makeManagerZ, swap,
   -- * other supporting functions
-  makeManager, ite,
+  makeManager, withManager, withManagerZ, ite,
   sparsity, getSupport, getDependentVars, size,
   writeToDot, printDdInfo, returnDot,
   -- * function classes
@@ -37,6 +37,8 @@ module SMCDEL.Internal.MyHaskCUDD (
 import qualified Cudd.Cudd
 import System.IO.Temp (withSystemTempDirectory)
 import Control.Arrow ((***))
+import Control.Exception (bracket)
+import System.Mem (performMajorGC)
 import Data.List
 import Data.Maybe (fromJust)
 import Data.Bifunctor (bimap)
@@ -77,6 +79,16 @@ makeManagerZ vocabCap = Cudd.Cudd.cuddInitZ (vocabCap +1)
 -- | Manager construction when only using BDDs.
 makeManager :: IO Cudd.Cudd.DdManager
 makeManager = Cudd.Cudd.cuddInit
+
+-- | Run an action with a fresh BDD manager that is freed afterwards.
+-- The major GC runs the finalizers of all DDs no longer used, so the
+-- manager memory is returned now and not in a later GC.
+withManager :: (Cudd.Cudd.DdManager -> IO a) -> IO a
+withManager = bracket makeManager (\m -> Cudd.Cudd.cuddQuit m >> performMajorGC)
+
+-- | Run an action with a fresh ZDD manager that is freed afterwards.
+withManagerZ :: Int -> (Cudd.Cudd.DdManager -> IO a) -> IO a
+withManagerZ vocabCap = bracket (makeManagerZ vocabCap) (\m -> Cudd.Cudd.cuddQuit m >> performMajorGC)
 
 -- | Shannon cofactor on a raw CUDD node; v is the CUDD-level value of variable n
 rawCofactor :: Cudd.Cudd.DdManager -> Cudd.Cudd.DdNode -> Int -> Bool -> Cudd.Cudd.DdNode
